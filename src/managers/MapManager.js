@@ -1,6 +1,6 @@
 import { TILE_SIZE, COLORS, TILE_TYPES, DIRECTIONS } from '../constants';
 import { Collectible, COLLECTIBLE_TYPES } from '../objects/Collectible';
-import { CityGenerator } from '../generators/CityGenerator';
+import { WFCGenerator } from '../generators/WFCGenerator';
 
 export class MapManager {
     constructor(scene, width, height) {
@@ -19,17 +19,128 @@ export class MapManager {
     }
 
     generateProceduralMap() {
-        this.playerSpawnPoint = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
+        this.playerSpawnPoint = { x: Math.floor(this.width / 2), y: 2 };
 
+        let success = false;
+        let attempts = 0;
+
+        while (!success && attempts < 50) {
+            attempts++;
+
+            this.initializeGrid(); // Reset grid explicitly on each attempt
+            // Initialize WFC Generator (only happens once or when map dimensions change, but here we construct it cheaply)
+            const wfc = new WFCGenerator(this.width, this.height);
+            // Generate basic map structure with WFC
+            this.grid = wfc.generate(this.playerSpawnPoint);
+
+            // Remove disconnected road islands
+            this.floodFillCleanup();
+
+            // Clean up dead ends
+            this.removeDeadEnds();
+
+            // Verify if spawn is still connected to a valid road
+            if (this.isRoad(this.playerSpawnPoint.x, this.playerSpawnPoint.y + 1)) {
+                success = true;
+                console.log(`Map successfully generated after ${attempts} attempts.`);
+            }
+        }
+
+        if (!success) {
+            console.warn("WFC failed to generate a valid map after 50 attempts. Generating fallback.");
+            this.generateFallbackMap();
+        }
+    }
+
+    // runWFC removed
+
+    floodFillCleanup() {
+        const width = this.width;
+        const height = this.height;
+        const visited = new Uint8Array(width * height);
+        const stack = [];
+
+        const sx = this.playerSpawnPoint.x;
+        const sy = this.playerSpawnPoint.y;
+
+        if (this.isRoad(sx, sy)) {
+            stack.push(sy * width + sx);
+            visited[sy * width + sx] = 1;
+        }
+
+        const dx = [0, 1, 0, -1];
+        const dy = [-1, 0, 1, 0];
+
+        while (stack.length > 0) {
+            const idx = stack.pop();
+            const cx = idx % width;
+            const cy = Math.floor(idx / width);
+
+            for (let d = 0; d < 4; d++) {
+                const nx = cx + dx[d];
+                const ny = cy + dy[d];
+                if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+
+                if (this.isRoad(nx, ny)) {
+                    const nIdx = ny * width + nx;
+                    if (!visited[nIdx]) {
+                        visited[nIdx] = 1;
+                        stack.push(nIdx);
+                    }
+                }
+            }
+        }
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (this.isRoad(x, y) && !visited[y * width + x]) {
+                    this.grid[y][x] = TILE_TYPES.GRASS;
+                }
+            }
+        }
+    }
+
+    generateFallbackMap() {
         this.initializeGrid();
+        for (let y = 5; y < this.height - 5; y++) {
+            for (let x = 5; x < this.width - 5; x++) {
+                if (x === 5 || x === this.width - 6 || y === 5 || y === this.height - 6) {
+                    this.grid[y][x] = TILE_TYPES.ROAD_GENERIC;
+                }
+            }
+        }
+        for (let y = 2; y <= 5; y++) {
+            this.grid[y][this.playerSpawnPoint.x] = TILE_TYPES.ROAD_GENERIC;
+        }
+    }
 
-        // Initialize City Generator which inherently guarantees connectivity
-        const cityGen = new CityGenerator(this.width, this.height);
+    removeDeadEnds() {
+        let changed = true;
+        let passes = 0;
 
-        // Generate basic map structure
-        this.grid = cityGen.generate(this.playerSpawnPoint);
+        while (changed && passes < 100) {
+            changed = false;
+            passes++;
+            for (let y = 1; y < this.height - 1; y++) {
+                for (let x = 1; x < this.width - 1; x++) {
+                    if (!this.isRoad(x, y)) continue;
 
-        console.log("City map successfully generated.");
+                    // Protect the spawn point
+                    if (x === this.playerSpawnPoint.x && y === this.playerSpawnPoint.y) continue;
+
+                    let neighbors = 0;
+                    if (this.isRoad(x, y - 1)) neighbors++;
+                    if (this.isRoad(x, y + 1)) neighbors++;
+                    if (this.isRoad(x - 1, y)) neighbors++;
+                    if (this.isRoad(x + 1, y)) neighbors++;
+
+                    if (neighbors <= 1) { // Dead end
+                        this.setTile(x, y, TILE_TYPES.GRASS);
+                        changed = true;
+                    }
+                }
+            }
+        }
     }
 
     // Removed old walker legacy methods
