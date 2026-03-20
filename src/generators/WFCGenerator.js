@@ -4,187 +4,132 @@ export class WFCGenerator {
     constructor(width, height) {
         this.width = width;
         this.height = height;
-
-        // Definition of all possible tiles and their adjacency sockets [Top, Right, Bottom, Left]
-        this.WFC_MODULES = [
-            { sockets: ['G', 'G', 'G', 'G'], weight: 400 }, // 0: GRASS - Hodně velká váha pro otevřené prostory
-            { sockets: ['G', 'R', 'G', 'R'], weight: 25 },  // Horizontal - Preferujeme dlouhé rovinky
-            { sockets: ['R', 'G', 'R', 'G'], weight: 25 },  // Vertical - Preferujeme dlouhé rovinky
-            { sockets: ['R', 'R', 'R', 'R'], weight: 1 },   // All 4 ways - Velmi malá šance na křižovatku
-            { sockets: ['G', 'R', 'R', 'G'], weight: 5 },  // Turn B-R
-            { sockets: ['G', 'G', 'R', 'R'], weight: 5 },  // Turn B-L
-            { sockets: ['R', 'R', 'G', 'G'], weight: 5 },  // Turn T-R
-            { sockets: ['R', 'G', 'G', 'R'], weight: 5 },  // Turn T-L
-            { sockets: ['G', 'R', 'R', 'R'], weight: 3 },   // T-junction B-R-L
-            { sockets: ['R', 'R', 'G', 'R'], weight: 3 },   // T-junction T-R-L
-            { sockets: ['R', 'G', 'R', 'R'], weight: 3 },   // T-junction T-B-L
-            { sockets: ['R', 'R', 'R', 'G'], weight: 3 },   // T-junction T-B-R
-            { sockets: ['R', 'G', 'G', 'G'], weight: 1 },   // Top dead-end
-            { sockets: ['G', 'R', 'G', 'G'], weight: 1 },   // Right dead-end
-            { sockets: ['G', 'G', 'R', 'G'], weight: 1 },   // Bottom dead-end
-            { sockets: ['G', 'G', 'G', 'R'], weight: 1 }    // Left dead-end
-        ];
-
-        this.numModules = this.WFC_MODULES.length;
-        this.validNeighbors = [[], [], [], []];
-
-        // Precompute valid neighbors only once
-        for (let d = 0; d < 4; d++) {
-            this.validNeighbors[d] = new Uint16Array(this.numModules);
-            const opposite = (d + 2) % 4;
-            for (let m1 = 0; m1 < this.numModules; m1++) {
-                let mask = 0;
-                for (let m2 = 0; m2 < this.numModules; m2++) {
-                    if (this.WFC_MODULES[m1].sockets[d] === this.WFC_MODULES[m2].sockets[opposite]) {
-                        mask |= (1 << m2);
-                    }
-                }
-                this.validNeighbors[d][m1] = mask;
-            }
-        }
     }
 
+    /**
+     * Generates an organic grid-based road network centered on spawnPoint.
+     *
+     * Algorithm:
+     *  1. Build a grid of intersection nodes spaced CELL_SIZE tiles apart,
+     *     centered exactly on the spawn point so roads grow in all 4 directions.
+     *  2. Connect every pair of adjacent nodes with a straight road segment
+     *     (full grid = guaranteed coverage, no isolated islands).
+     *  3. Remove ~30% of the non-essential connections (only when both
+     *     endpoints have degree > 2) to break up the monotony while keeping
+     *     every node reachable with ≥ 2 connections.
+     *  4. The four connections touching the spawn node are always kept so the
+     *     player always has roads in all 4 directions at start.
+     */
     generate(spawnPoint) {
-        const { width, height, numModules, WFC_MODULES, validNeighbors } = this;
-        const domains = new Uint16Array(width * height);
-        const FULL_MASK = (1 << numModules) - 1;
+        const { width, height } = this;
+        const BORDER = 3;       // Minimum tile distance from map edge
+        const CELL_SIZE = 7;    // Tiles between adjacent intersection nodes
+        const REMOVE_PROB = 0.3; // Chance to remove a non-essential connection
 
-        let stack = [];
-        let inQueue = new Uint8Array(width * height);
+        const roads = new Uint8Array(width * height);
 
-        const pushToStack = (idx) => {
-            if (!inQueue[idx]) {
-                stack.push(idx);
-                inQueue[idx] = 1;
-            }
+        const setRoad = (x, y) => {
+            if (x >= BORDER && x < width - BORDER && y >= BORDER && y < height - BORDER)
+                roads[y * width + x] = 1;
         };
 
-        for (let i = 0; i < domains.length; i++) domains[i] = FULL_MASK;
+        // ── 1. Build axis-aligned grid node positions centered on spawn ──────
+        const genAxisPositions = (center, max) => {
+            const positions = [];
+            for (let k = 0; ; k++) {
+                const v = center - k * CELL_SIZE;
+                if (v < BORDER) break;
+                positions.unshift(v);
+            }
+            for (let k = 1; ; k++) {
+                const v = center + k * CELL_SIZE;
+                if (v >= max - BORDER) break;
+                positions.push(v);
+            }
+            return positions;
+        };
 
-        // Apply constraints
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (x <= 2 || x >= width - 3 || y <= 2 || y >= height - 3) {
-                    if (x === spawnPoint.x && y === spawnPoint.y) {
-                        continue;
-                    }
-                    const idx = y * width + x;
-                    domains[idx] = (1 << 0); // GRASS
-                    pushToStack(idx);
-                }
+        const xs = genAxisPositions(spawnPoint.x, width);
+        const ys = genAxisPositions(spawnPoint.y, height);
+        const nX = xs.length;
+        const nY = ys.length;
+
+        // ── 2. Build full connection list and track degree per node ──────────
+        const nodeIdx = (cx, cy) => cy * nX + cx;
+        const degree = new Int32Array(nY * nX);
+        const connections = [];
+
+        // Horizontal connections
+        for (let cy = 0; cy < nY; cy++) {
+            for (let cx = 0; cx < nX - 1; cx++) {
+                connections.push({ cx1: cx, cy1: cy, cx2: cx + 1, cy2: cy });
+                degree[nodeIdx(cx, cy)]++;
+                degree[nodeIdx(cx + 1, cy)]++;
+            }
+        }
+        // Vertical connections
+        for (let cy = 0; cy < nY - 1; cy++) {
+            for (let cx = 0; cx < nX; cx++) {
+                connections.push({ cx1: cx, cy1: cy, cx2: cx, cy2: cy + 1 });
+                degree[nodeIdx(cx, cy)]++;
+                degree[nodeIdx(cx, cy + 1)]++;
             }
         }
 
-        const sx = spawnPoint.x;
-        const sy = spawnPoint.y;
-        const sIdx = sy * width + sx;
-        const sIdxB = (sy + 1) * width + sx;
-        domains[sIdx] = (1 << 14); // DEADEND_BOTTOM (Index 14)
-        domains[sIdxB] = (1 << 9); // T turn top left right (Index 11)
-        pushToStack(sIdx);
-        pushToStack(sIdxB);
+        // ── 3. Identify spawn node and protect its connections ───────────────
+        const spawnCx = xs.indexOf(spawnPoint.x);
+        const spawnCy = ys.indexOf(spawnPoint.y);
 
-        const dx = [0, 1, 0, -1];
-        const dy = [-1, 0, 1, 0];
+        const touchesSpawn = (c) =>
+            (c.cx1 === spawnCx && c.cy1 === spawnCy) ||
+            (c.cx2 === spawnCx && c.cy2 === spawnCy);
 
-        const propagate = () => {
-            while (stack.length > 0) {
-                const idx = stack.shift();
-                inQueue[idx] = 0;
-
-                const cx = idx % width;
-                const cy = Math.floor(idx / width);
-                const currentDomain = domains[idx];
-
-                for (let d = 0; d < 4; d++) {
-                    const nx = cx + dx[d];
-                    const ny = cy + dy[d];
-                    if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-
-                    const nIdx = ny * width + nx;
-                    const neighborDomain = domains[nIdx];
-
-                    let allowedMask = 0;
-                    for (let m = 0; m < numModules; m++) {
-                        if (currentDomain & (1 << m)) {
-                            allowedMask |= validNeighbors[d][m];
-                        }
-                    }
-
-                    const newDomain = neighborDomain & allowedMask;
-                    if (newDomain !== neighborDomain) {
-                        domains[nIdx] = newDomain;
-                        pushToStack(nIdx);
-                    }
-                }
-            }
-        };
-
-        propagate();
-
-        while (true) {
-            let minEntropy = 9999;
-            let minIdx = -1;
-
-            for (let i = 0; i < domains.length; i++) {
-                const dom = domains[i];
-                let count = 0;
-                for (let m = 0; m < numModules; m++) if (dom & (1 << m)) count++;
-
-                if (count > 1) {
-                    const noise = Math.random() * 0.1;
-                    const entropy = count + noise;
-                    if (entropy < minEntropy) {
-                        minEntropy = entropy;
-                        minIdx = i;
-                    }
-                }
-            }
-
-            if (minIdx === -1) break;
-
-            const dom = domains[minIdx];
-            let possible = [];
-            for (let m = 0; m < numModules; m++) {
-                if (dom & (1 << m)) possible.push(m);
-            }
-
-            let totalWeight = 0;
-            for (let m of possible) totalWeight += WFC_MODULES[m].weight;
-
-            let r = Math.random() * totalWeight;
-            let chosen = possible[possible.length - 1];
-            for (let m of possible) {
-                r -= WFC_MODULES[m].weight;
-                if (r <= 0) {
-                    chosen = m;
-                    break;
-                }
-            }
-
-            domains[minIdx] = (1 << chosen);
-            pushToStack(minIdx);
-            propagate();
+        // ── 4. Randomly remove non-essential connections ─────────────────────
+        // Shuffle for unbiased removal
+        for (let i = connections.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [connections[i], connections[j]] = [connections[j], connections[i]];
         }
 
-        // Apply generated map to grid array structure
+        const kept = new Uint8Array(connections.length).fill(1);
+        for (let i = 0; i < connections.length; i++) {
+            const c = connections[i];
+            if (touchesSpawn(c)) continue; // always keep spawn connections
+
+            const i1 = nodeIdx(c.cx1, c.cy1);
+            const i2 = nodeIdx(c.cx2, c.cy2);
+            if (degree[i1] > 2 && degree[i2] > 2 && Math.random() < REMOVE_PROB) {
+                kept[i] = 0;
+                degree[i1]--;
+                degree[i2]--;
+            }
+        }
+
+        // ── 5. Draw kept connections as road tiles ───────────────────────────
+        for (let i = 0; i < connections.length; i++) {
+            if (!kept[i]) continue;
+            const { cx1, cy1, cx2, cy2 } = connections[i];
+            const x1 = xs[cx1], y1 = ys[cy1];
+            const x2 = xs[cx2], y2 = ys[cy2];
+
+            if (y1 === y2) {
+                // Horizontal segment
+                for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) setRoad(x, y1);
+            } else {
+                // Vertical segment
+                for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) setRoad(x1, y);
+            }
+        }
+
+        // ── 6. Convert road bitmap to TILE_TYPES grid ────────────────────────
         const resultGrid = [];
         for (let y = 0; y < height; y++) {
             const row = [];
             for (let x = 0; x < width; x++) {
-                const dom = domains[y * width + x];
-                let chosen = 0;
-                for (let m = 0; m < numModules; m++) {
-                    if (dom & (1 << m)) {
-                        chosen = m;
-                        break;
-                    }
-                }
-                row.push(chosen === 0 ? TILE_TYPES.GRASS : TILE_TYPES.ROAD_GENERIC);
+                row.push(roads[y * width + x] ? TILE_TYPES.ROAD_GENERIC : TILE_TYPES.GRASS);
             }
             resultGrid.push(row);
         }
-
         return resultGrid;
     }
 }

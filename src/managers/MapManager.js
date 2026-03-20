@@ -19,7 +19,7 @@ export class MapManager {
     }
 
     generateProceduralMap() {
-        this.playerSpawnPoint = { x: Math.floor(this.width / 2), y: 2 };
+        this.playerSpawnPoint = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
 
         let success = false;
         let attempts = 0;
@@ -40,7 +40,7 @@ export class MapManager {
             this.removeDeadEnds();
 
             // Verify if spawn is still connected to a valid road
-            if (this.isRoad(this.playerSpawnPoint.x, this.playerSpawnPoint.y + 1)) {
+            if (this.isRoad(this.playerSpawnPoint.x, this.playerSpawnPoint.y)) {
                 success = true;
                 console.log(`Map successfully generated after ${attempts} attempts.`);
             }
