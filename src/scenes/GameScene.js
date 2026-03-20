@@ -22,8 +22,8 @@ export class GameScene extends Phaser.Scene {
 
     create() {
         this.add.text(10, 8, 'GETAWAY', {
-            fontFamily: 'monospace',
-            fontSize: '24px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '18px',
             color: '#ffe066',
             stroke: '#000000',
             strokeThickness: 6

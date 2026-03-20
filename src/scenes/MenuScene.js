@@ -18,16 +18,16 @@ export class MenuScene extends Phaser.Scene {
         panel.setStrokeStyle(6, 0x4a5e44);
 
         this.add.text(width / 2, height / 2 - 120, 'GETAWAY', {
-            fontFamily: 'monospace',
-            fontSize: '84px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '64px',
             color: '#7bf17b',
             stroke: '#000000',
             strokeThickness: 12
         }).setOrigin(0.5);
 
         this.add.text(width / 2, height / 2 - 24, 'Bank Robber Escape', {
-            fontFamily: 'monospace',
-            fontSize: '28px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '20px',
             color: '#ffd166'
         }).setOrigin(0.5);
 
@@ -36,20 +36,20 @@ export class MenuScene extends Phaser.Scene {
         startButton.setInteractive({ useHandCursor: true });
 
         const startLabel = this.add.text(width / 2, menuY, 'START', {
-            fontFamily: 'monospace',
-            fontSize: '44px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '40px',
             color: '#f9ffef'
         }).setOrigin(0.5);
 
         const leftArrow = this.add.text(width / 2 - 126, menuY, '>', {
-            fontFamily: 'monospace',
-            fontSize: '44px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '36px',
             color: '#b7ff6a'
         }).setOrigin(0.5);
 
         const rightArrow = this.add.text(width / 2 + 126, menuY, '<', {
-            fontFamily: 'monospace',
-            fontSize: '44px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '36px',
             color: '#b7ff6a'
         }).setOrigin(0.5);
 

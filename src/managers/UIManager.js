@@ -6,16 +6,16 @@ export class UIManager {
 
         // UI Text Objects
         this.scoreText = this.scene.add.text(10, 44, 'SCORE 000000', {
-            fontFamily: 'monospace',
-            fontSize: '24px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '16px',
             color: '#ffd166',
             stroke: '#000000',
             strokeThickness: 6
         }).setDepth(100).setScrollFactor(0);
 
         this.fuelText = this.scene.add.text(10, 80, 'FUEL 100%', {
-            fontFamily: 'monospace',
-            fontSize: '24px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '16px',
             color: '#7eff89',
             stroke: '#000000',
             strokeThickness: 6
@@ -51,8 +51,8 @@ export class UIManager {
         bg.setScrollFactor(0);
 
         const text = this.scene.add.text(width / 2, height / 2, `GAME OVER\n${reason}\n\nCLICK TO RESTART`, {
-            fontFamily: 'monospace',
-            fontSize: '48px',
+            fontFamily: '"Press Start 2P"',
+            fontSize: '30px',
             color: '#ff6b6b',
             stroke: '#000000',
             strokeThickness: 6,
