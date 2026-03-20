@@ -62,6 +62,12 @@ export class GameScene extends Phaser.Scene {
         // CRITICAL FIX: Follow the VISUAL game object, not the wrapper class
         this.cameras.main.startFollow(this.playerCar.visual);
 
+        // Pause menu logic
+        this.input.keyboard.on('keydown-ESC', () => {
+            this.scene.pause('GameScene');
+            this.scene.launch('PauseScene');
+        });
+
         this.gameOver = false;
     }
 
