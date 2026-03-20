@@ -5,8 +5,26 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>fiery-curie</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #000;
+      }
+      /* Load font so canvas can use it immediately */
+      #font-loader {
+        font-family: 'Press Start 2P';
+        color: transparent;
+        position: absolute;
+        pointer-events: none;
+      }
+    </style>
   </head>
   <body>
+    <div id="font-loader">.</div>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

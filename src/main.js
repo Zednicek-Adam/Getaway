@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
 import { TILE_SIZE, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './constants';
 
@@ -14,7 +15,13 @@ const config = {
       debug: false,
     },
   },
-  scene: [GameScene],
+  scene: [MenuScene, GameScene],
 };
 
-const game = new Phaser.Game(config);
+// Wait for the font to load before creating the game
+window.addEventListener('load', () => {
+  // A small delay to ensure the webfont is processed by the browser
+  setTimeout(() => {
+    const game = new Phaser.Game(config);
+  }, 100);
+});
