@@ -85,6 +85,9 @@ export class Car {
         // 2. If no buffered turn or invalid turn, CAN we go straight?
         // 3. Else, Stop.
 
+        // Don't auto-move if waiting for player's first input
+        if (this.waitingForInput) return;
+
         let attempts = [];
 
         // If we have a buffered next direction
@@ -147,6 +150,11 @@ export class Car {
     }
 
     setBufferedInput(newDirection) {
+        // First input clears the initial wait state
+        if (this.waitingForInput) {
+            this.waitingForInput = false;
+        }
+
         // Check for 180 turn immediately
         if (this.isOpposite(newDirection, this.direction)) {
             this.performUturn(newDirection);

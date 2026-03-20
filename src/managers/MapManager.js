@@ -1,6 +1,6 @@
 import { TILE_SIZE, COLORS, TILE_TYPES, DIRECTIONS } from '../constants';
 import { Collectible, COLLECTIBLE_TYPES } from '../objects/Collectible';
-import { WFCGenerator } from '../generators/WFCGenerator';
+import { NetworkGenerator } from '../generators/NetworkGenerator';
 
 export class MapManager {
     constructor(scene, width, height) {
@@ -19,7 +19,7 @@ export class MapManager {
     }
 
     generateProceduralMap() {
-        this.playerSpawnPoint = { x: Math.floor(this.width / 2), y: 2 };
+        this.playerSpawnPoint = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
 
         let success = false;
         let attempts = 0;
@@ -27,19 +27,14 @@ export class MapManager {
         while (!success && attempts < 50) {
             attempts++;
 
-            this.initializeGrid(); // Reset grid explicitly on each attempt
-            // Initialize WFC Generator (only happens once or when map dimensions change, but here we construct it cheaply)
-            const wfc = new WFCGenerator(this.width, this.height);
-            // Generate basic map structure with WFC
-            this.grid = wfc.generate(this.playerSpawnPoint);
+            this.initializeGrid();
+            const generator = new NetworkGenerator(this.width, this.height);
+            this.grid = generator.generate(this.playerSpawnPoint);
 
-            // Remove disconnected road islands
-            this.floodFillCleanup();
-
-            // Clean up dead ends
+            // Clean up any remaining dead-ends (safety net)
             this.removeDeadEnds();
 
-            // Verify if spawn is still connected to a valid road
+            // Verify spawn is still connected to a valid road
             if (this.isRoad(this.playerSpawnPoint.x, this.playerSpawnPoint.y + 1)) {
                 success = true;
                 console.log(`Map successfully generated after ${attempts} attempts.`);
@@ -47,58 +42,12 @@ export class MapManager {
         }
 
         if (!success) {
-            console.warn("WFC failed to generate a valid map after 50 attempts. Generating fallback.");
+            console.warn("NetworkGenerator failed after 50 attempts. Generating fallback.");
             this.generateFallbackMap();
         }
     }
 
-    // runWFC removed
 
-    floodFillCleanup() {
-        const width = this.width;
-        const height = this.height;
-        const visited = new Uint8Array(width * height);
-        const stack = [];
-
-        const sx = this.playerSpawnPoint.x;
-        const sy = this.playerSpawnPoint.y;
-
-        if (this.isRoad(sx, sy)) {
-            stack.push(sy * width + sx);
-            visited[sy * width + sx] = 1;
-        }
-
-        const dx = [0, 1, 0, -1];
-        const dy = [-1, 0, 1, 0];
-
-        while (stack.length > 0) {
-            const idx = stack.pop();
-            const cx = idx % width;
-            const cy = Math.floor(idx / width);
-
-            for (let d = 0; d < 4; d++) {
-                const nx = cx + dx[d];
-                const ny = cy + dy[d];
-                if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-
-                if (this.isRoad(nx, ny)) {
-                    const nIdx = ny * width + nx;
-                    if (!visited[nIdx]) {
-                        visited[nIdx] = 1;
-                        stack.push(nIdx);
-                    }
-                }
-            }
-        }
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (this.isRoad(x, y) && !visited[y * width + x]) {
-                    this.grid[y][x] = TILE_TYPES.GRASS;
-                }
-            }
-        }
-    }
 
     generateFallbackMap() {
         this.initializeGrid();

@@ -40,6 +40,8 @@ export class GameScene extends Phaser.Scene {
         this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager);
         // Force player to face UP (towards the dead end) as requested
         this.playerCar.direction = DIRECTIONS.UP;
+        this.playerCar.nextDirection = null; // Clear buffered input so car stays still
+        this.playerCar.waitingForInput = true; // Don't auto-move until player presses a key
         this.playerCar.updatePosition(0);
 
         // Police Spawn
