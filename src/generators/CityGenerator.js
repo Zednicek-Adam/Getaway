@@ -17,105 +17,98 @@ export class CityGenerator {
             grid.push(row);
         }
 
-        const MIN_SPACING = 4;
-        const MAX_SPACING = 8;
-        const MARGIN = 3;
+        const SPACING = 5;
+        const START_OFFSET_X = 2;
+        const START_OFFSET_Y = 2;
+        // Make sure we don't go out of bounds
+        const END_OFFSET_X = this.width - 3;
+        const END_OFFSET_Y = this.height - 3;
 
-        // Use a branching random walk to create organic blocks
-        const startNode = { x: spawnPoint.x, y: spawnPoint.y };
-
-        const nodes = [startNode];
-        const edges = [];
-
-        // Queue of active ends (node, direction vector, generation)
-        const frontier = [];
-
-        // Initial 4 directions
-        frontier.push({ from: startNode, dir: {dx: 0, dy: -1}, gen: 0 });
-        frontier.push({ from: startNode, dir: {dx: 0, dy: 1}, gen: 0 });
-        frontier.push({ from: startNode, dir: {dx: -1, dy: 0}, gen: 0 });
-        frontier.push({ from: startNode, dir: {dx: 1, dy: 0}, gen: 0 });
-
-        const MAX_NODES = 150; // Controls density/coverage
-
-        while (frontier.length > 0 && nodes.length < MAX_NODES) {
-            // Pick a random active end (BFS-like but random order to grow organically)
-            const idx = Math.floor(Math.random() * frontier.length);
-            const activeEnd = frontier.splice(idx, 1)[0];
-            const { from, dir, gen } = activeEnd;
-
-            // Decide road segment length
-            const length = Math.floor(Math.random() * (MAX_SPACING - MIN_SPACING + 1)) + MIN_SPACING;
-
-            const toX = from.x + dir.dx * length;
-            const toY = from.y + dir.dy * length;
-
-            // Check bounds
-            if (toX < MARGIN || toX >= this.width - MARGIN || toY < MARGIN || toY >= this.height - MARGIN) {
-                continue; // Too close to edge, stop this branch
-            }
-
-            const toNode = { x: toX, y: toY };
-
-            // Check collision with existing nodes
-            // We want to avoid creating intersections too close to each other
-            let collision = false;
-            let mergeNode = null;
-
-            for (const existingNode of nodes) {
-                const dist = Math.abs(existingNode.x - toNode.x) + Math.abs(existingNode.y - toNode.y);
-                if (dist === 0) {
-                    // Exact hit, perfectly fine to merge
-                    mergeNode = existingNode;
-                    break;
-                } else if (dist < MIN_SPACING) {
-                    // Too close, abort this branch entirely to keep constraints
-                    collision = true;
-                    break;
-                }
-            }
-
-            if (collision) continue;
-
-            // Also check if the new edge crosses existing edges illegally
-            // Simple check: we just draw it and see if it intersects existing nodes perpendicularly
-            // A more robust way is to just allow it and let the grid rendering handle intersections,
-            // but we want to avoid messy clusters. We'll rely on the node distance check above.
-
-            if (mergeNode) {
-                // Connect and stop branching
-                edges.push({ from, to: mergeNode });
-            } else {
-                // New node
-                nodes.push(toNode);
-                edges.push({ from, to: toNode });
-
-                // Branching logic
-                // Typically branch left, right, or straight.
-                // Decrease probability as generation increases to thin out edges
-                const branchProb = Math.max(0.2, 0.9 - (gen * 0.05));
-
-                // Straight
-                if (Math.random() < branchProb) {
-                    frontier.push({ from: toNode, dir: {dx: dir.dx, dy: dir.dy}, gen: gen + 1 });
-                }
-
-                // Left turn
-                if (Math.random() < branchProb) {
-                    frontier.push({ from: toNode, dir: {dx: dir.dy, dy: -dir.dx}, gen: gen + 1 });
-                }
-
-                // Right turn
-                if (Math.random() < branchProb) {
-                    frontier.push({ from: toNode, dir: {dx: -dir.dy, dy: dir.dx}, gen: gen + 1 });
-                }
-
-                // Occasional T-junctions or cross intersections are naturally formed by multiple branches
+        const nodes = [];
+        for(let y = START_OFFSET_Y; y <= END_OFFSET_Y; y += SPACING) {
+            for(let x = START_OFFSET_X; x <= END_OFFSET_X; x += SPACING) {
+                nodes.push({x, y});
             }
         }
 
-        // Render edges to grid
-        for (const edge of edges) {
+        // Find center node closest to spawnPoint
+        let startNode = nodes.reduce((prev, curr) => {
+            const distPrev = Math.abs(prev.x - spawnPoint.x) + Math.abs(prev.y - spawnPoint.y);
+            const distCurr = Math.abs(curr.x - spawnPoint.x) + Math.abs(curr.y - spawnPoint.y);
+            return distCurr < distPrev ? curr : prev;
+        });
+
+        // Snap spawnPoint to the startNode so the player spawns on a valid road intersection
+        spawnPoint.x = startNode.x;
+        spawnPoint.y = startNode.y;
+
+        const visited = new Set();
+        visited.add(`${startNode.x},${startNode.y}`);
+
+        const final_edges = [];
+        const frontier = [];
+
+        const addNeighborsToFrontier = (node) => {
+            const dirs = [[0, SPACING], [0, -SPACING], [SPACING, 0], [-SPACING, 0]];
+            for (const [dx, dy] of dirs) {
+                const nx = node.x + dx;
+                const ny = node.y + dy;
+                if (nx >= START_OFFSET_X && nx <= END_OFFSET_X && ny >= START_OFFSET_Y && ny <= END_OFFSET_Y) {
+                    if (!visited.has(`${nx},${ny}`)) {
+                        frontier.push({ from: node, to: { x: nx, y: ny } });
+                    }
+                }
+            }
+        };
+
+        addNeighborsToFrontier(startNode);
+
+        // Randomized BFS to build a Spanning Tree
+        // This naturally expands outwards from the startNode in all directions
+        while (frontier.length > 0) {
+            // Pick a random edge from the frontier
+            const idx = Math.floor(Math.random() * frontier.length);
+            const edge = frontier.splice(idx, 1)[0];
+
+            const toKey = `${edge.to.x},${edge.to.y}`;
+            if (!visited.has(toKey)) {
+                visited.add(toKey);
+                final_edges.push(edge);
+                addNeighborsToFrontier(edge.to);
+            }
+        }
+
+        // Add loops to convert the spanning tree into a city network
+        const all_possible_edges = [];
+        for (const n1 of visited) {
+            const [x1, y1] = n1.split(',').map(Number);
+            const dirs = [[SPACING, 0], [0, SPACING]]; // Right and Down only to avoid duplicate edges
+            for (const [dx, dy] of dirs) {
+                const nx = x1 + dx;
+                const ny = y1 + dy;
+                if (nx >= START_OFFSET_X && nx <= END_OFFSET_X && ny >= START_OFFSET_Y && ny <= END_OFFSET_Y) {
+                    all_possible_edges.push({ from: {x: x1, y: y1}, to: {x: nx, y: ny} });
+                }
+            }
+        }
+
+        const isEdgeInFinal = (e1) => {
+            return final_edges.some(e2 =>
+                (e1.from.x === e2.from.x && e1.from.y === e2.from.y && e1.to.x === e2.to.x && e1.to.y === e2.to.y) ||
+                (e1.from.x === e2.to.x && e1.from.y === e2.to.y && e1.to.x === e2.from.x && e1.to.y === e2.from.y)
+            );
+        };
+
+        for (const edge of all_possible_edges) {
+            if (!isEdgeInFinal(edge)) {
+                if (Math.random() < 0.35) { // 35% chance to create a loop (cross street)
+                    final_edges.push(edge);
+                }
+            }
+        }
+
+        // Render the roads onto the grid
+        for (const edge of final_edges) {
             const minX = Math.min(edge.from.x, edge.to.x);
             const maxX = Math.max(edge.from.x, edge.to.x);
             const minY = Math.min(edge.from.y, edge.to.y);
