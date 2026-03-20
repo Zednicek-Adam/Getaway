@@ -1,0 +1,175 @@
+import { Car } from './Car';
+import { DIRECTIONS, COLORS, TILE_SIZE } from '../constants';
+import Phaser from 'phaser';
+
+export class PoliceCar extends Car {
+    constructor(scene, gridX, gridY, mapManager, target) {
+        super(scene, gridX, gridY, mapManager);
+        this.target = target; // The Player Car
+
+        // Slightly slower or faster? 
+        // Let's make it same speed for now
+        this.moveConfig.duration = 350; // Slower than player (300)
+
+        this.chaseTimer = 0; // Chase timer in ms
+
+        this.render(); // Re-render with police colors
+    }
+
+    // Override update to handle chase timer
+    update(time, delta) {
+        if (this.chaseTimer > 0) {
+            this.chaseTimer -= delta;
+            if (this.chaseTimer < 0) this.chaseTimer = 0;
+        }
+        super.update(time, delta);
+    }
+
+    // Override tryMove to evaluate routing at every tile/intersection
+    tryMove() {
+        this.decideNextMove();
+        super.tryMove();
+    }
+
+    decideNextMove() {
+        // Simple Chaser Logic
+        // 1. Get valid directions from current tile
+        const validMoves = this.getValidMoves();
+
+        if (validMoves.length === 0) return; // Stuck?
+
+        // 2. Pick best move towards target or random if not chasing
+        let bestMove = null;
+
+        if (this.chaseTimer > 0) {
+            const path = this.findPathAStar(this.gridX, this.gridY, this.target.gridX, this.target.gridY);
+
+            if (path && path.length > 1) {
+                const nextX = path[1].x;
+                const nextY = path[1].y;
+
+                if (nextX > this.gridX) bestMove = DIRECTIONS.RIGHT;
+                else if (nextX < this.gridX) bestMove = DIRECTIONS.LEFT;
+                else if (nextY > this.gridY) bestMove = DIRECTIONS.DOWN;
+                else if (nextY < this.gridY) bestMove = DIRECTIONS.UP;
+            } else {
+                // Fallback to random if no path found
+                const forwardMoves = validMoves.filter(m => !this.isOpposite(m, this.direction));
+                if (forwardMoves.length > 0) {
+                    bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
+                } else {
+                    bestMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                }
+            }
+        } else {
+            // Random movement when not chasing
+            // Try not to U-turn unless it's a dead end
+            const forwardMoves = validMoves.filter(m => !this.isOpposite(m, this.direction));
+            if (forwardMoves.length > 0) {
+                bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
+            } else {
+                bestMove = validMoves[Math.floor(Math.random() * validMoves.length)]; // Dead end
+            }
+        }
+
+        if (bestMove !== null) {
+            this.setBufferedInput(bestMove);
+        }
+    }
+
+    findPathAStar(startX, startY, endX, endY) {
+        const openSet = [];
+        const closedSet = new Set();
+
+        const startNode = {
+            x: startX,
+            y: startY,
+            g: 0,
+            h: Math.abs(startX - endX) + Math.abs(startY - endY),
+            parent: null
+        };
+        startNode.f = startNode.g + startNode.h;
+
+        openSet.push(startNode);
+
+        let attempts = 0;
+
+        while (openSet.length > 0 && attempts < 1000) {
+            attempts++;
+            // Sort to get node with lowest f
+            openSet.sort((a, b) => a.f - b.f);
+            const current = openSet.shift();
+
+            if (current.x === endX && current.y === endY) {
+                const path = [];
+                let curr = current;
+                while (curr !== null) {
+                    path.push({ x: curr.x, y: curr.y });
+                    curr = curr.parent;
+                }
+                return path.reverse();
+            }
+
+            closedSet.add(`${current.x},${current.y}`);
+
+            const neighbors = [
+                { x: current.x, y: current.y - 1 },
+                { x: current.x, y: current.y + 1 },
+                { x: current.x - 1, y: current.y },
+                { x: current.x + 1, y: current.y }
+            ];
+
+            for (let n of neighbors) {
+                if (!this.mapManager.isRoad(n.x, n.y)) continue;
+
+                const neighborKey = `${n.x},${n.y}`;
+                if (closedSet.has(neighborKey)) continue;
+
+                const tentativeG = current.g + 1;
+
+                let neighborNode = openSet.find(node => node.x === n.x && node.y === n.y);
+                if (!neighborNode) {
+                    neighborNode = {
+                        x: n.x,
+                        y: n.y,
+                        parent: current,
+                        g: tentativeG,
+                        h: Math.abs(n.x - endX) + Math.abs(n.y - endY)
+                    };
+                    neighborNode.f = neighborNode.g + neighborNode.h;
+                    openSet.push(neighborNode);
+                } else if (tentativeG < neighborNode.g) {
+                    neighborNode.parent = current;
+                    neighborNode.g = tentativeG;
+                    neighborNode.f = neighborNode.g + neighborNode.h;
+                }
+            }
+        }
+
+        return null; // No path found
+    }
+
+    getValidMoves() {
+        const moves = [];
+        [DIRECTIONS.UP, DIRECTIONS.DOWN, DIRECTIONS.LEFT, DIRECTIONS.RIGHT].forEach(dir => {
+            if (this.canMove(dir)) moves.push(dir);
+        });
+        return moves;
+    }
+
+    render() {
+        this.visual.clear();
+        this.visual.fillStyle(COLORS.POLICE, 1);
+
+        // Car body
+        const len = TILE_SIZE * 0.6;
+        const width = TILE_SIZE * 0.4;
+        this.visual.fillRect(-len / 2, -width / 2, len, width);
+
+        // Siren (Strobe effect in update?)
+        this.visual.fillStyle(0xFF0000, 1); // Red
+        this.visual.fillRect(-5, -6, 4, 6);
+        this.visual.fillStyle(0x7777FF, 1); // Blue
+        this.visual.fillRect(-5, 2, 4, 6);
+    }
+}
