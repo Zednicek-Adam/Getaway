@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from '../constants';
+import { GAME_SCENE_KEY } from './GameScene';
 
 export class MenuScene extends Phaser.Scene {
     constructor() {
@@ -39,7 +40,7 @@ export class MenuScene extends Phaser.Scene {
             color: '#ffffff'
         }).setOrigin(0.5);
 
-        const startGame = () => this.scene.start('GameScene');
+        const startGame = () => this.scene.start(GAME_SCENE_KEY);
 
         startButton.on('pointerdown', startGame);
         this.input.keyboard.once('keydown-ENTER', startGame);

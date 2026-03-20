@@ -7,11 +7,13 @@ import { UIManager } from '../managers/UIManager';
 import { COLLECTIBLE_TYPES } from '../objects/Collectible';
 import { PoliceCar } from '../objects/PoliceCar';
 
+export const GAME_SCENE_KEY = 'GameScene';
+
 export class GameScene extends Phaser.Scene {
 
 
     constructor() {
-        super({ key: 'GameScene' });
+        super({ key: GAME_SCENE_KEY });
     }
 
     preload() {
