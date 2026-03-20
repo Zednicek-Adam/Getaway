@@ -13,6 +13,11 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+#app canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 a {
   font-weight: 500;
   color: #646cff;

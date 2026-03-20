@@ -19,7 +19,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.text(10, 10, 'Getaway Remake', { font: '16px Arial', fill: '#ffffff', depth: 100 }).setScrollFactor(0);
+        this.add.text(10, 8, 'GETAWAY', {
+            fontFamily: 'monospace',
+            fontSize: '24px',
+            color: '#ffe066',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setDepth(100).setScrollFactor(0);
 
         // Map System
         this.mapManager = new MapManager(this, MAP_WIDTH, MAP_HEIGHT);

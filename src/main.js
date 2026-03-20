@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameScene } from './scenes/GameScene';
+import { MenuScene } from './scenes/MenuScene';
 import { TILE_SIZE, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './constants';
 
 const config = {
@@ -14,7 +15,7 @@ const config = {
       debug: false,
     },
   },
-  scene: [GameScene],
+  scene: [MenuScene, GameScene],
 };
 
 const game = new Phaser.Game(config);
