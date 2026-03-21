@@ -189,20 +189,28 @@ export class Car {
     }
 
     render() {
-        // Draw Car Shape (relative to 0,0)
-        // It's a Graphics object container basically
         this.visual.clear();
-        this.visual.fillStyle(COLORS.PLAYER, 1);
+        const pixel = Math.round(TILE_SIZE / 16);
+        const bodyLength = pixel * 10;
+        const bodyWidth = pixel * 6;
+        const halfLength = bodyLength / 2;
+        const halfWidth = bodyWidth / 2;
 
-        // Simple car shape (pointing Right)
-        const len = TILE_SIZE * 0.6;
-        const width = TILE_SIZE * 0.4;
+        // Bank-robber inspired look: dark body with white stripe and red detail
+        this.visual.fillStyle(0x111111, 1);
+        this.visual.fillRect(-halfLength, -halfWidth, bodyLength, bodyWidth);
 
-        this.visual.fillRect(-len / 2, -width / 2, len, width);
+        this.visual.fillStyle(0xF2F2F2, 1);
+        this.visual.fillRect(-halfLength + pixel * 2, -pixel, bodyLength - pixel * 4, pixel * 2);
 
-        // Headlights
-        this.visual.fillStyle(0xFFFF00, 1);
-        this.visual.fillRect(len / 2 - 5, -width / 2 + 2, 5, 5);
-        this.visual.fillRect(len / 2 - 5, width / 2 - 7, 5, 5);
+        this.visual.fillStyle(0xA61616, 1);
+        this.visual.fillRect(-halfLength + pixel, -halfWidth + pixel, pixel * 2, bodyWidth - pixel * 2);
+
+        this.visual.fillStyle(0x2A2A2A, 1);
+        this.visual.fillRect(-halfLength + pixel * 2, -halfWidth + pixel, bodyLength - pixel * 4, bodyWidth - pixel * 2);
+
+        this.visual.fillStyle(0xFFFFFF, 1);
+        this.visual.fillRect(halfLength - pixel, -halfWidth + pixel, pixel, pixel * 2);
+        this.visual.fillRect(halfLength - pixel, halfWidth - pixel * 3, pixel, pixel * 2);
     }
 }

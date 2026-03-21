@@ -34,28 +34,38 @@ export class Collectible {
 
     render() {
         this.visual.clear();
-
-        let color = 0xFFFFFF;
-        let radius = TILE_SIZE * 0.25;
+        const pixel = Math.round(TILE_SIZE / 16);
+        const size = pixel * 6;
+        const half = size / 2;
 
         switch (this.type) {
             case COLLECTIBLE_TYPES.MONEY:
-                color = COLORS.MONEY;
+                // Pixel money stack in robber palette
+                this.visual.fillStyle(0x0D3B24, 1);
+                this.visual.fillRect(-half, -half, size, size);
+                this.visual.fillStyle(COLORS.MONEY, 1);
+                this.visual.fillRect(-half + pixel, -half + pixel, size - pixel * 2, size - pixel * 2);
+                this.visual.fillStyle(0x1B5E20, 1);
+                this.visual.fillRect(-half + pixel * 2, -half + pixel * 2, size - pixel * 4, size - pixel * 4);
+                this.visual.fillStyle(0xFFF7B1, 1);
+                this.visual.fillRect(-pixel, -pixel / 2, pixel * 2, pixel);
                 break;
             case COLLECTIBLE_TYPES.FUEL:
-                color = COLORS.FUEL;
+                // Pixel jerrycan
+                this.visual.fillStyle(0x7A0E0E, 1);
+                this.visual.fillRect(-half + pixel, -half + pixel, size - pixel * 2, size - pixel);
+                this.visual.fillStyle(0xB51D1D, 1);
+                this.visual.fillRect(-half + pixel * 2, -half + pixel * 2, size - pixel * 4, size - pixel * 3);
+                this.visual.fillStyle(0xD6D6D6, 1);
+                this.visual.fillRect(half - pixel * 2, -half, pixel, pixel * 2);
+                this.visual.fillStyle(0x232323, 1);
+                this.visual.fillRect(-pixel / 2, -pixel / 2, pixel, pixel);
                 break;
             case COLLECTIBLE_TYPES.BOMB:
-                color = COLORS.BOMB;
+                this.visual.fillStyle(COLORS.BOMB, 1);
+                this.visual.fillCircle(0, 0, TILE_SIZE * 0.25);
                 break;
         }
-
-        this.visual.fillStyle(color, 1);
-        this.visual.fillCircle(0, 0, radius);
-
-        // Outline
-        this.visual.lineStyle(2, 0xFFFFFF, 0.8);
-        this.visual.strokeCircle(0, 0, radius);
     }
 
     destroy() {
