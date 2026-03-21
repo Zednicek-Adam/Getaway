@@ -12,12 +12,21 @@ export class PoliceCar extends Car {
         this.moveConfig.duration = 350; // Slower than player (300)
 
         this.chaseTimer = 0; // Chase timer in ms
+        this.sirenTimer = 0;
+        this.sirenState = false;
 
         this.render(); // Re-render with police colors
     }
 
     // Override update to handle chase timer
     update(time, delta) {
+        this.sirenTimer += delta;
+        if (this.sirenTimer >= 180) {
+            this.sirenTimer = 0;
+            this.sirenState = !this.sirenState;
+            this.render();
+        }
+
         if (this.chaseTimer > 0) {
             this.chaseTimer -= delta;
             if (this.chaseTimer < 0) this.chaseTimer = 0;
@@ -159,17 +168,49 @@ export class PoliceCar extends Car {
 
     render() {
         this.visual.clear();
+        const pixel = Math.max(1, Math.round(TILE_SIZE / 32));
+        const bodyLength = pixel * 20;
+        const bodyWidth = pixel * 12;
+        const halfLength = bodyLength / 2;
+        const halfWidth = bodyWidth / 2;
+
+        // Outer body
+        this.visual.fillStyle(0x0F244F, 1);
+        this.visual.fillRect(-halfLength, -halfWidth, bodyLength, bodyWidth);
+
+        // Main police paint
         this.visual.fillStyle(COLORS.POLICE, 1);
+        this.visual.fillRect(-halfLength + pixel * 2, -halfWidth + pixel, bodyLength - pixel * 4, bodyWidth - pixel * 2);
 
-        // Car body
-        const len = TILE_SIZE * 0.6;
-        const width = TILE_SIZE * 0.4;
-        this.visual.fillRect(-len / 2, -width / 2, len, width);
+        // Wheels
+        this.visual.fillStyle(0x050505, 1);
+        this.visual.fillRect(-halfLength + pixel * 2, -halfWidth - pixel, pixel * 3, pixel);
+        this.visual.fillRect(halfLength - pixel * 5, -halfWidth - pixel, pixel * 3, pixel);
+        this.visual.fillRect(-halfLength + pixel * 2, halfWidth, pixel * 3, pixel);
+        this.visual.fillRect(halfLength - pixel * 5, halfWidth, pixel * 3, pixel);
 
-        // Siren (Strobe effect in update?)
-        this.visual.fillStyle(0xFF0000, 1); // Red
-        this.visual.fillRect(-5, -6, 4, 6);
-        this.visual.fillStyle(0x7777FF, 1); // Blue
-        this.visual.fillRect(-5, 2, 4, 6);
+        // White side panel
+        this.visual.fillStyle(0xE8E8E8, 1);
+        this.visual.fillRect(-halfLength + pixel * 5, -pixel, bodyLength - pixel * 10, pixel * 2);
+
+        // Cabin
+        this.visual.fillStyle(0x19335C, 1);
+        this.visual.fillRect(-halfLength + pixel * 7, -halfWidth + pixel * 2, bodyLength - pixel * 12, bodyWidth - pixel * 4);
+
+        const activeRed = this.sirenState ? 0xFF3A3A : 0x5A1616;
+        const activeBlue = this.sirenState ? 0x4FA2FF : 0x163A8C;
+
+        // Siren bar (animated)
+        this.visual.fillStyle(0xCFCFCF, 1);
+        this.visual.fillRect(-pixel * 2, -halfWidth, pixel * 4, pixel);
+        this.visual.fillStyle(activeRed, 1);
+        this.visual.fillRect(-pixel * 2, -halfWidth, pixel * 2, pixel);
+        this.visual.fillStyle(activeBlue, 1);
+        this.visual.fillRect(0, -halfWidth, pixel * 2, pixel);
+
+        // Headlights
+        this.visual.fillStyle(0xFFD88A, 1);
+        this.visual.fillRect(halfLength - pixel, -halfWidth + pixel * 2, pixel, pixel * 2);
+        this.visual.fillRect(halfLength - pixel, halfWidth - pixel * 4, pixel, pixel * 2);
     }
 }

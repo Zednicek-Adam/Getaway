@@ -189,20 +189,43 @@ export class Car {
     }
 
     render() {
-        // Draw Car Shape (relative to 0,0)
-        // It's a Graphics object container basically
         this.visual.clear();
-        this.visual.fillStyle(COLORS.PLAYER, 1);
+        const pixel = Math.max(1, Math.round(TILE_SIZE / 32));
+        const bodyLength = pixel * 20;
+        const bodyWidth = pixel * 12;
+        const halfLength = bodyLength / 2;
+        const halfWidth = bodyWidth / 2;
 
-        // Simple car shape (pointing Right)
-        const len = TILE_SIZE * 0.6;
-        const width = TILE_SIZE * 0.4;
+        // Higher-detail pixel body in robber palette
+        this.visual.fillStyle(0x111111, 1);
+        this.visual.fillRect(-halfLength, -halfWidth, bodyLength, bodyWidth);
 
-        this.visual.fillRect(-len / 2, -width / 2, len, width);
+        // Wheels
+        this.visual.fillStyle(0x050505, 1);
+        this.visual.fillRect(-halfLength + pixel * 2, -halfWidth - pixel, pixel * 3, pixel);
+        this.visual.fillRect(halfLength - pixel * 5, -halfWidth - pixel, pixel * 3, pixel);
+        this.visual.fillRect(-halfLength + pixel * 2, halfWidth, pixel * 3, pixel);
+        this.visual.fillRect(halfLength - pixel * 5, halfWidth, pixel * 3, pixel);
+
+        // Side stripe
+        this.visual.fillStyle(0xF2F2F2, 1);
+        this.visual.fillRect(-halfLength + pixel * 3, -pixel, bodyLength - pixel * 6, pixel * 2);
+
+        // Robber red accent
+        this.visual.fillStyle(0xA61616, 1);
+        this.visual.fillRect(-halfLength + pixel * 2, -halfWidth + pixel * 2, pixel * 2, bodyWidth - pixel * 4);
+
+        // Cabin shadow
+        this.visual.fillStyle(0x2A2A2A, 1);
+        this.visual.fillRect(-halfLength + pixel * 6, -halfWidth + pixel * 2, bodyLength - pixel * 10, bodyWidth - pixel * 4);
+
+        // Rear dark bumper
+        this.visual.fillStyle(0x1A1A1A, 1);
+        this.visual.fillRect(-halfLength, -halfWidth + pixel * 2, pixel * 2, bodyWidth - pixel * 4);
 
         // Headlights
-        this.visual.fillStyle(0xFFFF00, 1);
-        this.visual.fillRect(len / 2 - 5, -width / 2 + 2, 5, 5);
-        this.visual.fillRect(len / 2 - 5, width / 2 - 7, 5, 5);
+        this.visual.fillStyle(0xFFFFFF, 1);
+        this.visual.fillRect(halfLength - pixel, -halfWidth + pixel * 2, pixel, pixel * 2);
+        this.visual.fillRect(halfLength - pixel, halfWidth - pixel * 4, pixel, pixel * 2);
     }
 }
