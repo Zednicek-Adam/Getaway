@@ -1,6 +1,7 @@
 import { Car } from './Car';
 import { DIRECTIONS, COLORS, TILE_SIZE } from '../constants';
 import Phaser from 'phaser';
+import { getDirDelta, isOpposite, getDirectionFromDelta } from '../utils/directionUtils';
 
 export class PoliceCar extends Car {
     constructor(scene, gridX, gridY, mapManager, target) {
@@ -48,13 +49,10 @@ export class PoliceCar extends Car {
                 const nextX = path[1].x;
                 const nextY = path[1].y;
 
-                if (nextX > this.gridX) bestMove = DIRECTIONS.RIGHT;
-                else if (nextX < this.gridX) bestMove = DIRECTIONS.LEFT;
-                else if (nextY > this.gridY) bestMove = DIRECTIONS.DOWN;
-                else if (nextY < this.gridY) bestMove = DIRECTIONS.UP;
+                bestMove = getDirectionFromDelta(nextX - this.gridX, nextY - this.gridY);
             } else {
                 // Fallback to random if no path found
-                const forwardMoves = validMoves.filter(m => !this.isOpposite(m, this.direction));
+                const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
                 if (forwardMoves.length > 0) {
                     bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
                 } else {
@@ -64,7 +62,7 @@ export class PoliceCar extends Car {
         } else {
             // Random movement when not chasing
             // Try not to U-turn unless it's a dead end
-            const forwardMoves = validMoves.filter(m => !this.isOpposite(m, this.direction));
+            const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
             if (forwardMoves.length > 0) {
                 bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
             } else {
@@ -112,12 +110,10 @@ export class PoliceCar extends Car {
 
             closedSet.add(`${current.x},${current.y}`);
 
-            const neighbors = [
-                { x: current.x, y: current.y - 1 },
-                { x: current.x, y: current.y + 1 },
-                { x: current.x - 1, y: current.y },
-                { x: current.x + 1, y: current.y }
-            ];
+            const neighbors = [DIRECTIONS.UP, DIRECTIONS.DOWN, DIRECTIONS.LEFT, DIRECTIONS.RIGHT].map(dir => {
+                const { dx, dy } = getDirDelta(dir);
+                return { x: current.x + dx, y: current.y + dy };
+            });
 
             for (let n of neighbors) {
                 if (!this.mapManager.isRoad(n.x, n.y)) continue;

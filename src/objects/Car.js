@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, COLORS, DIRECTIONS } from '../constants';
+import { getDirDelta, getDirAngle, isOpposite } from '../utils/directionUtils';
 
 export class Car {
     constructor(scene, gridX, gridY, mapManager) {
@@ -57,16 +58,7 @@ export class Car {
         this.visual.y = curY;
 
         // Rotate visual to face direction
-        // 0 = Up, 1 = Down, 2 = Left, 3 = Right
-        // Phaser rotation is in radians. 0 is Right.
-        let angle = 0;
-        switch (this.direction) {
-            case DIRECTIONS.RIGHT: angle = 0; break;
-            case DIRECTIONS.DOWN: angle = Math.PI / 2; break;
-            case DIRECTIONS.LEFT: angle = Math.PI; break;
-            case DIRECTIONS.UP: angle = -Math.PI / 2; break;
-        }
-        this.visual.rotation = angle;
+        this.visual.rotation = getDirAngle(this.direction);
     }
 
     finishMove() {
@@ -116,15 +108,7 @@ export class Car {
     }
 
     canMove(dir) {
-        let dx = 0;
-        let dy = 0;
-
-        switch (dir) {
-            case DIRECTIONS.UP: dy = -1; break;
-            case DIRECTIONS.DOWN: dy = 1; break;
-            case DIRECTIONS.LEFT: dx = -1; break;
-            case DIRECTIONS.RIGHT: dx = 1; break;
-        }
+        const { dx, dy } = getDirDelta(dir);
 
         const potentialX = this.gridX + dx;
         const potentialY = this.gridY + dy;
@@ -135,14 +119,7 @@ export class Car {
     startMove(dir) {
         this.direction = dir;
 
-        let dx = 0;
-        let dy = 0;
-        switch (dir) {
-            case DIRECTIONS.UP: dy = -1; break;
-            case DIRECTIONS.DOWN: dy = 1; break;
-            case DIRECTIONS.LEFT: dx = -1; break;
-            case DIRECTIONS.RIGHT: dx = 1; break;
-        }
+        const { dx, dy } = getDirDelta(dir);
 
         this.targetX = this.gridX + dx;
         this.targetY = this.gridY + dy;
@@ -156,19 +133,12 @@ export class Car {
         }
 
         // Check for 180 turn immediately
-        if (this.isOpposite(newDirection, this.direction)) {
+        if (isOpposite(newDirection, this.direction)) {
             this.performUturn(newDirection);
             this.nextDirection = null; // Consumed
         } else {
             this.nextDirection = newDirection;
         }
-    }
-
-    isOpposite(dir1, dir2) {
-        return (dir1 === DIRECTIONS.UP && dir2 === DIRECTIONS.DOWN) ||
-            (dir1 === DIRECTIONS.DOWN && dir2 === DIRECTIONS.UP) ||
-            (dir1 === DIRECTIONS.LEFT && dir2 === DIRECTIONS.RIGHT) ||
-            (dir1 === DIRECTIONS.RIGHT && dir2 === DIRECTIONS.LEFT);
     }
 
     performUturn(newDir) {
