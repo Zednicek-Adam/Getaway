@@ -184,7 +184,7 @@ export class PoliceCar extends Car {
         this.visual.fillRect(-halfLength + pixel * 3, -pixel, bodyLength - pixel * 6, pixel * 2);
 
         const activeRed = this.sirenState ? 0xFF3A3A : 0x5A1616;
-        const activeBlue = this.sirenState ? 0x163A8C : 0x4FA2FF;
+        const activeBlue = this.sirenState ? 0x4FA2FF : 0x163A8C;
         this.visual.fillStyle(activeRed, 1);
         this.visual.fillRect(-pixel, -halfWidth, pixel * 2, pixel);
         this.visual.fillStyle(activeBlue, 1);

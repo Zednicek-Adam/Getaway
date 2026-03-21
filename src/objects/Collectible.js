@@ -52,6 +52,7 @@ export class Collectible {
                 break;
             case COLLECTIBLE_TYPES.FUEL:
                 // Pixel jerrycan
+                const capCenteringOffset = Math.floor(pixel / 2);
                 this.visual.fillStyle(0x7A0E0E, 1);
                 this.visual.fillRect(-half + pixel, -half + pixel, size - pixel * 2, size - pixel);
                 this.visual.fillStyle(0xB51D1D, 1);
@@ -59,7 +60,7 @@ export class Collectible {
                 this.visual.fillStyle(0xD6D6D6, 1);
                 this.visual.fillRect(half - pixel * 2, -half, pixel, pixel * 2);
                 this.visual.fillStyle(0x232323, 1);
-                this.visual.fillRect(-pixel / 2, -pixel / 2, pixel, pixel);
+                this.visual.fillRect(-capCenteringOffset, -capCenteringOffset, pixel, pixel);
                 break;
             case COLLECTIBLE_TYPES.BOMB:
                 this.visual.fillStyle(COLORS.BOMB, 1);
