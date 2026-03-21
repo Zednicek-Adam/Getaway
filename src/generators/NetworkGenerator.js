@@ -1,4 +1,4 @@
-import { TILE_TYPES } from '../constants';
+import { TILE_TYPES } from '../constants.js';
 
 /**
  * Growing-tree network generator.
@@ -63,7 +63,8 @@ export class NetworkGenerator {
         const tjY = spawnPoint.y + 1;
 
         // Track frontier: tiles that can grow new branches
-        this.frontier = [];
+        this.frontier = new Set();
+        this.frontierIndices = new Set();
 
         // Grow only Right and Left arms from the T-junction (NOT down)
         this._growArm(tjX, tjY, 1, 5 + Math.floor(Math.random() * 3)); // Right
@@ -102,6 +103,13 @@ export class NetworkGenerator {
 
     _idx(x, y) {
         return y * this.width + x;
+    }
+
+    _fromIdx(idx) {
+        return {
+            x: idx % this.width,
+            y: Math.floor(idx / this.width)
+        };
     }
 
     _inBounds(x, y) {
@@ -220,8 +228,20 @@ export class NetworkGenerator {
         }
 
         if (this._inBounds(x, y) && (x !== startX || y !== startY)) {
-            this.frontier.push({ x, y });
+            this._addToFrontier(x, y);
         }
+    }
+
+    _addToFrontier(x, y) {
+        const idx = this._idx(x, y);
+        if (this.frontierIndices.has(idx)) return;
+        this.frontierIndices.add(idx);
+        this.frontier.add({ x, y });
+    }
+
+    _removeFromFrontier(tile) {
+        this.frontier.delete(tile);
+        this.frontierIndices.delete(this._idx(tile.x, tile.y));
     }
 
     _growNetwork() {
@@ -231,7 +251,7 @@ export class NetworkGenerator {
         const maxIterations = targetRoads * 20;
         let staleCount = 0;
 
-        while (this._roadCount() < targetRoads && this.frontier.length > 0 && iterations < maxIterations) {
+        while (this._roadCount() < targetRoads && this.frontier.size > 0 && iterations < maxIterations) {
             iterations++;
 
             const tile = this._pickFrontierTile();
@@ -240,8 +260,7 @@ export class NetworkGenerator {
             const grew = this._tryGrowSegment(tile);
 
             if (!grew) {
-                const idx = this.frontier.indexOf(tile);
-                if (idx >= 0) this.frontier.splice(idx, 1);
+                this._removeFromFrontier(tile);
                 staleCount++;
 
                 // If we're stalling, add all road edge tiles back to frontier
@@ -257,7 +276,8 @@ export class NetworkGenerator {
 
     _refreshFrontier() {
         // Find all road tiles that have at least one non-road in-bounds neighbor
-        this.frontier = [];
+        this.frontier = new Set();
+        this.frontierIndices = new Set();
         for (let y = this.MARGIN; y < this.height - this.MARGIN; y++) {
             for (let x = this.MARGIN; x < this.width - this.MARGIN; x++) {
                 if (!this._isRoad(x, y)) continue;
@@ -265,7 +285,7 @@ export class NetworkGenerator {
                     const nx = x + this.dx[d];
                     const ny = y + this.dy[d];
                     if (this._inBounds(nx, ny) && !this._isRoad(nx, ny)) {
-                        this.frontier.push({ x, y });
+                        this._addToFrontier(x, y);
                         break;
                     }
                 }
@@ -274,7 +294,7 @@ export class NetworkGenerator {
     }
 
     _pickFrontierTile() {
-        if (this.frontier.length === 0) return null;
+        if (this.frontier.size === 0) return null;
 
         const qCounts = this._quadrantCounts();
         const minQ = Math.min(...qCounts);
@@ -387,7 +407,7 @@ export class NetworkGenerator {
 
         // Add endpoint to frontier
         if (placed > 0 && this._inBounds(x, y)) {
-            this.frontier.push({ x, y });
+            this._addToFrontier(x, y);
 
             // Try to loop back: connect to a nearby road (60% chance attempt)
             if (Math.random() < 0.6) {
@@ -615,7 +635,7 @@ export class NetworkGenerator {
 
         // Add endpoint to frontier for further growth
         if (this._inBounds(x, y) && (x !== fromX || y !== fromY)) {
-            this.frontier.push({ x, y });
+            this._addToFrontier(x, y);
         }
     }
 
