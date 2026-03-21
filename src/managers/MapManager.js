@@ -199,10 +199,16 @@ export class MapManager {
                 // Random Type
                 const type = Math.random() > 0.5 ? COLLECTIBLE_TYPES.MONEY : COLLECTIBLE_TYPES.FUEL;
 
-                const item = new Collectible(this.scene, type, x, y);
-                this.collectibles.push(item);
+                this.spawnCollectibleAt(x, y, type);
                 spawned++;
             }
+        }
+    }
+
+    spawnCollectibleAt(x, y, type) {
+        if (!this.getCollectibleAt(x, y)) {
+            const item = new Collectible(this.scene, type, x, y);
+            this.collectibles.push(item);
         }
     }
 

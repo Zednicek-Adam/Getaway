@@ -189,20 +189,56 @@ export class Car {
     }
 
     render() {
-        // Draw Car Shape (relative to 0,0)
-        // It's a Graphics object container basically
         this.visual.clear();
+
+        // Pixel art style car, drawn facing right.
+        // Base dimensions (relative to center 0,0)
+        const carLength = 36;
+        const carWidth = 20;
+        const halfLen = carLength / 2;
+        const halfWidth = carWidth / 2;
+
+        // --- Tires ---
+        this.visual.fillStyle(0x111111, 1); // Dark grey/black for tires
+        // Top Left
+        this.visual.fillRect(-halfLen + 4, -halfWidth - 2, 8, 4);
+        // Top Right
+        this.visual.fillRect(halfLen - 12, -halfWidth - 2, 8, 4);
+        // Bottom Left
+        this.visual.fillRect(-halfLen + 4, halfWidth - 2, 8, 4);
+        // Bottom Right
+        this.visual.fillRect(halfLen - 12, halfWidth - 2, 8, 4);
+
+        // --- Main Body (Bank Robber Red) ---
         this.visual.fillStyle(COLORS.PLAYER, 1);
+        // Main rectangle
+        this.visual.fillRect(-halfLen, -halfWidth, carLength, carWidth);
+        // Tapered front/back slightly
+        this.visual.fillRect(-halfLen - 2, -halfWidth + 2, 2, carWidth - 4); // back bumper
+        this.visual.fillRect(halfLen, -halfWidth + 2, 4, carWidth - 4); // front hood
 
-        // Simple car shape (pointing Right)
-        const len = TILE_SIZE * 0.6;
-        const width = TILE_SIZE * 0.4;
+        // --- Windows (Dark tint) ---
+        this.visual.fillStyle(0x000000, 0.7);
+        // Rear window
+        this.visual.fillRect(-halfLen + 4, -halfWidth + 2, 4, carWidth - 4);
+        // Windshield
+        this.visual.fillRect(halfLen - 12, -halfWidth + 2, 6, carWidth - 4);
+        // Side windows
+        this.visual.fillRect(-halfLen + 10, -halfWidth + 1, 12, 2); // top side
+        this.visual.fillRect(-halfLen + 10, halfWidth - 3, 12, 2); // bottom side
 
-        this.visual.fillRect(-len / 2, -width / 2, len, width);
+        // --- Roof details ---
+        this.visual.fillStyle(0x8B0000, 1); // Darker red for roof top to add depth
+        this.visual.fillRect(-halfLen + 8, -halfWidth + 3, 16, carWidth - 6);
 
-        // Headlights
-        this.visual.fillStyle(0xFFFF00, 1);
-        this.visual.fillRect(len / 2 - 5, -width / 2 + 2, 5, 5);
-        this.visual.fillRect(len / 2 - 5, width / 2 - 7, 5, 5);
+        // --- Headlights ---
+        this.visual.fillStyle(0xFFFFDD, 1); // Bright warm yellow
+        this.visual.fillRect(halfLen + 2, -halfWidth + 2, 2, 4); // top light
+        this.visual.fillRect(halfLen + 2, halfWidth - 6, 2, 4); // bottom light
+
+        // --- Taillights ---
+        this.visual.fillStyle(0xFF5555, 1); // Bright red
+        this.visual.fillRect(-halfLen - 2, -halfWidth + 2, 2, 4);
+        this.visual.fillRect(-halfLen - 2, halfWidth - 6, 2, 4);
     }
 }
