@@ -36,59 +36,61 @@ export class Collectible {
         this.visual.clear();
 
         if (this.type === COLLECTIBLE_TYPES.MONEY) {
-            // Pixel art Money Bag
-            this.visual.fillStyle(0x000000, 1); // Outline shadow
-            this.visual.fillEllipse(0, 4, 22, 18);
-
-            // Main bag body
-            this.visual.fillStyle(0xF5DEB3, 1); // Wheat/Canvas color
-            this.visual.fillEllipse(0, 4, 20, 16);
-
-            // Bag tie / top
-            this.visual.fillStyle(0x8B4513, 1); // Saddle brown tie
-            this.visual.fillRect(-4, -6, 8, 4);
-
-            // Bag frill top
-            this.visual.fillStyle(0xF5DEB3, 1);
-            this.visual.fillTriangle(-6, -10, 6, -10, 0, -6);
-
-            // Dollar Sign ($) using green
-            this.visual.fillStyle(0x228B22, 1); // Forest Green
-            this.visual.fillRect(-1, -1, 2, 10); // vertical line
-            this.visual.fillRect(-3, 0, 6, 2); // top loop
-            this.visual.fillRect(-3, 3, 6, 2); // middle loop
-            this.visual.fillRect(-3, 6, 6, 2); // bottom loop
+            // True Pixel Art Money Bag
+            const scale = 2; // Size of each "pixel"
+            const colors = {
+                '0': 0x000000, // Black outline
+                '1': 0xF5DEB3, // Canvas/Wheat main color
+                '2': 0xD2B48C, // Tan shade for depth
+                '3': 0x8B4513, // Saddle Brown tie
+                '4': 0x228B22  // Forest Green dollar sign
+            };
+            const grid = [
+                "   00000   ",
+                "  0111110  ",
+                " 011111110 ",
+                " 011111110 ",
+                "  0033300  ",
+                "  0111110  ",
+                " 011111110 ",
+                "01110401110",
+                "01104440110",
+                "01110401110",
+                "01104440110",
+                "01110401110",
+                "01111111110",
+                " 022222220 ",
+                "  0000000  "
+            ];
+            this.drawPixelArt(grid, colors, scale);
 
         } else if (this.type === COLLECTIBLE_TYPES.FUEL) {
-            // Pixel art Jerrycan
-            const canWidth = 16;
-            const canHeight = 20;
-            const halfW = canWidth / 2;
-            const halfH = canHeight / 2;
-
-            // Outline shadow
-            this.visual.fillStyle(0x000000, 1);
-            this.visual.fillRect(-halfW - 2, -halfH - 2, canWidth + 4, canHeight + 4);
-
-            // Main Can Body
-            this.visual.fillStyle(0xDC143C, 1); // Crimson Red
-            this.visual.fillRect(-halfW, -halfH, canWidth, canHeight);
-
-            // Indents/Details
-            this.visual.fillStyle(0x8B0000, 1); // Dark Red
-            this.visual.fillRect(-halfW + 4, -halfH + 4, 2, 12);
-            this.visual.fillRect(halfW - 6, -halfH + 4, 2, 12);
-
-            // Handle
-            this.visual.fillStyle(0xDC143C, 1);
-            this.visual.fillRect(-halfW + 2, -halfH - 6, canWidth - 4, 4);
-            // Hole in handle
-            this.visual.fillStyle(0x222222, 1); // Background color for cutout
-            this.visual.fillRect(-halfW + 4, -halfH - 4, canWidth - 8, 2);
-
-            // Spout
-            this.visual.fillStyle(0xAAAAAA, 1); // Grey spout
-            this.visual.fillRect(-halfW - 4, -halfH, 4, 4);
+            // True Pixel Art Jerrycan
+            const scale = 2;
+            const colors = {
+                '0': 0x000000, // Black outline
+                '1': 0xDC143C, // Crimson Red main
+                '2': 0x8B0000, // Dark Red shade
+                '3': 0xAAAAAA, // Grey spout
+                '4': 0x555555  // Dark Grey spout outline
+            };
+            const grid = [
+                "   444     ",
+                "   434000  ",
+                "   4441110 ",
+                "  00000000 ",
+                " 0111111110",
+                " 0111111110",
+                " 0122112210",
+                " 0122112210",
+                " 0122112210",
+                " 0122112210",
+                " 0122112210",
+                " 0111111110",
+                " 0222222220",
+                "  00000000 "
+            ];
+            this.drawPixelArt(grid, colors, scale);
 
         } else {
             // Fallback for others (e.g. BOMB, DIAMOND)
@@ -110,6 +112,28 @@ export class Collectible {
             // Outline
             this.visual.lineStyle(2, 0xFFFFFF, 0.8);
             this.visual.strokeCircle(0, 0, radius);
+        }
+    }
+
+    drawPixelArt(grid, colors, scale) {
+        const height = grid.length;
+        const width = grid[0].length;
+
+        // Offset so 0,0 is the center
+        const offsetX = - (width * scale) / 2;
+        const offsetY = - (height * scale) / 2;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const char = grid[y][x];
+                if (char !== ' ') {
+                    const color = colors[char];
+                    if (color !== undefined) {
+                        this.visual.fillStyle(color, 1);
+                        this.visual.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
+                    }
+                }
+            }
         }
     }
 
