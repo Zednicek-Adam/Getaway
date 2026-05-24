@@ -1,10 +1,19 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, COLORS, DIRECTIONS } from '../constants';
+import { TILE_SIZE, DIRECTIONS } from '../constants';
 
 export class Car {
-    constructor(scene, gridX, gridY, mapManager) {
+    constructor(scene, gridX, gridY, mapManager, options = {}) {
         this.scene = scene;
         this.mapManager = mapManager;
+
+        this.textureKey = options.textureKey ?? 'playerCar';
+        this.frameByDirection = options.frameByDirection ?? {
+            [DIRECTIONS.LEFT]: 0,
+            [DIRECTIONS.UP]: 1,
+            [DIRECTIONS.RIGHT]: 2,
+            [DIRECTIONS.DOWN]: 3,
+        };
+        this.displaySize = options.displaySize ?? (TILE_SIZE * 0.6);
 
         // Grid State
         this.gridX = gridX;
@@ -22,7 +31,7 @@ export class Car {
         this.moveTimer = 0;
 
         // Visuals
-        this.visual = this.scene.add.graphics();
+        this.visual = this.scene.add.sprite(0, 0, this.textureKey, 0).setOrigin(0.5, 0.5);
         this.render();
         this.updatePosition(0); // Set initial visual pos
     }
@@ -56,17 +65,20 @@ export class Car {
         this.visual.x = curX;
         this.visual.y = curY;
 
-        // Rotate visual to face direction
-        // 0 = Up, 1 = Down, 2 = Left, 3 = Right
-        // Phaser rotation is in radians. 0 is Right.
-        let angle = 0;
-        switch (this.direction) {
-            case DIRECTIONS.RIGHT: angle = 0; break;
-            case DIRECTIONS.DOWN: angle = Math.PI / 2; break;
-            case DIRECTIONS.LEFT: angle = Math.PI; break;
-            case DIRECTIONS.UP: angle = -Math.PI / 2; break;
+        this.applyDirectionFrame();
+        this.visual.rotation = 0;
+    }
+
+    getFrameForDirection(direction) {
+        return this.frameByDirection?.[direction];
+    }
+
+    applyDirectionFrame() {
+        // Directional frames (no rotation required)
+        const frame = this.getFrameForDirection(this.direction);
+        if (frame !== undefined) {
+            this.visual.setFrame(frame);
         }
-        this.visual.rotation = angle;
     }
 
     finishMove() {
@@ -189,20 +201,7 @@ export class Car {
     }
 
     render() {
-        // Draw Car Shape (relative to 0,0)
-        // It's a Graphics object container basically
-        this.visual.clear();
-        this.visual.fillStyle(COLORS.PLAYER, 1);
-
-        // Simple car shape (pointing Right)
-        const len = TILE_SIZE * 0.6;
-        const width = TILE_SIZE * 0.4;
-
-        this.visual.fillRect(-len / 2, -width / 2, len, width);
-
-        // Headlights
-        this.visual.fillStyle(0xFFFF00, 1);
-        this.visual.fillRect(len / 2 - 5, -width / 2 + 2, 5, 5);
-        this.visual.fillRect(len / 2 - 5, width / 2 - 7, 5, 5);
+        // Ensure sizing is consistent with tile scale
+        this.visual.setDisplaySize(this.displaySize, this.displaySize);
     }
 }

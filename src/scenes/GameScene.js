@@ -16,6 +16,10 @@ export class GameScene extends Phaser.Scene {
 
     preload() {
         this.load.image('tiles', 'Tilemap.png');
+
+        // Car sprites
+        this.load.spritesheet('playerCar', 'char.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('policeCar', 'policeblue.png', { frameWidth: 32, frameHeight: 32 });
     }
 
     create() {
@@ -60,7 +64,7 @@ export class GameScene extends Phaser.Scene {
         // Camera System
         this.cameras.main.setBounds(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE);
         // CRITICAL FIX: Follow the VISUAL game object, not the wrapper class
-        this.cameras.main.startFollow(this.playerCar.visual);
+        this.cameras.main.startFollow( this.playerCar.visual, false, 0.15, 0.15);
 
         // Pause menu logic
         this.input.keyboard.on('keydown-ESC', () => {

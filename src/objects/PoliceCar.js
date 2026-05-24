@@ -1,10 +1,9 @@
 import { Car } from './Car';
-import { DIRECTIONS, COLORS, TILE_SIZE } from '../constants';
-import Phaser from 'phaser';
+import { DIRECTIONS } from '../constants';
 
 export class PoliceCar extends Car {
     constructor(scene, gridX, gridY, mapManager, target) {
-        super(scene, gridX, gridY, mapManager);
+        super(scene, gridX, gridY, mapManager, { textureKey: 'policeCar' });
         this.target = target; // The Player Car
 
         // Slightly slower or faster? 
@@ -13,7 +12,10 @@ export class PoliceCar extends Car {
 
         this.chaseTimer = 0; // Chase timer in ms
 
-        this.render(); // Re-render with police colors
+        // Siren animation (policeblue.png is a 4x2 sheet)
+        this.sirenOn = false;
+        this.sirenBlinkTimer = 0;
+        this.sirenBlinkInterval = 150; // ms
     }
 
     // Override update to handle chase timer
@@ -21,8 +23,29 @@ export class PoliceCar extends Car {
         if (this.chaseTimer > 0) {
             this.chaseTimer -= delta;
             if (this.chaseTimer < 0) this.chaseTimer = 0;
+
+            this.sirenBlinkTimer += delta;
+            if (this.sirenBlinkTimer >= this.sirenBlinkInterval) {
+                this.sirenBlinkTimer = 0;
+                this.sirenOn = !this.sirenOn;
+            }
+        } else {
+            this.sirenOn = false;
+            this.sirenBlinkTimer = 0;
         }
+
         super.update(time, delta);
+
+        // Keep siren updating even if not moving
+        this.applyDirectionFrame();
+    }
+
+    getFrameForDirection(direction) {
+        const baseFrame = super.getFrameForDirection(direction);
+        if (baseFrame === undefined) return undefined;
+
+        // Row 0: normal (0-3), Row 1: siren on (4-7)
+        return baseFrame + (this.sirenOn ? 4 : 0);
     }
 
     // Override tryMove to evaluate routing at every tile/intersection
@@ -157,19 +180,4 @@ export class PoliceCar extends Car {
         return moves;
     }
 
-    render() {
-        this.visual.clear();
-        this.visual.fillStyle(COLORS.POLICE, 1);
-
-        // Car body
-        const len = TILE_SIZE * 0.6;
-        const width = TILE_SIZE * 0.4;
-        this.visual.fillRect(-len / 2, -width / 2, len, width);
-
-        // Siren (Strobe effect in update?)
-        this.visual.fillStyle(0xFF0000, 1); // Red
-        this.visual.fillRect(-5, -6, 4, 6);
-        this.visual.fillStyle(0x7777FF, 1); // Blue
-        this.visual.fillRect(-5, 2, 4, 6);
-    }
 }
