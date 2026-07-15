@@ -112,7 +112,7 @@ export class GameScene extends Phaser.Scene {
 
             // Fuel Consumption (e.g., 5% per second)
             if (this.playerCar.isMoving) {
-                this.uiManager.updateFuel(-5 * (delta / 1000));
+                this.uiManager.updateFuel(-5 * (delta / 5000));
             }
 
             if (this.uiManager.fuel <= 0) {
@@ -145,7 +145,7 @@ export class GameScene extends Phaser.Scene {
                     this.policeCar.chaseTimer = 10000; // Chase for 10 seconds
                 }
             } else if (item.type === COLLECTIBLE_TYPES.FUEL) {
-                this.uiManager.updateFuel(20);
+                this.uiManager.updateFuel(35);
             }
 
             this.mapManager.removeCollectible(item);
