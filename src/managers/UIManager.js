@@ -5,7 +5,7 @@ export class UIManager {
         this.fuel = 100;
 
         // UI Panel Background
-        this.panel = this.scene.add.rectangle(10, 10, 250, 90, 0x1a1a1a, 0.8)
+        this.panel = this.scene.add.rectangle(10, 10, 260, 90, 0x1a1a1a, 0.8)
             .setOrigin(0)
             .setStrokeStyle(4, 0xB22222)
             .setDepth(99)
@@ -13,7 +13,7 @@ export class UIManager {
 
         // Striped pattern for panel background (simulated using small lines)
         for (let i = 10; i < 100; i += 20) {
-            this.scene.add.rectangle(10, i, 250, 5, 0x000000, 0.4)
+            this.scene.add.rectangle(10, i, 260, 5, 0x000000, 0.4)
                 .setOrigin(0)
                 .setDepth(99)
                 .setScrollFactor(0);
@@ -28,9 +28,36 @@ export class UIManager {
             strokeThickness: 4
         }).setDepth(100).setScrollFactor(0);
 
-        this.fuelText = this.scene.add.text(25, 60, 'FUEL: 100%', {
+        this.fuelLabel = this.scene.add.text(25, 60, 'FUEL:', {
             fontFamily: '"Press Start 2P"',
             fontSize: '14px',
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setDepth(100).setScrollFactor(0);
+
+        // Fuel Gauge Settings
+        this.gaugeX = 100;
+        this.gaugeY = 60;
+        this.gaugeWidth = 90;
+        this.gaugeHeight = 14;
+
+        // Fuel Gauge Background
+        this.fuelGaugeBg = this.scene.add.rectangle(this.gaugeX, this.gaugeY, this.gaugeWidth, this.gaugeHeight, 0x333333)
+            .setOrigin(0, 0)
+            .setStrokeStyle(4, 0x888888)
+            .setDepth(100)
+            .setScrollFactor(0);
+
+        // Fuel Gauge Fill
+        this.fuelGaugeFill = this.scene.add.rectangle(this.gaugeX, this.gaugeY, this.gaugeWidth, this.gaugeHeight, 0x00FF00)
+            .setOrigin(0, 0)
+            .setDepth(101)
+            .setScrollFactor(0);
+
+        this.fuelPercentText = this.scene.add.text(this.gaugeX + this.gaugeWidth + 10, 62, '100%', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '10px',
             fill: '#00FF00',
             stroke: '#000000',
             strokeThickness: 4
@@ -47,14 +74,27 @@ export class UIManager {
         if (this.fuel > 100) this.fuel = 100;
         if (this.fuel < 0) this.fuel = 0;
 
-        this.fuelText.setText(`FUEL: ${Math.floor(this.fuel)}%`);
+        // Update Gauge Fill Width
+        const fillWidth = (this.fuel / 100) * this.gaugeWidth;
+        this.fuelGaugeFill.setSize(fillWidth, this.gaugeHeight);
 
-        // Color change for low fuel
+        // Update Percentage Text
+        this.fuelPercentText.setText(`${Math.floor(this.fuel)}%`);
+
+        // Color change based on fuel level
+        let colorHex = 0x00FF00;
+        let colorStr = '#00FF00';
+
         if (this.fuel < 20) {
-            this.fuelText.setColor('#FF0000');
-        } else {
-            this.fuelText.setColor('#00FF00');
+            colorHex = 0xFF0000;
+            colorStr = '#FF0000';
+        } else if (this.fuel < 50) {
+            colorHex = 0xFFFF00;
+            colorStr = '#FFFF00';
         }
+
+        this.fuelGaugeFill.setFillStyle(colorHex);
+        this.fuelPercentText.setColor(colorStr);
     }
 
     showGameOver(reason) {
