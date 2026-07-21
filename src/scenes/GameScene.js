@@ -7,6 +7,7 @@ import { UIManager } from '../managers/UIManager';
 import { COLLECTIBLE_TYPES } from '../objects/Collectible';
 import { PoliceManager } from '../managers/PoliceManager';
 import { Bomb } from '../objects/Bomb';
+import { Rocket } from '../objects/Rocket';
 import { DiamondCar } from '../objects/DiamondCar';
 import { CONFIG } from '../config';
 import { GameState } from '../GameState';
@@ -61,6 +62,7 @@ export class GameScene extends Phaser.Scene {
         // Laid bombs + the diamond delivery car (recreated fresh on restart;
         // any pending respawn delayedCall is cleared by the scene shutdown)
         this.bombs = [];
+        this.rockets = [];
         this.diamondCar = null;
         this.spawnDiamondCar();
 
@@ -91,6 +93,9 @@ export class GameScene extends Phaser.Scene {
         }
         if (this.inputManager.consumeBombPress()) {
             this.tryDropBomb();
+        }
+        if (this.inputManager.consumeRocketPress()) {
+            this.tryFireRocket();
         }
         if (this.inputManager.consumeStopToggle()) {
             // Brake toggle — stop to refuel at a station, or wait; steering resumes
@@ -148,6 +153,7 @@ export class GameScene extends Phaser.Scene {
 
         // (f) Laid bombs — fuse ticks; police entering the tile detonate them
         this.updateBombs(delta);
+        this.updateRockets(delta);
 
         // (g) Collectibles
         this.checkCollectibles();
@@ -170,6 +176,7 @@ export class GameScene extends Phaser.Scene {
             fuel: this.state.fuel,
             fuelMax: CONFIG.FUEL.MAX,
             bombs: this.state.bombs,
+            rockets: this.state.rockets,
             damage: this.state.damage,
             maxDamage: this.state.maxDamage,
             nitroActive: this.state.isNitroActive(),
@@ -218,6 +225,61 @@ export class GameScene extends Phaser.Scene {
 
             bomb.destroy();
             this.bombs.splice(i, 1);
+        }
+    }
+
+    // E: fire a rocket from the player's standing tile along current facing.
+    // Works while moving, braked, halted or waiting for input (no precondition).
+    tryFireRocket() {
+        if (!this.state.useRocket()) return;
+
+        this.rockets.push(new Rocket(
+            this, this.playerCar.gridX, this.playerCar.gridY, this.playerCar.direction));
+    }
+
+    // Rockets fly a tile at a time; hits resolve ONLY on frames where the
+    // projectile stepped onto a new tile (mirrors the Bomb split). Reverse
+    // iterate so splices are safe.
+    updateRockets(delta) {
+        for (let i = this.rockets.length - 1; i >= 0; i--) {
+            const r = this.rockets[i];
+            const advanced = r.update(delta) === 'advanced';
+            if (!advanced) continue;
+
+            // (1) Off-road (first off-road step) or out of range → harmless fizzle
+            if (!this.mapManager.isRoad(r.gridX, r.gridY) ||
+                r.tilesTraveled > CONFIG.ROCKET.RANGE_TILES) {
+                this.sparkleBurst(r.visualX, r.visualY);
+                r.destroy();
+                this.rockets.splice(i, 1);
+                continue;
+            }
+
+            // (2) Roadblock — WP5 provides getRoadblockAt/destroyRoadblock;
+            // guard with existence checks since they don't exist yet.
+            if (this.policeManager.getRoadblockAt) {
+                const rb = this.policeManager.getRoadblockAt(r.gridX, r.gridY);
+                if (rb) {
+                    this.policeManager.destroyRoadblock(rb);
+                    this.explodeAt(r.gridX, r.gridY);
+                    r.destroy();
+                    this.rockets.splice(i, 1);
+                    continue;
+                }
+            }
+
+            // (3) Police/SWAT on the tile, or mid-move INTO it (the target-tile
+            // clause prevents tunneling past a unit that's entering the tile).
+            const unit = this.policeManager.units.find(u =>
+                (u.gridX === r.gridX && u.gridY === r.gridY) ||
+                (u.isMoving && u.targetX === r.gridX && u.targetY === r.gridY));
+            if (unit) {
+                this.policeManager.destroyUnit(unit); // WP4 swaps to damageUnit(unit, 1)
+                this.explodeAt(r.gridX, r.gridY);
+                this.state.onPoliceBombed(); // +1 star, chase refresh (same as bombs)
+                r.destroy();
+                this.rockets.splice(i, 1);
+            }
         }
     }
 
@@ -407,9 +469,8 @@ export class GameScene extends Phaser.Scene {
             this.state.pickupNitro(); // Refresh-to-full speed boost
             this.uiManager.showToast('NITRO!');
         } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
-            // WP3 wires rocket pickup — until then the R glyph is inert scenery,
-            // so leave it on the road untouched.
-            return;
+            // Inventory full — leave the rocket on the road for later
+            if (!this.state.pickupRocket()) return;
         }
 
         this.mapManager.removeCollectible(item);

@@ -76,4 +76,10 @@ export const CONFIG = {
     BOMB: {
         FUSE_MS: 10000,
     },
+
+    ROCKET: {
+        MAX_CARRY: 2,
+        RANGE_TILES: 8,
+        MS_PER_TILE: 60,
+    },
 };

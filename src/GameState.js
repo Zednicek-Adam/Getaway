@@ -8,6 +8,8 @@ export class GameState {
         this.lives = CONFIG.PLAYER.LIVES;
         this.fuel = CONFIG.FUEL.MAX;
         this.bombs = 0;
+        this.rockets = 0;
+        this.maxRockets = CONFIG.ROCKET.MAX_CARRY; // instance field — Milestone 3 prep
         this.damage = 0;
         this.maxDamage = CONFIG.DAMAGE.MAX_HITS; // instance field — Milestone 3 prep
         this.maxLives = CONFIG.PLAYER.MAX_LIVES;  // instance field — Milestone 3 prep
@@ -43,6 +45,18 @@ export class GameState {
     useBomb() {
         if (this.bombs <= 0) return false;
         this.bombs--;
+        return true;
+    }
+
+    pickupRocket() {
+        if (this.rockets >= this.maxRockets) return false;
+        this.rockets++;
+        return true;
+    }
+
+    useRocket() {
+        if (this.rockets <= 0) return false;
+        this.rockets--;
         return true;
     }
 

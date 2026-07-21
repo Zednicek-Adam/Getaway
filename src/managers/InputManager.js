@@ -11,6 +11,9 @@ export class InputManager {
         // Bomb key state (consumed by GameScene in WP5)
         this.bombPressed = false;
 
+        // Rocket key state (E) — consumed by GameScene
+        this.rocketPressed = false;
+
         // Brake/stop toggle state (F) — consumed by GameScene
         this.stopToggled = false;
 
@@ -23,6 +26,7 @@ export class InputManager {
             right: this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
         };
         this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        this.rocketKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.stopKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
 
         // Swipe Handling
@@ -54,6 +58,10 @@ export class InputManager {
 
         if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
             this.bombPressed = true;
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(this.rocketKey)) {
+            this.rocketPressed = true;
         }
 
         if (Phaser.Input.Keyboard.JustDown(this.stopKey)) {
@@ -97,6 +105,13 @@ export class InputManager {
     consumeBombPress() {
         if (!this.bombPressed) return false;
         this.bombPressed = false;
+        return true;
+    }
+
+    // True once per E press — fires a rocket along the player's facing
+    consumeRocketPress() {
+        if (!this.rocketPressed) return false;
+        this.rocketPressed = false;
         return true;
     }
 

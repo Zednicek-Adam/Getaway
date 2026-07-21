@@ -221,6 +221,28 @@ describe('GameState', () => {
         });
     });
 
+    describe('rockets', () => {
+        it('caps pickup at MAX_CARRY and leaves the count unchanged when full', () => {
+            const state = new GameState();
+            for (let i = 0; i < CONFIG.ROCKET.MAX_CARRY; i++) {
+                expect(state.pickupRocket()).toBe(true);
+            }
+            expect(state.pickupRocket()).toBe(false);
+            expect(state.rockets).toBe(CONFIG.ROCKET.MAX_CARRY);
+        });
+
+        it('useRocket decrements and returns false at 0', () => {
+            const state = new GameState();
+            expect(state.useRocket()).toBe(false);
+            expect(state.rockets).toBe(0);
+
+            state.pickupRocket();
+            expect(state.useRocket()).toBe(true);
+            expect(state.rockets).toBe(0);
+            expect(state.useRocket()).toBe(false);
+        });
+    });
+
     describe('repair', () => {
         it('returns false and changes nothing at 0 damage', () => {
             const state = new GameState();

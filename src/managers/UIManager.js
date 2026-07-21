@@ -11,6 +11,7 @@ export class UIManager {
         this.lastLives = null;
         this.lastFuel = null;
         this.lastBombs = null;
+        this.lastRockets = null;
         this.lastDamage = null;
         this.lastNitroActive = null;
         this.lastQueueKey = null;
@@ -125,6 +126,15 @@ export class UIManager {
             strokeThickness: 4
         }).setDepth(100).setScrollFactor(0);
 
+        // Rocket inventory — orange, sharing the BOMBS row to the right
+        this.rocketText = this.scene.add.text(160, 128, 'RKT: 0', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '14px',
+            fill: '#FF8800',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setDepth(100).setScrollFactor(0);
+
         this.queueLabel = this.scene.add.text(25, 153, 'NEXT:', {
             fontFamily: '"Press Start 2P"',
             fontSize: '14px',
@@ -201,8 +211,8 @@ export class UIManager {
     }
 
     // Pure renderer: called every frame with a HUD snapshot
-    // { banked, carried, lives, fuel, fuelMax, bombs, damage, maxDamage, queue,
-    //   stars, chaseCountdown, chaseCountdownMax }
+    // { banked, carried, lives, fuel, fuelMax, bombs, rockets, damage, maxDamage,
+    //   nitroActive, queue, stars, chaseCountdown, chaseCountdownMax }
     update(hud) {
         if (hud.banked !== this.lastBanked) {
             this.lastBanked = hud.banked;
@@ -229,6 +239,11 @@ export class UIManager {
         if (hud.bombs !== this.lastBombs) {
             this.lastBombs = hud.bombs;
             this.bombText.setText(`BOMBS: ${hud.bombs}`);
+        }
+
+        if (hud.rockets !== this.lastRockets) {
+            this.lastRockets = hud.rockets;
+            this.rocketText.setText(`RKT: ${hud.rockets}`);
         }
 
         if (hud.damage !== this.lastDamage) {
