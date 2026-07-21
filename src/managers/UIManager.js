@@ -11,20 +11,21 @@ export class UIManager {
         this.lastLives = null;
         this.lastFuel = null;
         this.lastBombs = null;
+        this.lastDamage = null;
         this.lastQueueKey = null;
         this.lastStars = null;
         this.lastChaseActive = null;
         this.lastChaseWidth = null;
 
         // UI Panel Background
-        this.panel = this.scene.add.rectangle(10, 10, 260, 230, 0x1a1a1a, 0.8)
+        this.panel = this.scene.add.rectangle(10, 10, 260, 270, 0x1a1a1a, 0.8)
             .setOrigin(0)
             .setStrokeStyle(4, 0xB22222)
             .setDepth(99)
             .setScrollFactor(0);
 
         // Striped pattern for panel background (simulated using small lines)
-        for (let i = 10; i < 240; i += 20) {
+        for (let i = 10; i < 280; i += 20) {
             this.scene.add.rectangle(10, i, 260, 5, 0x000000, 0.4)
                 .setOrigin(0)
                 .setDepth(99)
@@ -163,10 +164,30 @@ export class UIManager {
             .setDepth(101)
             .setScrollFactor(0)
             .setVisible(false);
+
+        // Damage row — square pips showing REMAINING hits (full = 3 lit green).
+        // Clones the lifePips pattern; each hit dims a pip to red-ish.
+        this.damageLabel = this.scene.add.text(25, 235, 'DMG:', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '14px',
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setDepth(100).setScrollFactor(0);
+
+        this.damagePips = [];
+        for (let i = 0; i < CONFIG.DAMAGE.MAX_HITS; i++) {
+            const pip = this.scene.add.rectangle(125 + i * 24, 235, 16, 16, 0x33FF66)
+                .setOrigin(0)
+                .setStrokeStyle(2, 0x000000)
+                .setDepth(100)
+                .setScrollFactor(0);
+            this.damagePips.push(pip);
+        }
     }
 
     // Pure renderer: called every frame with a HUD snapshot
-    // { banked, carried, lives, fuel, fuelMax, bombs, queue,
+    // { banked, carried, lives, fuel, fuelMax, bombs, damage, maxDamage, queue,
     //   stars, chaseCountdown, chaseCountdownMax }
     update(hud) {
         if (hud.banked !== this.lastBanked) {
@@ -196,6 +217,11 @@ export class UIManager {
             this.bombText.setText(`BOMBS: ${hud.bombs}`);
         }
 
+        if (hud.damage !== this.lastDamage) {
+            this.lastDamage = hud.damage;
+            this.renderDamage(hud.damage, hud.maxDamage);
+        }
+
         const queue = hud.queue || [];
         const queueKey = queue.join(',');
         if (queueKey !== this.lastQueueKey) {
@@ -209,6 +235,18 @@ export class UIManager {
         }
 
         this.renderChaseBar(hud.chaseCountdown, hud.chaseCountdownMax);
+    }
+
+    // Pips show remaining hits: lit green while intact, dimmed red once spent
+    renderDamage(damage, maxDamage) {
+        const remaining = maxDamage - damage;
+        this.damagePips.forEach((pip, i) => {
+            if (i < remaining) {
+                pip.setFillStyle(0x33FF66).setAlpha(1);
+            } else {
+                pip.setFillStyle(0xFF3344).setAlpha(0.2);
+            }
+        });
     }
 
     renderStars(stars) {

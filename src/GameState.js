@@ -8,6 +8,8 @@ export class GameState {
         this.lives = CONFIG.PLAYER.LIVES;
         this.fuel = CONFIG.FUEL.MAX;
         this.bombs = 0;
+        this.damage = 0;
+        this.maxDamage = CONFIG.DAMAGE.MAX_HITS; // instance field — Milestone 3 prep
         this.stars = 0;
         this.heat = 0;
         this.chaseCountdown = 0;
@@ -55,8 +57,22 @@ export class GameState {
         return amount;
     }
 
+    // A police ram: accrue damage; a full bar delegates to onCaught (which
+    // resets damage and grants the longer catch invuln — set AFTER this call,
+    // so it wins). A survivable ram grants the shorter mercy window instead.
+    onRammed(amount = 1) {
+        this.damage += amount;
+        if (this.damage >= this.maxDamage) {
+            this.onCaught();
+            return 'caught';
+        }
+        this.invulnRemaining = CONFIG.DAMAGE.MERCY_MS;
+        return 'damaged';
+    }
+
     onCaught() {
         this.carried = 0;
+        this.damage = 0;
         this.lives--;
         this.stars = 0;
         this.heat = 0;

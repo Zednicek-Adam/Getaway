@@ -127,10 +127,15 @@ export class GameScene extends Phaser.Scene {
         // (e) Catch check (same tile or swap-through). Skipped while invulnerable
         // or while parked on the base pad — the safehouse is a safe zone.
         const atSafehouse = this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY);
-        if (!this.state.isInvulnerable() && !atSafehouse &&
-            this.policeManager.getCollidingUnit(this.carsCollide.bind(this), this.playerCar)) {
-            this.handleCaught();
-            if (this.gameOver) return;
+        const rammingUnit = this.policeManager.getCollidingUnit(this.carsCollide.bind(this), this.playerCar);
+        if (rammingUnit && !this.state.isInvulnerable() && !atSafehouse) {
+            const result = this.state.onRammed(rammingUnit.ramDamage);
+            if (result === 'caught') {
+                this.handleCaught();
+                if (this.gameOver) return;
+            } else {
+                this.onPlayerRammed(rammingUnit);
+            }
         }
 
         // (f) Laid bombs — fuse ticks; police entering the tile detonate them
@@ -157,6 +162,8 @@ export class GameScene extends Phaser.Scene {
             fuel: this.state.fuel,
             fuelMax: CONFIG.FUEL.MAX,
             bombs: this.state.bombs,
+            damage: this.state.damage,
+            maxDamage: this.state.maxDamage,
             queue: this.playerCar.turnQueue.toArray(),
             stars: this.state.stars,
             chaseCountdown: this.state.chaseCountdown,
@@ -278,8 +285,10 @@ export class GameScene extends Phaser.Scene {
             b.targetX === a.gridX && b.targetY === a.gridY;
     }
 
+    // Visual/respawn side of a catch. The state transition (onCaught) already
+    // happened via state.onRammed('caught') at the call site — this must NOT
+    // touch state, so onCaught fires exactly once per catch (no double life loss).
     handleCaught() {
-        this.state.onCaught();
         this.cameras.main.flash(300, 255, 0, 0);
 
         if (this.state.gameOver) {
@@ -290,7 +299,15 @@ export class GameScene extends Phaser.Scene {
         this.respawnPlayerAtBase();
         // onCaught() reset stars to 0 — the fleet stays empty until the next pickup
         this.policeManager.despawnAll();
-        this.blinkPlayerDuringInvuln();
+        this.blinkPlayer(CONFIG.PLAYER.INVULN_MS);
+    }
+
+    // Survivable ram: stun the cop, shake, and blink the player through mercy.
+    // The player's turn queue is deliberately kept (only catch/respawn clears it).
+    onPlayerRammed(unit) {
+        unit.stun(CONFIG.DAMAGE.POLICE_STUN_MS);
+        this.cameras.main.shake(120, 0.004);
+        this.blinkPlayer(CONFIG.DAMAGE.MERCY_MS);
     }
 
     respawnPlayerAtBase() {
@@ -312,9 +329,15 @@ export class GameScene extends Phaser.Scene {
         this.state.addFuel(CONFIG.FUEL.MAX); // Full tank on respawn (clamped)
     }
 
-    blinkPlayerDuringInvuln() {
+    // Blink the player for durationMs. Kills any running blink first so a
+    // ram-blink followed by a catch-blink doesn't stack (restore alpha, then
+    // restart with the new duration's cycle count — 300ms per yoyo cycle).
+    blinkPlayer(durationMs) {
         const visual = this.playerCar.visual;
-        const cycles = Math.max(1, Math.floor(CONFIG.PLAYER.INVULN_MS / 300));
+        this.tweens.killTweensOf(visual);
+        visual.setAlpha(1);
+
+        const cycles = Math.max(1, Math.floor(durationMs / 300));
 
         this.tweens.add({
             targets: visual,

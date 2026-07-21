@@ -7,6 +7,13 @@ export const CONFIG = {
         INVULN_MS: 3000,      // invulnerability after being caught
         MAX_BOMBS: 3,
         QUEUE_MAX: 3,         // max buffered turns
+        MAX_LIVES: 5,         // reserved for WP2 (extra-life pickup cap)
+    },
+
+    DAMAGE: {
+        MAX_HITS: 3,          // rams to a full catch
+        MERCY_MS: 1500,       // player invuln window after a survivable ram
+        POLICE_STUN_MS: 1000, // ramming unit freezes this long
     },
 
     FUEL: {

@@ -87,6 +87,58 @@ describe('GameState', () => {
         });
     });
 
+    describe('onRammed', () => {
+        it('accrues damage and returns "damaged" until the bar fills', () => {
+            const state = new GameState();
+
+            expect(state.onRammed()).toBe('damaged');
+            expect(state.damage).toBe(1);
+
+            expect(state.onRammed()).toBe('damaged');
+            expect(state.damage).toBe(2);
+
+            expect(state.onRammed()).toBe('caught');
+        });
+
+        it('resets damage and takes exactly one life on a catch', () => {
+            const state = new GameState();
+            state.pickupMoney();
+
+            state.onRammed();
+            state.onRammed();
+            const result = state.onRammed(); // third — caught
+
+            expect(result).toBe('caught');
+            expect(state.damage).toBe(0);
+            expect(state.lives).toBe(CONFIG.PLAYER.LIVES - 1);
+            expect(state.carried).toBe(0);
+        });
+
+        it('grants the mercy window on a survivable ram', () => {
+            const state = new GameState();
+            state.onRammed();
+            expect(state.isInvulnerable()).toBe(true);
+            expect(state.invulnRemaining).toBe(CONFIG.DAMAGE.MERCY_MS);
+        });
+
+        it('grants the longer catch invuln (wins over mercy) on a catch', () => {
+            const state = new GameState();
+            state.onRammed();
+            state.onRammed();
+            state.onRammed(); // caught
+            expect(state.invulnRemaining).toBe(CONFIG.PLAYER.INVULN_MS);
+        });
+
+        it('overkill from partial damage is safe (2 damage + 2 → caught)', () => {
+            const state = new GameState();
+            state.onRammed(); // damage 1
+            state.onRammed(); // damage 2
+            expect(state.onRammed(2)).toBe('caught');
+            expect(state.damage).toBe(0);
+            expect(state.invulnRemaining).toBe(CONFIG.PLAYER.INVULN_MS);
+        });
+    });
+
     describe('tick', () => {
         it('steps stars down after the chase ends', () => {
             const state = new GameState();

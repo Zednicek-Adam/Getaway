@@ -16,10 +16,16 @@ export class PoliceCar extends Car {
         this.sirenOn = false;
         this.sirenBlinkTimer = 0;
         this.sirenBlinkInterval = 150; // ms
+
+        // Combat state (ramDamage/unitType consumed by later WPs)
+        this.stunRemaining = 0;
+        this.ramDamage = 1;
+        this.unitType = 'police';
     }
 
     update(time, delta) {
         this.updateSiren(delta);
+        this.stunRemaining = Math.max(0, this.stunRemaining - delta);
 
         super.update(time, delta);
 
@@ -54,8 +60,24 @@ export class PoliceCar extends Car {
 
     // Override tryMove to evaluate routing at every tile/intersection
     tryMove() {
+        // Stunned after a ram — hold position. Car.update only calls tryMove
+        // when !isMoving, so a mid-move stun lets the current lerp finish.
+        if (this.stunRemaining > 0) return;
         this.decideNextMove();
         super.tryMove();
+    }
+
+    // Freeze this unit for ms with a brief alpha flash cue
+    stun(ms) {
+        this.stunRemaining = ms;
+        this.scene.tweens.add({
+            targets: this.visual,
+            alpha: 0.4,
+            duration: 100,
+            yoyo: true,
+            repeat: 2,
+            onComplete: () => this.visual.setAlpha(1),
+        });
     }
 
     decideNextMove() {
