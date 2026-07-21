@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
+import { TurnQueue, isOpposite } from '../turnQueue';
 
 export class Car {
     constructor(scene, gridX, gridY, mapManager, options = {}) {
@@ -24,7 +25,7 @@ export class Car {
 
         // Movement State
         this.direction = DIRECTIONS.RIGHT;
-        this.nextDirection = DIRECTIONS.RIGHT; // Buffered Input
+        this.turnQueue = new TurnQueue(CONFIG.PLAYER.QUEUE_MAX); // Buffered turns (FIFO)
         this.isMoving = false;
         this.moveConfig = {
             duration: CONFIG.PLAYER.MOVE_DURATION, // ms to cross one tile (Speed)
@@ -94,38 +95,25 @@ export class Car {
 
     tryMove() {
         // Logic:
-        // 1. Is there a buffered turn? If yes, CAN we turn there?
-        // 2. If no buffered turn or invalid turn, CAN we go straight?
-        // 3. Else, Stop.
+        // 1. Is there a queued turn? If it's legal here, take it (consume it).
+        // 2. Else, CAN we go straight? The queued turn is KEPT and retried
+        //    at every subsequent tile until legal or cancelled.
+        // 3. Else, Stop (blocked/dead-end: the car waits; the player can
+        //    queue a valid direction or U-turn out).
 
         // Don't auto-move if waiting for player's first input
         if (this.waitingForInput) return;
 
-        let attempts = [];
-
-        // If we have a buffered next direction
-        if (this.nextDirection !== null) {
-            attempts.push(this.nextDirection);
+        const front = this.turnQueue.peek();
+        if (front !== undefined && this.canMove(front)) {
+            this.startMove(front);
+            this.turnQueue.shift(); // Turn Consumed
+            return;
         }
 
-        // Always try current direction as fallback (unless we just did a 180, handled separately)
-        if (this.nextDirection !== this.direction) {
-            attempts.push(this.direction);
+        if (this.canMove(this.direction)) {
+            this.startMove(this.direction); // Queue untouched — front retried at next tile
         }
-
-        for (let dir of attempts) {
-            if (this.canMove(dir)) {
-                this.startMove(dir);
-                // Clear buffer if we used it
-                if (dir === this.nextDirection) {
-                    this.nextDirection = null; // Turn Consumed
-                }
-                return;
-            }
-        }
-
-        // If we are here, we are blocked.
-        // Maybe Stop?
     }
 
     canMove(dir) {
@@ -162,26 +150,37 @@ export class Car {
         this.isMoving = true;
     }
 
+    // Player input path: queue the turn (or U-turn immediately when the
+    // queue is empty and the press opposes the direction of travel)
+    enqueueTurn(dir) {
+        // First input clears the initial wait state
+        if (this.waitingForInput) {
+            this.waitingForInput = false;
+        }
+
+        if (this.turnQueue.length === 0 && isOpposite(dir, this.direction)) {
+            this.performUturn(dir);
+        } else {
+            this.turnQueue.push(dir);
+        }
+    }
+
+    // Compatibility wrapper for AI cars (PoliceCar re-decides at every tile
+    // via decideNextMove, so clear-then-push keeps identical semantics)
     setBufferedInput(newDirection) {
+        this.turnQueue.clear();
+
         // First input clears the initial wait state
         if (this.waitingForInput) {
             this.waitingForInput = false;
         }
 
         // Check for 180 turn immediately
-        if (this.isOpposite(newDirection, this.direction)) {
+        if (isOpposite(newDirection, this.direction)) {
             this.performUturn(newDirection);
-            this.nextDirection = null; // Consumed
         } else {
-            this.nextDirection = newDirection;
+            this.turnQueue.push(newDirection);
         }
-    }
-
-    isOpposite(dir1, dir2) {
-        return (dir1 === DIRECTIONS.UP && dir2 === DIRECTIONS.DOWN) ||
-            (dir1 === DIRECTIONS.DOWN && dir2 === DIRECTIONS.UP) ||
-            (dir1 === DIRECTIONS.LEFT && dir2 === DIRECTIONS.RIGHT) ||
-            (dir1 === DIRECTIONS.RIGHT && dir2 === DIRECTIONS.LEFT);
     }
 
     performUturn(newDir) {
@@ -199,6 +198,9 @@ export class Car {
         }
 
         this.direction = newDir;
+
+        // A reversal invalidates any queued plans
+        this.turnQueue.clear();
     }
 
     render() {

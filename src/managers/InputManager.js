@@ -4,7 +4,12 @@ import { DIRECTIONS } from '../constants';
 export class InputManager {
     constructor(scene) {
         this.scene = scene;
-        this.bufferedDirection = null;
+
+        // Append-only queue of direction presses, drained once per frame
+        this.pressQueue = [];
+
+        // Bomb key state (consumed by GameScene in WP5)
+        this.bombPressed = false;
 
         // Keyboard Keys
         this.cursors = this.scene.input.keyboard.createCursorKeys();
@@ -14,6 +19,7 @@ export class InputManager {
             left: this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
             right: this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
         };
+        this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
         // Swipe Handling
         this.scene.input.on('pointerdown', this.onPointerDown, this);
@@ -28,15 +34,22 @@ export class InputManager {
     }
 
     checkKeyboard() {
-        // Check for single press events (Just Down) to update buffer
+        // Each press event (Just Down) appends to the queue
         if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.wasd.up)) {
-            this.bufferedDirection = DIRECTIONS.UP;
-        } else if (Phaser.Input.Keyboard.JustDown(this.cursors.down) || Phaser.Input.Keyboard.JustDown(this.wasd.down)) {
-            this.bufferedDirection = DIRECTIONS.DOWN;
-        } else if (Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.wasd.left)) {
-            this.bufferedDirection = DIRECTIONS.LEFT;
-        } else if (Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.wasd.right)) {
-            this.bufferedDirection = DIRECTIONS.RIGHT;
+            this.pressQueue.push(DIRECTIONS.UP);
+        }
+        if (Phaser.Input.Keyboard.JustDown(this.cursors.down) || Phaser.Input.Keyboard.JustDown(this.wasd.down)) {
+            this.pressQueue.push(DIRECTIONS.DOWN);
+        }
+        if (Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.wasd.left)) {
+            this.pressQueue.push(DIRECTIONS.LEFT);
+        }
+        if (Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.wasd.right)) {
+            this.pressQueue.push(DIRECTIONS.RIGHT);
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+            this.bombPressed = true;
         }
     }
 
@@ -55,21 +68,27 @@ export class InputManager {
         if (Math.abs(diffX) > Math.abs(diffY)) {
             // Horizontal
             if (Math.abs(diffX) > minSwipeDist) {
-                this.bufferedDirection = diffX > 0 ? DIRECTIONS.RIGHT : DIRECTIONS.LEFT;
+                this.pressQueue.push(diffX > 0 ? DIRECTIONS.RIGHT : DIRECTIONS.LEFT);
             }
         } else {
             // Vertical
             if (Math.abs(diffY) > minSwipeDist) {
-                this.bufferedDirection = diffY > 0 ? DIRECTIONS.DOWN : DIRECTIONS.UP;
+                this.pressQueue.push(diffY > 0 ? DIRECTIONS.DOWN : DIRECTIONS.UP);
             }
         }
     }
 
-    getDirection() {
-        // Returns current buffered command and clears it? 
-        // Or keeps it? Strategy: "Snake" controls keep the buffer until used or overwritten.
-        // But implementation plans said "Turn queueing". 
-        // We will expose the current buffer.
-        return this.bufferedDirection;
+    // Returns all direction presses since the last drain (in press order)
+    drainInputs() {
+        const inputs = this.pressQueue;
+        this.pressQueue = [];
+        return inputs;
+    }
+
+    // True once per SPACE press (WP5 wires bomb dropping)
+    consumeBombPress() {
+        if (!this.bombPressed) return false;
+        this.bombPressed = false;
+        return true;
     }
 }

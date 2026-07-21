@@ -1,4 +1,5 @@
 import { CONFIG } from '../config';
+import { DIRECTIONS } from '../constants';
 
 export class UIManager {
     constructor(scene) {
@@ -10,16 +11,17 @@ export class UIManager {
         this.lastLives = null;
         this.lastFuel = null;
         this.lastBombs = null;
+        this.lastQueueKey = null;
 
         // UI Panel Background
-        this.panel = this.scene.add.rectangle(10, 10, 260, 150, 0x1a1a1a, 0.8)
+        this.panel = this.scene.add.rectangle(10, 10, 260, 180, 0x1a1a1a, 0.8)
             .setOrigin(0)
             .setStrokeStyle(4, 0xB22222)
             .setDepth(99)
             .setScrollFactor(0);
 
         // Striped pattern for panel background (simulated using small lines)
-        for (let i = 10; i < 160; i += 20) {
+        for (let i = 10; i < 190; i += 20) {
             this.scene.add.rectangle(10, i, 260, 5, 0x000000, 0.4)
                 .setOrigin(0)
                 .setDepth(99)
@@ -104,10 +106,34 @@ export class UIManager {
             stroke: '#000000',
             strokeThickness: 4
         }).setDepth(100).setScrollFactor(0);
+
+        this.queueLabel = this.scene.add.text(25, 153, 'NEXT:', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '14px',
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setDepth(100).setScrollFactor(0);
+
+        // Queued-turn arrows — white triangles rotated per direction
+        // (shapes, not text: the pixel font lacks arrow glyphs)
+        this.queueArrows = [];
+        for (let i = 0; i < CONFIG.PLAYER.QUEUE_MAX; i++) {
+            const arrow = this.scene.add.triangle(
+                133 + i * 26, 161,   // center position
+                8, 0, 0, 16, 16, 16, // points up by default
+                0xFFFFFF
+            )
+                .setStrokeStyle(2, 0x000000)
+                .setDepth(100)
+                .setScrollFactor(0)
+                .setAlpha(0.12);
+            this.queueArrows.push(arrow);
+        }
     }
 
     // Pure renderer: called every frame with a HUD snapshot
-    // { banked, carried, lives, fuel, fuelMax, bombs }
+    // { banked, carried, lives, fuel, fuelMax, bombs, queue }
     update(hud) {
         if (hud.banked !== this.lastBanked) {
             this.lastBanked = hud.banked;
@@ -135,6 +161,31 @@ export class UIManager {
             this.lastBombs = hud.bombs;
             this.bombText.setText(`BOMBS: ${hud.bombs}`);
         }
+
+        const queue = hud.queue || [];
+        const queueKey = queue.join(',');
+        if (queueKey !== this.lastQueueKey) {
+            this.lastQueueKey = queueKey;
+            this.renderQueue(queue);
+        }
+    }
+
+    renderQueue(queue) {
+        const angleByDirection = {
+            [DIRECTIONS.UP]: 0,
+            [DIRECTIONS.RIGHT]: 90,
+            [DIRECTIONS.DOWN]: 180,
+            [DIRECTIONS.LEFT]: 270,
+        };
+
+        this.queueArrows.forEach((arrow, i) => {
+            if (i < queue.length) {
+                arrow.setAngle(angleByDirection[queue[i]]);
+                arrow.setAlpha(1);
+            } else {
+                arrow.setAlpha(0.12); // Dim unused slot
+            }
+        });
     }
 
     renderFuel(fuel, fuelMax) {

@@ -48,7 +48,7 @@ export class GameScene extends Phaser.Scene {
         this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager);
         // Force player to face UP (towards the dead end) as requested
         this.playerCar.direction = DIRECTIONS.UP;
-        this.playerCar.nextDirection = null; // Clear buffered input so car stays still
+        this.playerCar.turnQueue.clear(); // Clear buffered turns so car stays still
         this.playerCar.waitingForInput = true; // Don't auto-move until player presses a key
         this.playerCar.updatePosition(0);
 
@@ -94,9 +94,8 @@ export class GameScene extends Phaser.Scene {
 
         // (a) Input → player update → police update
         this.inputManager.update();
-        const inputDir = this.inputManager.getDirection();
-        if (inputDir !== null) {
-            this.playerCar.setBufferedInput(inputDir);
+        for (const dir of this.inputManager.drainInputs()) {
+            this.playerCar.enqueueTurn(dir);
         }
         this.playerCar.update(time, delta);
         if (this.policeCar) {
@@ -148,6 +147,7 @@ export class GameScene extends Phaser.Scene {
             fuel: this.state.fuel,
             fuelMax: CONFIG.FUEL.MAX,
             bombs: this.state.bombs,
+            queue: this.playerCar.turnQueue.toArray(),
         });
     }
 
@@ -184,7 +184,7 @@ export class GameScene extends Phaser.Scene {
         car.isMoving = false;
         car.moveTimer = 0;
         car.direction = DIRECTIONS.UP;
-        car.nextDirection = null;
+        car.turnQueue.clear();
         car.waitingForInput = true;
         car.updatePosition(0);
 
@@ -209,7 +209,7 @@ export class GameScene extends Phaser.Scene {
         police.targetY = spawn.y;
         police.isMoving = false;
         police.moveTimer = 0;
-        police.nextDirection = null;
+        police.turnQueue.clear();
         police.chaseTimer = 0;
         this.setInitialDirection(police);
     }

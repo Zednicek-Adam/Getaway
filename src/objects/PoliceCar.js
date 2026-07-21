@@ -2,6 +2,7 @@ import { Car } from './Car';
 import { DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
 import { findPath } from '../pathfinding';
+import { isOpposite } from '../turnQueue';
 
 export class PoliceCar extends Car {
     constructor(scene, gridX, gridY, mapManager, target) {
@@ -83,7 +84,7 @@ export class PoliceCar extends Car {
                 else if (nextY < this.gridY) bestMove = DIRECTIONS.UP;
             } else {
                 // Fallback to random if no path found
-                const forwardMoves = validMoves.filter(m => !this.isOpposite(m, this.direction));
+                const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
                 if (forwardMoves.length > 0) {
                     bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
                 } else {
@@ -93,7 +94,7 @@ export class PoliceCar extends Car {
         } else {
             // Random movement when not chasing
             // Try not to U-turn unless it's a dead end
-            const forwardMoves = validMoves.filter(m => !this.isOpposite(m, this.direction));
+            const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
             if (forwardMoves.length > 0) {
                 bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
             } else {
