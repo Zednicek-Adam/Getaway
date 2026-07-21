@@ -4,8 +4,25 @@ export const COLLECTIBLE_TYPES = {
     MONEY: 'money',
     FUEL: 'fuel',
     BOMB: 'bomb',
-    DIAMOND: 'diamond'
+    DIAMOND: 'diamond',
+    REPAIR: 'repair',
+    NITRO: 'nitro',
+    ROCKET: 'rocket',
+    LIFE: 'life',
 };
+
+// Pure weighted picker: walks the weight entries accumulating a cumulative
+// threshold and returns the first bucket the roll (0..1) falls into. Weight
+// keys are COLLECTIBLE_TYPES string values. Object.entries preserves the
+// insertion order of string keys, so the cumulative walk is deterministic.
+export function pickCollectibleType(roll, weights) {
+    let cumulative = 0;
+    for (const [type, weight] of Object.entries(weights)) {
+        cumulative += weight;
+        if (roll < cumulative) return type;
+    }
+    return COLLECTIBLE_TYPES.MONEY; // float-sum fallback
+}
 
 export class Collectible {
     constructor(scene, type, gridX, gridY) {
@@ -32,18 +49,37 @@ export class Collectible {
     }
 
     createVisual() {
-        // Money reads as a "$" symbol rather than a coin blob
-        if (this.type === COLLECTIBLE_TYPES.MONEY) {
-            return this.scene.add.text(0, 0, '$', {
+        // Pixel-font glyphs in the shared "$" money style (green +, cyan N,
+        // orange R). Money is gold; the rest reuse the exact same styling.
+        const glyphs = {
+            [COLLECTIBLE_TYPES.MONEY]: { char: '$', color: '#FFD700' },
+            [COLLECTIBLE_TYPES.REPAIR]: { char: '+', color: '#33FF66' },
+            [COLLECTIBLE_TYPES.NITRO]: { char: 'N', color: '#66FFFF' },
+            [COLLECTIBLE_TYPES.ROCKET]: { char: 'R', color: '#FF8800' },
+        };
+        const glyph = glyphs[this.type];
+        if (glyph) {
+            return this.scene.add.text(0, 0, glyph.char, {
                 fontFamily: '"Press Start 2P"',
                 fontSize: '26px',
-                color: '#FFD700',
+                color: glyph.color,
                 stroke: '#000000',
                 strokeThickness: 5,
             }).setOrigin(0.5);
         }
 
-        // Other collectibles stay as coloured circles
+        // LIFE — a graphics heart (the pixel font has no heart glyph)
+        if (this.type === COLLECTIBLE_TYPES.LIFE) {
+            const g = this.scene.add.graphics();
+            const r = TILE_SIZE * 0.12;
+            g.fillStyle(0xFF3344, 1);
+            g.fillCircle(-r, -r * 0.6, r);            // left lobe
+            g.fillCircle(r, -r * 0.6, r);             // right lobe
+            g.fillTriangle(-r * 2, -r * 0.2, r * 2, -r * 0.2, 0, r * 2); // bottom point
+            return g;
+        }
+
+        // Other collectibles stay as coloured circles (BOMB, legacy FUEL)
         const g = this.scene.add.graphics();
         const radius = TILE_SIZE * 0.25;
         const color = this.type === COLLECTIBLE_TYPES.FUEL ? COLORS.FUEL : COLORS.BOMB;

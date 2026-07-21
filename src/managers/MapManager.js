@@ -1,5 +1,5 @@
 import { TILE_SIZE, COLORS, TILE_TYPES, DIRECTIONS } from '../constants';
-import { Collectible, COLLECTIBLE_TYPES } from '../objects/Collectible';
+import { Collectible, pickCollectibleType } from '../objects/Collectible';
 import { NetworkGenerator } from '../generators/NetworkGenerator';
 import { CONFIG } from '../config';
 
@@ -353,10 +353,9 @@ export class MapManager {
             // Check if road, no existing collectible, and keep base/station pads clear
             if (typeCode !== null && typeCode !== TILE_TYPES.GRASS && typeCode !== TILE_TYPES.BUILDING &&
                 !this.getCollectibleAt(x, y) && !this.isBasePad(x, y) && !this.getFuelStationAt(x, y)) {
-                // Random Type (fuel no longer spawns — stations are the fuel source)
-                const type = Math.random() < CONFIG.COLLECTIBLES.BOMB_CHANCE
-                    ? COLLECTIBLE_TYPES.BOMB
-                    : COLLECTIBLE_TYPES.MONEY;
+                // Weighted type from the spawn table (fuel no longer spawns —
+                // stations are the fuel source)
+                const type = pickCollectibleType(Math.random(), CONFIG.COLLECTIBLES.WEIGHTS);
 
                 const item = new Collectible(this.scene, type, x, y);
                 this.collectibles.push(item);

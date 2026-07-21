@@ -96,6 +96,14 @@ export class GameScene extends Phaser.Scene {
             // Brake toggle — stop to refuel at a station, or wait; steering resumes
             this.playerCar.halted = !this.playerCar.halted;
         }
+        // Per-frame player speed: nitro shortens the per-tile move duration.
+        // Car.update clamps t = min(moveTimer/duration, 1), so changing the
+        // duration mid-move is safe; nitro expiring mid-move eases the visual
+        // backward by at most one frame (accepted). WP5 multiplies a helicopter
+        // slow factor into this same line.
+        const nitroFactor = this.state.isNitroActive() ? CONFIG.NITRO.SPEED_FACTOR : 1;
+        this.playerCar.moveConfig.duration = CONFIG.PLAYER.MOVE_DURATION * nitroFactor;
+
         this.playerCar.update(time, delta);
         this.policeManager.update(time, delta);
         if (this.diamondCar) {
@@ -164,6 +172,7 @@ export class GameScene extends Phaser.Scene {
             bombs: this.state.bombs,
             damage: this.state.damage,
             maxDamage: this.state.maxDamage,
+            nitroActive: this.state.isNitroActive(),
             queue: this.playerCar.turnQueue.toArray(),
             stars: this.state.stars,
             chaseCountdown: this.state.chaseCountdown,
@@ -387,6 +396,20 @@ export class GameScene extends Phaser.Scene {
         } else if (item.type === COLLECTIBLE_TYPES.BOMB) {
             // Inventory full — leave the bomb on the road (WP5 wires laying/exploding)
             if (!this.state.pickupBomb()) return;
+        } else if (item.type === COLLECTIBLE_TYPES.REPAIR) {
+            // Undamaged — leave the repair on the road for later
+            if (!this.state.repair()) return;
+        } else if (item.type === COLLECTIBLE_TYPES.LIFE) {
+            // At max lives — leave the extra life on the road
+            if (!this.state.addLife()) return;
+            this.uiManager.showToast('+1 LIFE');
+        } else if (item.type === COLLECTIBLE_TYPES.NITRO) {
+            this.state.pickupNitro(); // Refresh-to-full speed boost
+            this.uiManager.showToast('NITRO!');
+        } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
+            // WP3 wires rocket pickup — until then the R glyph is inert scenery,
+            // so leave it on the road untouched.
+            return;
         }
 
         this.mapManager.removeCollectible(item);

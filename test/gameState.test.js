@@ -221,6 +221,74 @@ describe('GameState', () => {
         });
     });
 
+    describe('repair', () => {
+        it('returns false and changes nothing at 0 damage', () => {
+            const state = new GameState();
+            expect(state.damage).toBe(0);
+            expect(state.repair()).toBe(false);
+            expect(state.damage).toBe(0);
+        });
+
+        it('decrements damage and returns true when damaged', () => {
+            const state = new GameState();
+            state.onRammed(); // damage 1
+            expect(state.repair()).toBe(true);
+            expect(state.damage).toBe(0);
+        });
+    });
+
+    describe('addLife', () => {
+        it('adds a life below the cap and returns true', () => {
+            const state = new GameState();
+            state.onCaught(); // lives -> LIVES - 1
+            const before = state.lives;
+            expect(state.addLife()).toBe(true);
+            expect(state.lives).toBe(before + 1);
+        });
+
+        it('caps at maxLives and returns false', () => {
+            const state = new GameState();
+            state.lives = state.maxLives;
+            expect(state.addLife()).toBe(false);
+            expect(state.lives).toBe(state.maxLives);
+        });
+    });
+
+    describe('nitro', () => {
+        it('pickup sets the timer and isNitroActive', () => {
+            const state = new GameState();
+            expect(state.isNitroActive()).toBe(false);
+            state.pickupNitro();
+            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS);
+            expect(state.isNitroActive()).toBe(true);
+        });
+
+        it('tick expires the timer after the full duration', () => {
+            const state = new GameState();
+            state.pickupNitro();
+            state.tick(CONFIG.NITRO.DURATION_MS);
+            expect(state.nitroRemaining).toBe(0);
+            expect(state.isNitroActive()).toBe(false);
+        });
+
+        it('re-pickup mid-timer refreshes to full (no stacking)', () => {
+            const state = new GameState();
+            state.pickupNitro();
+            state.tick(CONFIG.NITRO.DURATION_MS / 2);
+            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS / 2);
+            state.pickupNitro();
+            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS);
+        });
+
+        it('onCaught zeroes the nitro timer', () => {
+            const state = new GameState();
+            state.pickupNitro();
+            state.onCaught();
+            expect(state.nitroRemaining).toBe(0);
+            expect(state.isNitroActive()).toBe(false);
+        });
+    });
+
     describe('pickupDiamond', () => {
         it('adds the diamond value to carried, +2 stars, refreshes the chase', () => {
             const state = new GameState();

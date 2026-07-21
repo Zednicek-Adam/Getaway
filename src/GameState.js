@@ -10,6 +10,8 @@ export class GameState {
         this.bombs = 0;
         this.damage = 0;
         this.maxDamage = CONFIG.DAMAGE.MAX_HITS; // instance field — Milestone 3 prep
+        this.maxLives = CONFIG.PLAYER.MAX_LIVES;  // instance field — Milestone 3 prep
+        this.nitroRemaining = 0;
         this.stars = 0;
         this.heat = 0;
         this.chaseCountdown = 0;
@@ -42,6 +44,29 @@ export class GameState {
         if (this.bombs <= 0) return false;
         this.bombs--;
         return true;
+    }
+
+    // Repair one point of damage; false (leave the pickup) when undamaged.
+    repair() {
+        if (this.damage <= 0) return false;
+        this.damage--;
+        return true;
+    }
+
+    // Grant an extra life; false (leave the pickup) when already at the cap.
+    addLife() {
+        if (this.lives >= this.maxLives) return false;
+        this.lives++;
+        return true;
+    }
+
+    // Nitro refreshes to full on re-pickup (no stacking).
+    pickupNitro() {
+        this.nitroRemaining = CONFIG.NITRO.DURATION_MS;
+    }
+
+    isNitroActive() {
+        return this.nitroRemaining > 0;
     }
 
     onPoliceBombed() {
@@ -78,6 +103,7 @@ export class GameState {
         this.heat = 0;
         this.chaseCountdown = 0;
         this.starDecayTimer = 0;
+        this.nitroRemaining = 0;
         this.invulnRemaining = CONFIG.PLAYER.INVULN_MS;
         if (this.lives <= 0) {
             this.gameOver = true;
@@ -88,6 +114,10 @@ export class GameState {
     tick(delta, { spotted = false } = {}) {
         if (this.invulnRemaining > 0) {
             this.invulnRemaining = Math.max(0, this.invulnRemaining - delta);
+        }
+
+        if (this.nitroRemaining > 0) {
+            this.nitroRemaining = Math.max(0, this.nitroRemaining - delta);
         }
 
         if (this.chaseCountdown > 0) {

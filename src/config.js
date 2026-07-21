@@ -30,7 +30,12 @@ export const CONFIG = {
 
     COLLECTIBLES: {
         INITIAL_COUNT: 50,
-        BOMB_CHANCE: 0.15,
+        WEIGHTS: { money: 0.70, bomb: 0.12, repair: 0.08, nitro: 0.06, rocket: 0.03, life: 0.01 },
+    },
+
+    NITRO: {
+        SPEED_FACTOR: 0.65,   // move-duration multiplier while active (300ms → 195ms/tile ≈ 1.54× speed)
+        DURATION_MS: 4000,
     },
 
     MAP: {

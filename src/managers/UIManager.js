@@ -12,6 +12,7 @@ export class UIManager {
         this.lastFuel = null;
         this.lastBombs = null;
         this.lastDamage = null;
+        this.lastNitroActive = null;
         this.lastQueueKey = null;
         this.lastStars = null;
         this.lastChaseActive = null;
@@ -57,10 +58,12 @@ export class UIManager {
             strokeThickness: 4
         }).setDepth(100).setScrollFactor(0);
 
-        // Life pips — small red squares (the pixel font has no heart glyph)
+        // Life pips — small red squares (the pixel font has no heart glyph).
+        // Built to MAX_LIVES so the extra-life pickup has slots; tighter
+        // spacing keeps 5 pips inside the panel.
         this.lifePips = [];
-        for (let i = 0; i < CONFIG.PLAYER.LIVES; i++) {
-            const pip = this.scene.add.rectangle(125 + i * 24, 75, 16, 16, 0xFF3344)
+        for (let i = 0; i < CONFIG.PLAYER.MAX_LIVES; i++) {
+            const pip = this.scene.add.rectangle(120 + i * 22, 75, 14, 14, 0xFF3344)
                 .setOrigin(0)
                 .setStrokeStyle(2, 0x000000)
                 .setDepth(100)
@@ -102,6 +105,17 @@ export class UIManager {
             stroke: '#000000',
             strokeThickness: 4
         }).setDepth(100).setScrollFactor(0);
+
+        // NITRO indicator — cyan, near the fuel gauge; hidden until nitro is
+        // active, then alpha-flashes (tween created/killed on the dirty edge).
+        this.nitroText = this.scene.add.text(this.gaugeX + this.gaugeWidth + 10, 116, 'NITRO', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '10px',
+            fill: '#66FFFF',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setDepth(100).setScrollFactor(0).setVisible(false);
+        this.nitroTween = null;
 
         this.bombText = this.scene.add.text(25, 128, 'BOMBS: 0', {
             fontFamily: '"Press Start 2P"',
@@ -222,6 +236,11 @@ export class UIManager {
             this.renderDamage(hud.damage, hud.maxDamage);
         }
 
+        if (hud.nitroActive !== this.lastNitroActive) {
+            this.lastNitroActive = hud.nitroActive;
+            this.renderNitro(hud.nitroActive);
+        }
+
         const queue = hud.queue || [];
         const queueKey = queue.join(',');
         if (queueKey !== this.lastQueueKey) {
@@ -247,6 +266,28 @@ export class UIManager {
                 pip.setFillStyle(0xFF3344).setAlpha(0.2);
             }
         });
+    }
+
+    // Toggle the NITRO indicator; a looping alpha-flash runs while visible and
+    // is killed (alpha restored) when it hides.
+    renderNitro(active) {
+        if (active) {
+            this.nitroText.setVisible(true).setAlpha(1);
+            this.nitroTween = this.scene.tweens.add({
+                targets: this.nitroText,
+                alpha: 0.25,
+                duration: 250,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut',
+            });
+        } else {
+            if (this.nitroTween) {
+                this.nitroTween.stop();
+                this.nitroTween = null;
+            }
+            this.nitroText.setAlpha(1).setVisible(false);
+        }
     }
 
     renderStars(stars) {
