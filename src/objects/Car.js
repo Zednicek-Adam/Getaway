@@ -32,8 +32,9 @@ export class Car {
         };
         this.moveTimer = 0;
 
-        // Visuals
-        this.visual = this.scene.add.sprite(0, 0, this.textureKey, 0).setOrigin(0.5, 0.5);
+        // Visuals — depth 1 keeps cars above roads, collectibles and laid
+        // bombs (depth <= 0.6) and below the HUD (99+)
+        this.visual = this.scene.add.sprite(0, 0, this.textureKey, 0).setOrigin(0.5, 0.5).setDepth(1);
         this.render();
         this.updatePosition(0); // Set initial visual pos
     }
@@ -193,6 +194,23 @@ export class Car {
             }
         }
         this.updatePosition(0); // Refresh visual frame
+    }
+
+    // Random movement for AI cars; try not to U-turn unless it's a dead end
+    pickRoamMove(validMoves) {
+        const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
+        if (forwardMoves.length > 0) {
+            return forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
+        }
+        return validMoves[Math.floor(Math.random() * validMoves.length)]; // Dead end
+    }
+
+    getValidMoves() {
+        const moves = [];
+        [DIRECTIONS.UP, DIRECTIONS.DOWN, DIRECTIONS.LEFT, DIRECTIONS.RIGHT].forEach(dir => {
+            if (this.canMove(dir)) moves.push(dir);
+        });
+        return moves;
     }
 
     performUturn(newDir) {

@@ -149,6 +149,34 @@ describe('GameState', () => {
             expect(state.pickupBomb()).toBe(false);
             expect(state.bombs).toBe(CONFIG.PLAYER.MAX_BOMBS);
         });
+
+        it('useBomb decrements and returns false at 0', () => {
+            const state = new GameState();
+            expect(state.useBomb()).toBe(false);
+            expect(state.bombs).toBe(0);
+
+            state.pickupBomb();
+            expect(state.useBomb()).toBe(true);
+            expect(state.bombs).toBe(0);
+            expect(state.useBomb()).toBe(false);
+        });
+
+        it('onPoliceBombed adds a star and refreshes the chase', () => {
+            const state = new GameState();
+            state.onPoliceBombed();
+            expect(state.stars).toBe(1);
+            expect(state.chaseCountdown).toBe(CONFIG.CHASE.COUNTDOWN_MS);
+        });
+    });
+
+    describe('pickupDiamond', () => {
+        it('adds the diamond value to carried, +2 stars, refreshes the chase', () => {
+            const state = new GameState();
+            state.pickupDiamond();
+            expect(state.carried).toBe(CONFIG.ECONOMY.DIAMOND_VALUE);
+            expect(state.stars).toBe(CONFIG.DIAMOND_CAR.STARS_ON_PICKUP);
+            expect(state.chaseCountdown).toBe(CONFIG.CHASE.COUNTDOWN_MS);
+        });
     });
 
     describe('fuel', () => {

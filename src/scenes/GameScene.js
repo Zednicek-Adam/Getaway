@@ -6,6 +6,8 @@ import { InputManager } from '../managers/InputManager';
 import { UIManager } from '../managers/UIManager';
 import { COLLECTIBLE_TYPES } from '../objects/Collectible';
 import { PoliceManager } from '../managers/PoliceManager';
+import { Bomb } from '../objects/Bomb';
+import { DiamondCar } from '../objects/DiamondCar';
 import { CONFIG } from '../config';
 import { GameState } from '../GameState';
 
@@ -56,6 +58,12 @@ export class GameScene extends Phaser.Scene {
         // count/speed/AI to the star table every frame
         this.policeManager = new PoliceManager(this, this.mapManager, this.state, this.playerCar);
 
+        // Laid bombs + the diamond delivery car (recreated fresh on restart;
+        // any pending respawn delayedCall is cleared by the scene shutdown)
+        this.bombs = [];
+        this.diamondCar = null;
+        this.spawnDiamondCar();
+
         this.mapManager.spawnRandomCollectibles(CONFIG.COLLECTIBLES.INITIAL_COUNT);
 
         // Camera System
@@ -76,13 +84,19 @@ export class GameScene extends Phaser.Scene {
         if (this.gameOver) return;
         if (!this.playerCar) return;
 
-        // (a) Input → player update → police update
+        // (a) Input → player update → police/diamond update
         this.inputManager.update();
         for (const dir of this.inputManager.drainInputs()) {
             this.playerCar.enqueueTurn(dir);
         }
+        if (this.inputManager.consumeBombPress()) {
+            this.tryDropBomb();
+        }
         this.playerCar.update(time, delta);
         this.policeManager.update(time, delta);
+        if (this.diamondCar) {
+            this.diamondCar.update(time, delta);
+        }
 
         // (b) Deposit — ordered before the catch check so a catch on the base
         // pad banks the carried money first
@@ -100,17 +114,26 @@ export class GameScene extends Phaser.Scene {
             this.state.addFuel(CONFIG.FUEL.REFUEL_PER_SEC * (delta / 1000));
         }
 
-        // (d) Catch check (same tile or swap-through), skipped while invulnerable
+        // (d) Diamond delivery car — ramming it steals the diamond
+        // (not guarded by invulnerability: that only covers the police catch)
+        if (this.diamondCar && this.carsCollide(this.playerCar, this.diamondCar)) {
+            this.collectDiamondCar();
+        }
+
+        // (e) Catch check (same tile or swap-through), skipped while invulnerable
         if (!this.state.isInvulnerable() &&
             this.policeManager.getCollidingUnit(this.carsCollide.bind(this), this.playerCar)) {
             this.handleCaught();
             if (this.gameOver) return;
         }
 
-        // (e) Collectibles
+        // (f) Laid bombs — fuse ticks; police entering the tile detonate them
+        this.updateBombs(delta);
+
+        // (g) Collectibles
         this.checkCollectibles();
 
-        // (f) Fuel drain + state tick + out-of-fuel check
+        // (h) Fuel drain + state tick + out-of-fuel check
         if (this.playerCar.isMoving) {
             this.state.drainFuel(CONFIG.FUEL.DRAIN_PER_SEC * (delta / 1000));
         }
@@ -120,7 +143,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        // (g) HUD snapshot
+        // (i) HUD snapshot
         this.uiManager.update({
             banked: this.state.banked,
             carried: this.state.carried,
@@ -133,6 +156,112 @@ export class GameScene extends Phaser.Scene {
             chaseCountdown: this.state.chaseCountdown,
             chaseCountdownMax: CONFIG.CHASE.COUNTDOWN_MS,
         });
+    }
+
+    // SPACE: lay a bomb on the player's current tile
+    tryDropBomb() {
+        const x = this.playerCar.gridX;
+        const y = this.playerCar.gridY;
+
+        // Occupancy check BEFORE consuming inventory — a second press on the
+        // same tile must not waste a bomb
+        if (this.bombs.some(b => b.gridX === x && b.gridY === y)) return;
+        if (!this.state.useBomb()) return;
+
+        this.bombs.push(new Bomb(this, x, y));
+    }
+
+    // Fuse ticks; any police unit on a bomb tile detonates it (every unit on
+    // the tile is destroyed, +1 star once). Expiry without a trigger is a
+    // harmless flash. The player and the diamond car are never affected.
+    updateBombs(delta) {
+        for (let i = this.bombs.length - 1; i >= 0; i--) {
+            const bomb = this.bombs[i];
+            const expired = bomb.update(delta);
+
+            const unitsOnTile = this.policeManager.units.filter(
+                u => u.gridX === bomb.gridX && u.gridY === bomb.gridY);
+
+            if (unitsOnTile.length > 0) {
+                this.explodeAt(bomb.gridX, bomb.gridY);
+                for (const unit of unitsOnTile) {
+                    this.policeManager.destroyUnit(unit); // Queues an 8s respawn
+                }
+                this.state.onPoliceBombed(); // Once per detonation (+1 star, chase refresh)
+            } else if (!expired) {
+                continue;
+            } else {
+                this.explodeAt(bomb.gridX, bomb.gridY); // Harmless fizzle
+            }
+
+            bomb.destroy();
+            this.bombs.splice(i, 1);
+        }
+    }
+
+    // Expanding orange/white flash + a small camera shake
+    explodeAt(gridX, gridY) {
+        const cx = gridX * TILE_SIZE + TILE_SIZE / 2;
+        const cy = gridY * TILE_SIZE + TILE_SIZE / 2;
+
+        const outer = this.add.circle(cx, cy, TILE_SIZE * 0.25, 0xFF8800, 0.9).setDepth(50);
+        const inner = this.add.circle(cx, cy, TILE_SIZE * 0.12, 0xFFFFFF, 0.9).setDepth(51);
+
+        this.tweens.add({
+            targets: [outer, inner],
+            scale: 4,
+            alpha: 0,
+            duration: 300,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                outer.destroy();
+                inner.destroy();
+            },
+        });
+
+        this.cameras.main.shake(150, 0.005);
+    }
+
+    spawnDiamondCar() {
+        const spawn = this.mapManager.getSpawnPointAwayFrom(
+            this.playerCar.gridX, this.playerCar.gridY, CONFIG.DIAMOND_CAR.SPAWN_MIN_DIST);
+
+        this.diamondCar = new DiamondCar(this, spawn.x, spawn.y, this.mapManager);
+        this.diamondCar.faceAnyOpenDirection();
+    }
+
+    collectDiamondCar() {
+        this.state.pickupDiamond(); // +$1000 carried, +2 stars, chase refresh
+        this.policeManager.onChaseEvent();
+        this.uiManager.showToast(`DIAMOND! +$${CONFIG.ECONOMY.DIAMOND_VALUE}`);
+        this.sparkleBurst(this.diamondCar.visual.x, this.diamondCar.visual.y);
+
+        this.diamondCar.visual.destroy();
+        this.diamondCar = null;
+
+        // Safe across restarts: scene shutdown clears pending clock events
+        this.time.delayedCall(CONFIG.DIAMOND_CAR.RESPAWN_MS, () => {
+            if (!this.gameOver) this.spawnDiamondCar();
+        });
+    }
+
+    // A few white sparks flying outward
+    sparkleBurst(x, y) {
+        const count = 6;
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            const spark = this.add.circle(x, y, 4, 0xFFFFFF).setDepth(50);
+
+            this.tweens.add({
+                targets: spark,
+                x: x + Math.cos(angle) * TILE_SIZE,
+                y: y + Math.sin(angle) * TILE_SIZE,
+                alpha: 0,
+                duration: 400,
+                ease: 'Cubic.easeOut',
+                onComplete: () => spark.destroy(),
+            });
+        }
     }
 
     // Same tile, or the two cars swapping tiles mid-move (tunneling)

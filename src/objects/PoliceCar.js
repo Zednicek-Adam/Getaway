@@ -2,7 +2,6 @@ import { Car } from './Car';
 import { DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
 import { findPath } from '../pathfinding';
-import { isOpposite } from '../turnQueue';
 
 export class PoliceCar extends Car {
     constructor(scene, gridX, gridY, mapManager, target, manager = null) {
@@ -153,21 +152,5 @@ export class PoliceCar extends Car {
         return null;
     }
 
-    // Random movement; try not to U-turn unless it's a dead end
-    pickRoamMove(validMoves) {
-        const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
-        if (forwardMoves.length > 0) {
-            return forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
-        }
-        return validMoves[Math.floor(Math.random() * validMoves.length)]; // Dead end
-    }
-
-    getValidMoves() {
-        const moves = [];
-        [DIRECTIONS.UP, DIRECTIONS.DOWN, DIRECTIONS.LEFT, DIRECTIONS.RIGHT].forEach(dir => {
-            if (this.canMove(dir)) moves.push(dir);
-        });
-        return moves;
-    }
-
+    // pickRoamMove / getValidMoves are inherited from Car
 }
