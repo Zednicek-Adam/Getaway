@@ -120,6 +120,17 @@ describe('GameState', () => {
         });
     });
 
+    describe('bombs', () => {
+        it('caps pickup at MAX_BOMBS and leaves the count unchanged when full', () => {
+            const state = new GameState();
+            for (let i = 0; i < CONFIG.PLAYER.MAX_BOMBS; i++) {
+                expect(state.pickupBomb()).toBe(true);
+            }
+            expect(state.pickupBomb()).toBe(false);
+            expect(state.bombs).toBe(CONFIG.PLAYER.MAX_BOMBS);
+        });
+    });
+
     describe('fuel', () => {
         it('clamps drain at 0 and refill at MAX', () => {
             const state = new GameState();

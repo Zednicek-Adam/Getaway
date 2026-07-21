@@ -1,6 +1,7 @@
 import { TILE_SIZE, COLORS, TILE_TYPES, DIRECTIONS } from '../constants';
 import { Collectible, COLLECTIBLE_TYPES } from '../objects/Collectible';
 import { NetworkGenerator } from '../generators/NetworkGenerator';
+import { CONFIG } from '../config';
 
 export class MapManager {
     constructor(scene, width, height) {
@@ -9,11 +10,15 @@ export class MapManager {
         this.height = height;
         this.grid = []; // 2D Array [y][x]
         this.collectibles = []; // Array of Collectible objects
+        this.base = null; // { building: {x,y}, pad: {x,y} }
+        this.fuelStations = []; // Array of { building: {x,y}, pad: {x,y} }
     }
 
     generate() {
         this.initializeGrid();
         this.generateProceduralMap();
+        this.placeBase();
+        this.placeFuelStations();
         this.autoTileRoads();
     }
 
@@ -157,6 +162,133 @@ export class MapManager {
         return { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
     }
 
+    // BFS flood-fill over road tiles; returns a Set of "x,y" keys.
+    computeReachable(fromX, fromY) {
+        const reachable = new Set();
+        if (!this.isRoad(fromX, fromY)) return reachable;
+
+        const queue = [{ x: fromX, y: fromY }];
+        reachable.add(`${fromX},${fromY}`);
+
+        while (queue.length > 0) {
+            const { x, y } = queue.shift();
+            const neighbors = [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]];
+            for (const [nx, ny] of neighbors) {
+                const key = `${nx},${ny}`;
+                if (!reachable.has(key) && this.isRoad(nx, ny)) {
+                    reachable.add(key);
+                    queue.push({ x: nx, y: ny });
+                }
+            }
+        }
+
+        return reachable;
+    }
+
+    placeBase() {
+        let pad = { x: this.playerSpawnPoint.x, y: this.playerSpawnPoint.y };
+
+        // Fallback maps don't guarantee road at the spawn point — relocate the
+        // pad (and the player spawn with it) onto an actual road tile.
+        if (!this.isRoad(pad.x, pad.y)) {
+            pad = this.getRandomSpawnPoint();
+            this.playerSpawnPoint = { x: pad.x, y: pad.y };
+        }
+
+        // Verify the pad is reachable from the player spawn; re-pick if not (bounded)
+        let retries = 0;
+        while (retries < 10) {
+            const reachable = this.computeReachable(this.playerSpawnPoint.x, this.playerSpawnPoint.y);
+            if (reachable.has(`${pad.x},${pad.y}`)) break;
+            pad = this.getRandomSpawnPoint();
+            this.playerSpawnPoint = { x: pad.x, y: pad.y };
+            retries++;
+        }
+
+        const building = this.pickAdjacentBuildingTile(pad);
+        this.setTile(building.x, building.y, TILE_TYPES.BUILDING);
+        this.base = { building, pad };
+    }
+
+    pickAdjacentBuildingTile(pad) {
+        const neighbors = [
+            { x: pad.x, y: pad.y - 1 },
+            { x: pad.x, y: pad.y + 1 },
+            { x: pad.x - 1, y: pad.y },
+            { x: pad.x + 1, y: pad.y },
+        ];
+        const inBounds = neighbors.filter(n => this.getTile(n.x, n.y) !== null);
+        const nonRoad = inBounds.find(n => !this.isRoad(n.x, n.y));
+
+        // Edge case: all in-bounds neighbors are road — overwrite one anyway
+        return nonRoad || inBounds[0];
+    }
+
+    placeFuelStations() {
+        this.fuelStations = [];
+
+        const spawn = this.playerSpawnPoint;
+        const reachable = this.computeReachable(spawn.x, spawn.y);
+        const basePad = this.base.pad;
+
+        // Greedy placement; halve the spacing and retry if not enough fit (floor 2)
+        let spacing = CONFIG.MAP.STATION_MIN_SPACING;
+        let accepted = this.pickStationPads(reachable, basePad, spacing);
+        while (accepted.length < CONFIG.MAP.FUEL_STATIONS && spacing > 2) {
+            spacing = Math.max(2, Math.floor(spacing / 2));
+            accepted = this.pickStationPads(reachable, basePad, spacing);
+        }
+
+        for (const pad of accepted) {
+            const building = this.pickAdjacentBuildingTile(pad);
+            this.setTile(building.x, building.y, TILE_TYPES.BUILDING);
+            this.fuelStations.push({ building, pad });
+        }
+    }
+
+    pickStationPads(reachable, basePad, spacing) {
+        const candidates = [];
+        for (const key of reachable) {
+            const [x, y] = key.split(',').map(Number);
+            if (x === basePad.x && y === basePad.y) continue;
+            if (Math.abs(x - basePad.x) + Math.abs(y - basePad.y) < spacing) continue;
+            if (!this.hasNonRoadNeighborInBounds(x, y)) continue;
+            candidates.push({ x, y });
+        }
+
+        this.shuffleInPlace(candidates);
+
+        const accepted = [];
+        for (const candidate of candidates) {
+            if (accepted.length >= CONFIG.MAP.FUEL_STATIONS) break;
+            const tooClose = accepted.some(a =>
+                Math.abs(a.x - candidate.x) + Math.abs(a.y - candidate.y) < spacing);
+            if (!tooClose) accepted.push(candidate);
+        }
+        return accepted;
+    }
+
+    hasNonRoadNeighborInBounds(x, y) {
+        const neighbors = [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]];
+        return neighbors.some(([nx, ny]) => this.getTile(nx, ny) !== null && !this.isRoad(nx, ny));
+    }
+
+    shuffleInPlace(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    getFuelStationAt(x, y) {
+        return this.fuelStations.find(s => s.pad.x === x && s.pad.y === y);
+    }
+
+    isBasePad(x, y) {
+        return !!this.base && this.base.pad.x === x && this.base.pad.y === y;
+    }
+
     initializeGrid() {
         this.grid = [];
         for (let y = 0; y < this.height; y++) {
@@ -193,10 +325,13 @@ export class MapManager {
 
             const typeCode = this.getTile(x, y);
 
-            // Check if road and no existing collectible
-            if (typeCode !== null && typeCode !== TILE_TYPES.GRASS && typeCode !== TILE_TYPES.BUILDING && !this.getCollectibleAt(x, y)) {
-                // Random Type
-                const type = Math.random() > 0.5 ? COLLECTIBLE_TYPES.MONEY : COLLECTIBLE_TYPES.FUEL;
+            // Check if road, no existing collectible, and keep base/station pads clear
+            if (typeCode !== null && typeCode !== TILE_TYPES.GRASS && typeCode !== TILE_TYPES.BUILDING &&
+                !this.getCollectibleAt(x, y) && !this.isBasePad(x, y) && !this.getFuelStationAt(x, y)) {
+                // Random Type (fuel no longer spawns — stations are the fuel source)
+                const type = Math.random() < CONFIG.COLLECTIBLES.BOMB_CHANCE
+                    ? COLLECTIBLE_TYPES.BOMB
+                    : COLLECTIBLE_TYPES.MONEY;
 
                 const item = new Collectible(this.scene, type, x, y);
                 this.collectibles.push(item);
@@ -226,5 +361,38 @@ export class MapManager {
         const tiles = map.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 1, 2);
         const tileLayer = map.createLayer(0, tiles, 0, 0);
         tileLayer.setDepth(0); // Ground layer
+    }
+
+    // The tilemap is static after render() — post-render grid edits don't show,
+    // so landmarks are separate game objects. Must be called after render() and
+    // before the cars are created (same depth, add order keeps them below cars).
+    renderLandmarks() {
+        this.baseMarker = this.createLandmarkMarker(this.base, 0xFFD700, '$', '#FFD700');
+        for (const station of this.fuelStations) {
+            this.createLandmarkMarker(station, 0x00FF00, 'F', '#00FF00');
+        }
+    }
+
+    createLandmarkMarker(landmark, color, label, labelColor) {
+        const bx = landmark.building.x * TILE_SIZE + TILE_SIZE / 2;
+        const by = landmark.building.y * TILE_SIZE + TILE_SIZE / 2;
+
+        // Building marker
+        const rect = this.scene.add.rectangle(bx, by, TILE_SIZE - 6, TILE_SIZE - 6, 0x2a2a2a)
+            .setStrokeStyle(3, color);
+        const text = this.scene.add.text(bx, by, label, {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '24px',
+            fill: labelColor,
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+
+        // Subtle highlight on the pad tile so the player knows where to stop
+        const px = landmark.pad.x * TILE_SIZE + TILE_SIZE / 2;
+        const py = landmark.pad.y * TILE_SIZE + TILE_SIZE / 2;
+        this.scene.add.rectangle(px, py, TILE_SIZE, TILE_SIZE, color, 0.25);
+
+        return [rect, text];
     }
 }

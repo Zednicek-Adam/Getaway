@@ -56,6 +56,12 @@ export class Collectible {
         // Outline
         this.visual.lineStyle(2, 0xFFFFFF, 0.8);
         this.visual.strokeCircle(0, 0, radius);
+
+        // Small white fuse dot so bombs read as bombs
+        if (this.type === COLLECTIBLE_TYPES.BOMB) {
+            this.visual.fillStyle(0xFFFFFF, 1);
+            this.visual.fillCircle(radius * 0.4, -radius * 0.7, 3);
+        }
     }
 
     destroy() {

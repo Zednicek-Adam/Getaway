@@ -1,20 +1,25 @@
+import { CONFIG } from '../config';
+
 export class UIManager {
     constructor(scene) {
         this.scene = scene;
 
         // Dirty-check cache of last rendered HUD values
-        this.lastScore = null;
+        this.lastBanked = null;
+        this.lastCarried = null;
+        this.lastLives = null;
         this.lastFuel = null;
+        this.lastBombs = null;
 
         // UI Panel Background
-        this.panel = this.scene.add.rectangle(10, 10, 260, 90, 0x1a1a1a, 0.8)
+        this.panel = this.scene.add.rectangle(10, 10, 260, 150, 0x1a1a1a, 0.8)
             .setOrigin(0)
             .setStrokeStyle(4, 0xB22222)
             .setDepth(99)
             .setScrollFactor(0);
 
         // Striped pattern for panel background (simulated using small lines)
-        for (let i = 10; i < 100; i += 20) {
+        for (let i = 10; i < 160; i += 20) {
             this.scene.add.rectangle(10, i, 260, 5, 0x000000, 0.4)
                 .setOrigin(0)
                 .setDepth(99)
@@ -22,7 +27,7 @@ export class UIManager {
         }
 
         // UI Text Objects
-        this.scoreText = this.scene.add.text(25, 25, 'SCORE: 0', {
+        this.bankText = this.scene.add.text(25, 25, 'BANK: $0', {
             fontFamily: '"Press Start 2P"',
             fontSize: '14px',
             fill: '#FFD700',
@@ -30,7 +35,34 @@ export class UIManager {
             strokeThickness: 4
         }).setDepth(100).setScrollFactor(0);
 
-        this.fuelLabel = this.scene.add.text(25, 60, 'FUEL:', {
+        this.carryText = this.scene.add.text(25, 50, 'CARRY: $0', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '14px',
+            fill: '#888888',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setDepth(100).setScrollFactor(0);
+
+        this.livesLabel = this.scene.add.text(25, 75, 'LIVES:', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '14px',
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setDepth(100).setScrollFactor(0);
+
+        // Life pips — small red squares (the pixel font has no heart glyph)
+        this.lifePips = [];
+        for (let i = 0; i < CONFIG.PLAYER.LIVES; i++) {
+            const pip = this.scene.add.rectangle(125 + i * 24, 75, 16, 16, 0xFF3344)
+                .setOrigin(0)
+                .setStrokeStyle(2, 0x000000)
+                .setDepth(100)
+                .setScrollFactor(0);
+            this.lifePips.push(pip);
+        }
+
+        this.fuelLabel = this.scene.add.text(25, 100, 'FUEL:', {
             fontFamily: '"Press Start 2P"',
             fontSize: '14px',
             fill: '#FFFFFF',
@@ -40,7 +72,7 @@ export class UIManager {
 
         // Fuel Gauge Settings
         this.gaugeX = 100;
-        this.gaugeY = 60;
+        this.gaugeY = 100;
         this.gaugeWidth = 90;
         this.gaugeHeight = 14;
 
@@ -57,25 +89,51 @@ export class UIManager {
             .setDepth(101)
             .setScrollFactor(0);
 
-        this.fuelPercentText = this.scene.add.text(this.gaugeX + this.gaugeWidth + 10, 62, '100%', {
+        this.fuelPercentText = this.scene.add.text(this.gaugeX + this.gaugeWidth + 10, 102, '100%', {
             fontFamily: '"Press Start 2P"',
             fontSize: '10px',
             fill: '#00FF00',
             stroke: '#000000',
             strokeThickness: 4
         }).setDepth(100).setScrollFactor(0);
+
+        this.bombText = this.scene.add.text(25, 128, 'BOMBS: 0', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '14px',
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setDepth(100).setScrollFactor(0);
     }
 
-    // Pure renderer: called every frame with a HUD snapshot { score, fuel, fuelMax }
+    // Pure renderer: called every frame with a HUD snapshot
+    // { banked, carried, lives, fuel, fuelMax, bombs }
     update(hud) {
-        if (hud.score !== this.lastScore) {
-            this.lastScore = hud.score;
-            this.scoreText.setText(`SCORE: ${hud.score}`);
+        if (hud.banked !== this.lastBanked) {
+            this.lastBanked = hud.banked;
+            this.bankText.setText(`BANK: $${hud.banked}`);
+        }
+
+        if (hud.carried !== this.lastCarried) {
+            this.lastCarried = hud.carried;
+            this.carryText.setText(`CARRY: $${hud.carried}`);
+            // Brighter while money is at risk
+            this.carryText.setColor(hud.carried > 0 ? '#FFFFFF' : '#888888');
+        }
+
+        if (hud.lives !== this.lastLives) {
+            this.lastLives = hud.lives;
+            this.lifePips.forEach((pip, i) => pip.setAlpha(i < hud.lives ? 1 : 0.15));
         }
 
         if (hud.fuel !== this.lastFuel) {
             this.lastFuel = hud.fuel;
             this.renderFuel(hud.fuel, hud.fuelMax);
+        }
+
+        if (hud.bombs !== this.lastBombs) {
+            this.lastBombs = hud.bombs;
+            this.bombText.setText(`BOMBS: ${hud.bombs}`);
         }
     }
 
