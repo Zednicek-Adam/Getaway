@@ -8,6 +8,17 @@ export function isOpposite(dir1, dir2) {
         (dir1 === DIRECTIONS.RIGHT && dir2 === DIRECTIONS.LEFT);
 }
 
+// Reverse of a direction (UP↔DOWN, LEFT↔RIGHT). Pure helper.
+export function oppositeOf(dir) {
+    switch (dir) {
+        case DIRECTIONS.UP: return DIRECTIONS.DOWN;
+        case DIRECTIONS.DOWN: return DIRECTIONS.UP;
+        case DIRECTIONS.LEFT: return DIRECTIONS.RIGHT;
+        case DIRECTIONS.RIGHT: return DIRECTIONS.LEFT;
+        default: return dir;
+    }
+}
+
 // FIFO queue of upcoming turns (pure JS, no Phaser — unit-testable).
 // Push rules:
 //   - same direction as the last queued item → ignored (dedupe)

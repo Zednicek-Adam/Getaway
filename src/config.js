@@ -61,8 +61,8 @@ export const CONFIG = {
             1: { units: { police: 1 }, duration: 380, ai: 'near' },
             2: { units: { police: 2 }, duration: 360, ai: 'near' },
             3: { units: { police: 3 }, duration: 340, ai: 'direct' },
-            4: { units: { police: 3, swat: 1 }, duration: 320, ai: 'intercept' },
-            5: { units: { police: 3, swat: 2 }, duration: 300, ai: 'intercept' },
+            4: { units: { police: 3, swat: 1 }, duration: 320, ai: 'intercept', roadblocks: true },
+            5: { units: { police: 3, swat: 2 }, duration: 300, ai: 'intercept', roadblocks: true, heli: true },
         },
     },
 
@@ -87,5 +87,19 @@ export const CONFIG = {
         MAX_CARRY: 2,
         RANGE_TILES: 8,
         MS_PER_TILE: 60,
+    },
+
+    ROADBLOCK: {
+        INTERVAL_MS: 10000,  // spawn cadence while chasing at 4+ stars
+        MAX_ACTIVE: 2,
+        MIN_AHEAD: 5,        // min tiles ahead of the player along their facing
+        MAX_AHEAD: 9,        // max tiles ahead (walk stops early at road end)
+        CRASH_DAMAGE: 1,
+    },
+
+    HELICOPTER: {
+        SPEED_PX_S: 190,       // fixed pixel-space chase speed
+        SPOT_RADIUS_TILES: 2,  // spotlight / spot radius
+        SLOW_FACTOR: 1.25,     // player move-duration multiplier while overhead
     },
 };

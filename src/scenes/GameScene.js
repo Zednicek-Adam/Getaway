@@ -11,6 +11,7 @@ import { Rocket } from '../objects/Rocket';
 import { DiamondCar } from '../objects/DiamondCar';
 import { CONFIG } from '../config';
 import { GameState } from '../GameState';
+import { oppositeOf } from '../turnQueue';
 
 export class GameScene extends Phaser.Scene {
 
@@ -48,7 +49,8 @@ export class GameScene extends Phaser.Scene {
         // Car Spawn - Start at center (Generation Seed) to guarantee Road
         const spawnPoint = this.mapManager.playerSpawnPoint || { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
 
-        this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager);
+        // avoidsBlocked:false — only the player can drive into a roadblock (and crash)
+        this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager, { avoidsBlocked: false });
         // Force player to face UP (towards the dead end) as requested
         this.playerCar.direction = DIRECTIONS.UP;
         this.playerCar.turnQueue.clear(); // Clear buffered turns so car stays still
@@ -101,15 +103,38 @@ export class GameScene extends Phaser.Scene {
             // Brake toggle — stop to refuel at a station, or wait; steering resumes
             this.playerCar.halted = !this.playerCar.halted;
         }
-        // Per-frame player speed: nitro shortens the per-tile move duration.
-        // Car.update clamps t = min(moveTimer/duration, 1), so changing the
-        // duration mid-move is safe; nitro expiring mid-move eases the visual
-        // backward by at most one frame (accepted). WP5 multiplies a helicopter
-        // slow factor into this same line.
+        // Per-frame player speed: nitro shortens the per-tile move duration,
+        // the helicopter spotlight lengthens it (slows the player). Car.update
+        // clamps t = min(moveTimer/duration, 1), so changing the duration
+        // mid-move is safe; nitro expiring mid-move eases the visual backward by
+        // at most one frame (accepted).
         const nitroFactor = this.state.isNitroActive() ? CONFIG.NITRO.SPEED_FACTOR : 1;
-        this.playerCar.moveConfig.duration = CONFIG.PLAYER.MOVE_DURATION * nitroFactor;
+        const heliFactor = this.policeManager.isHeliOverhead() ? CONFIG.HELICOPTER.SLOW_FACTOR : 1;
+        this.playerCar.moveConfig.duration = CONFIG.PLAYER.MOVE_DURATION * nitroFactor * heliFactor;
 
         this.playerCar.update(time, delta);
+
+        // Roadblock crash — checked the frame the player starts moving into a
+        // blocked tile. The bounce (performUturn, which also clears the queue)
+        // fires the same frame, so the player never actually occupies the tile:
+        // the roadblock survives and can't re-trigger until they drive in again.
+        // The bounce ALWAYS happens (even while invulnerable) so a mercy window
+        // never lets them clip through.
+        if (this.playerCar.isMoving &&
+            this.policeManager.getRoadblockAt(this.playerCar.targetX, this.playerCar.targetY)) {
+            this.playerCar.performUturn(oppositeOf(this.playerCar.direction)); // bounce; clears queue
+            this.cameras.main.shake(150, 0.006);
+            if (!this.state.isInvulnerable()) {
+                const result = this.state.onRammed(CONFIG.ROADBLOCK.CRASH_DAMAGE);
+                if (result === 'caught') {
+                    this.handleCaught();
+                    if (this.gameOver) return;
+                } else {
+                    this.blinkPlayer(CONFIG.DAMAGE.MERCY_MS);
+                }
+            }
+        }
+
         this.policeManager.update(time, delta);
         if (this.diamondCar) {
             this.diamondCar.update(time, delta);
@@ -255,17 +280,14 @@ export class GameScene extends Phaser.Scene {
                 continue;
             }
 
-            // (2) Roadblock — WP5 provides getRoadblockAt/destroyRoadblock;
-            // guard with existence checks since they don't exist yet.
-            if (this.policeManager.getRoadblockAt) {
-                const rb = this.policeManager.getRoadblockAt(r.gridX, r.gridY);
-                if (rb) {
-                    this.policeManager.destroyRoadblock(rb);
-                    this.explodeAt(r.gridX, r.gridY);
-                    r.destroy();
-                    this.rockets.splice(i, 1);
-                    continue;
-                }
+            // (2) Roadblock — a rocket clears it (frees the blocked tile)
+            const rb = this.policeManager.getRoadblockAt(r.gridX, r.gridY);
+            if (rb) {
+                this.policeManager.destroyRoadblock(rb);
+                this.explodeAt(r.gridX, r.gridY);
+                r.destroy();
+                this.rockets.splice(i, 1);
+                continue;
             }
 
             // (3) Police/SWAT on the tile, or mid-move INTO it (the target-tile

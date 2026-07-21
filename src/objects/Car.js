@@ -16,6 +16,9 @@ export class Car {
             [DIRECTIONS.DOWN]: 3,
         };
         this.displaySize = options.displaySize ?? (TILE_SIZE * 0.6);
+        // AI cars route around roadblocks (getValidMoves excludes blocked tiles);
+        // the player is constructed with false so only they can crash into one.
+        this.avoidsBlocked = options.avoidsBlocked ?? true;
 
         // Grid State
         this.gridX = gridX;
@@ -152,7 +155,8 @@ export class Car {
         const potentialX = this.gridX + dx;
         const potentialY = this.gridY + dy;
 
-        return this.mapManager.isRoad(potentialX, potentialY);
+        if (!this.mapManager.isRoad(potentialX, potentialY)) return false;
+        return !(this.avoidsBlocked && this.mapManager.isBlocked(potentialX, potentialY));
     }
 
     startMove(dir) {

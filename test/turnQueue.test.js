@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TurnQueue, isOpposite } from '../src/turnQueue';
+import { TurnQueue, isOpposite, oppositeOf } from '../src/turnQueue';
 import { DIRECTIONS } from '../src/constants';
 
 describe('isOpposite', () => {
@@ -12,6 +12,23 @@ describe('isOpposite', () => {
             for (const d2 of all) {
                 expect(isOpposite(d1, d2)).toBe(opposite[d1] === d2);
             }
+        }
+    });
+});
+
+describe('oppositeOf', () => {
+    it('maps each direction to its reverse', () => {
+        const { UP, DOWN, LEFT, RIGHT } = DIRECTIONS;
+        expect(oppositeOf(UP)).toBe(DOWN);
+        expect(oppositeOf(DOWN)).toBe(UP);
+        expect(oppositeOf(LEFT)).toBe(RIGHT);
+        expect(oppositeOf(RIGHT)).toBe(LEFT);
+    });
+
+    it('is consistent with isOpposite for every direction', () => {
+        const all = Object.values(DIRECTIONS);
+        for (const d of all) {
+            expect(isOpposite(d, oppositeOf(d))).toBe(true);
         }
     });
 });

@@ -12,9 +12,11 @@ export class MapManager {
         this.collectibles = []; // Array of Collectible objects
         this.base = null; // { building: {x,y}, pad: {x,y} }
         this.fuelStations = []; // Array of { building: {x,y}, pad: {x,y} }
+        this.blocked = new Set(); // "x,y" keys — roadblock overlay
     }
 
     generate() {
+        this.blocked = new Set(); // fresh overlay on every (re)generate
         this.initializeGrid();
         this.generateProceduralMap();
         this.placeBase();
@@ -312,6 +314,18 @@ export class MapManager {
 
     isBasePad(x, y) {
         return !!this.base && this.base.pad.x === x && this.base.pad.y === y;
+    }
+
+    // Roadblock overlay — a blocked road tile stays road (renders normally) but
+    // cars that avoid blocks won't path through it.
+    setBlocked(x, y, on) {
+        const key = `${x},${y}`;
+        if (on) this.blocked.add(key);
+        else this.blocked.delete(key);
+    }
+
+    isBlocked(x, y) {
+        return this.blocked.has(`${x},${y}`);
     }
 
     initializeGrid() {

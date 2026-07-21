@@ -161,7 +161,7 @@ export class PoliceCar extends Car {
     // First step of the A* path towards (goalX, goalY); null when unreachable
     stepTowards(goalX, goalY) {
         const path = findPath(
-            (x, y) => this.mapManager.isRoad(x, y),
+            (x, y) => this.mapManager.isRoad(x, y) && !this.mapManager.isBlocked(x, y),
             this.gridX, this.gridY,
             goalX, goalY
         );
