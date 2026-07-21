@@ -1,8 +1,10 @@
 export class UIManager {
     constructor(scene) {
         this.scene = scene;
-        this.score = 0;
-        this.fuel = 100;
+
+        // Dirty-check cache of last rendered HUD values
+        this.lastScore = null;
+        this.lastFuel = null;
 
         // UI Panel Background
         this.panel = this.scene.add.rectangle(10, 10, 260, 90, 0x1a1a1a, 0.8)
@@ -64,37 +66,64 @@ export class UIManager {
         }).setDepth(100).setScrollFactor(0);
     }
 
-    updateScore(amount) {
-        this.score += amount;
-        this.scoreText.setText(`SCORE: ${this.score}`);
+    // Pure renderer: called every frame with a HUD snapshot { score, fuel, fuelMax }
+    update(hud) {
+        if (hud.score !== this.lastScore) {
+            this.lastScore = hud.score;
+            this.scoreText.setText(`SCORE: ${hud.score}`);
+        }
+
+        if (hud.fuel !== this.lastFuel) {
+            this.lastFuel = hud.fuel;
+            this.renderFuel(hud.fuel, hud.fuelMax);
+        }
     }
 
-    updateFuel(amount) {
-        this.fuel += amount;
-        if (this.fuel > 100) this.fuel = 100;
-        if (this.fuel < 0) this.fuel = 0;
+    renderFuel(fuel, fuelMax) {
+        const percent = (fuel / fuelMax) * 100;
 
         // Update Gauge Fill Width
-        const fillWidth = (this.fuel / 100) * this.gaugeWidth;
+        const fillWidth = (fuel / fuelMax) * this.gaugeWidth;
         this.fuelGaugeFill.setSize(fillWidth, this.gaugeHeight);
 
         // Update Percentage Text
-        this.fuelPercentText.setText(`${Math.floor(this.fuel)}%`);
+        this.fuelPercentText.setText(`${Math.floor(percent)}%`);
 
         // Color change based on fuel level
         let colorHex = 0x00FF00;
         let colorStr = '#00FF00';
 
-        if (this.fuel < 20) {
+        if (percent < 20) {
             colorHex = 0xFF0000;
             colorStr = '#FF0000';
-        } else if (this.fuel < 50) {
+        } else if (percent < 50) {
             colorHex = 0xFFFF00;
             colorStr = '#FFFF00';
         }
 
         this.fuelGaugeFill.setFillStyle(colorHex);
         this.fuelPercentText.setColor(colorStr);
+    }
+
+    showToast(text) {
+        const { width } = this.scene.scale;
+
+        const toast = this.scene.add.text(width / 2, 120, text, {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '16px',
+            fill: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setDepth(150).setScrollFactor(0);
+
+        this.scene.tweens.add({
+            targets: toast,
+            y: 90,
+            alpha: 0,
+            duration: 1500,
+            ease: 'Sine.easeIn',
+            onComplete: () => toast.destroy()
+        });
     }
 
     showGameOver(reason) {

@@ -6,6 +6,8 @@ import { InputManager } from '../managers/InputManager';
 import { UIManager } from '../managers/UIManager';
 import { COLLECTIBLE_TYPES } from '../objects/Collectible';
 import { PoliceCar } from '../objects/PoliceCar';
+import { CONFIG } from '../config';
+import { GameState } from '../GameState';
 
 export class GameScene extends Phaser.Scene {
 
@@ -23,7 +25,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.text(10, 10, 'Getaway Remake', { font: '16px Arial', fill: '#ffffff', depth: 100 }).setScrollFactor(0);
+        // Game State (recreated on every restart)
+        this.state = new GameState();
 
         // Map System
         this.mapManager = new MapManager(this, MAP_WIDTH, MAP_HEIGHT);
@@ -59,7 +62,7 @@ export class GameScene extends Phaser.Scene {
         this.policeCar = new PoliceCar(this, policeSpawn.x, policeSpawn.y, this.mapManager, this.playerCar);
         this.setInitialDirection(this.policeCar);
 
-        this.mapManager.spawnRandomCollectibles(50);
+        this.mapManager.spawnRandomCollectibles(CONFIG.COLLECTIBLES.INITIAL_COUNT);
 
         // Camera System
         this.cameras.main.setBounds(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE);
@@ -110,14 +113,24 @@ export class GameScene extends Phaser.Scene {
             // Check Collisions
             this.checkCollectibles();
 
-            // Fuel Consumption (e.g., 5% per second)
+            // Fuel Consumption
             if (this.playerCar.isMoving) {
-                this.uiManager.updateFuel(-5 * (delta / 5000));
+                this.state.drainFuel(CONFIG.FUEL.DRAIN_PER_SEC * (delta / 1000));
             }
 
-            if (this.uiManager.fuel <= 0) {
+            // State tick (stars/chase countdown stay inert until wired in later)
+            this.state.tick(delta, { spotted: false });
+
+            if (this.state.fuel <= 0) {
                 this.handleGameOver("OUT OF FUEL!");
             }
+
+            // HUD snapshot
+            this.uiManager.update({
+                score: this.state.carried + this.state.banked,
+                fuel: this.state.fuel,
+                fuelMax: CONFIG.FUEL.MAX,
+            });
         }
     }
 
@@ -140,12 +153,12 @@ export class GameScene extends Phaser.Scene {
         if (item) {
             // Logic
             if (item.type === COLLECTIBLE_TYPES.MONEY) {
-                this.uiManager.updateScore(100);
+                this.state.pickupMoney();
                 if (this.policeCar) {
-                    this.policeCar.chaseTimer = 10000; // Chase for 10 seconds
+                    this.policeCar.chaseTimer = CONFIG.CHASE.LEGACY_CHASE_MS;
                 }
             } else if (item.type === COLLECTIBLE_TYPES.FUEL) {
-                this.uiManager.updateFuel(35);
+                this.state.addFuel(CONFIG.FUEL.PICKUP_AMOUNT);
             }
 
             this.mapManager.removeCollectible(item);

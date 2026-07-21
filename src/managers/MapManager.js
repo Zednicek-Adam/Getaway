@@ -15,7 +15,6 @@ export class MapManager {
         this.initializeGrid();
         this.generateProceduralMap();
         this.autoTileRoads();
-        this.spawnRandomCollectibles(15);
     }
 
     generateProceduralMap() {

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, DIRECTIONS } from '../constants';
+import { CONFIG } from '../config';
 
 export class Car {
     constructor(scene, gridX, gridY, mapManager, options = {}) {
@@ -26,7 +27,7 @@ export class Car {
         this.nextDirection = DIRECTIONS.RIGHT; // Buffered Input
         this.isMoving = false;
         this.moveConfig = {
-            duration: 300, // ms to cross one tile (Speed)
+            duration: CONFIG.PLAYER.MOVE_DURATION, // ms to cross one tile (Speed)
         };
         this.moveTimer = 0;
 

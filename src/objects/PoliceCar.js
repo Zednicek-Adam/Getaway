@@ -1,14 +1,16 @@
 import { Car } from './Car';
 import { DIRECTIONS } from '../constants';
+import { CONFIG } from '../config';
+import { findPath } from '../pathfinding';
 
 export class PoliceCar extends Car {
     constructor(scene, gridX, gridY, mapManager, target) {
         super(scene, gridX, gridY, mapManager, { textureKey: 'policeCar' });
         this.target = target; // The Player Car
 
-        // Slightly slower or faster? 
+        // Slightly slower or faster?
         // Let's make it same speed for now
-        this.moveConfig.duration = 350; // Slower than player (300)
+        this.moveConfig.duration = CONFIG.POLICE.LEGACY_DURATION; // Slower than player
 
         this.chaseTimer = 0; // Chase timer in ms
 
@@ -65,11 +67,15 @@ export class PoliceCar extends Car {
         let bestMove = null;
 
         if (this.chaseTimer > 0) {
-            const path = this.findPathAStar(this.gridX, this.gridY, this.target.gridX, this.target.gridY);
+            const path = findPath(
+                (x, y) => this.mapManager.isRoad(x, y),
+                this.gridX, this.gridY,
+                this.target.gridX, this.target.gridY
+            );
 
-            if (path && path.length > 1) {
-                const nextX = path[1].x;
-                const nextY = path[1].y;
+            if (path && path.length > 0) {
+                const nextX = path[0].x;
+                const nextY = path[0].y;
 
                 if (nextX > this.gridX) bestMove = DIRECTIONS.RIGHT;
                 else if (nextX < this.gridX) bestMove = DIRECTIONS.LEFT;
@@ -98,78 +104,6 @@ export class PoliceCar extends Car {
         if (bestMove !== null) {
             this.setBufferedInput(bestMove);
         }
-    }
-
-    findPathAStar(startX, startY, endX, endY) {
-        const openSet = [];
-        const closedSet = new Set();
-
-        const startNode = {
-            x: startX,
-            y: startY,
-            g: 0,
-            h: Math.abs(startX - endX) + Math.abs(startY - endY),
-            parent: null
-        };
-        startNode.f = startNode.g + startNode.h;
-
-        openSet.push(startNode);
-
-        let attempts = 0;
-
-        while (openSet.length > 0 && attempts < 1000) {
-            attempts++;
-            // Sort to get node with lowest f
-            openSet.sort((a, b) => a.f - b.f);
-            const current = openSet.shift();
-
-            if (current.x === endX && current.y === endY) {
-                const path = [];
-                let curr = current;
-                while (curr !== null) {
-                    path.push({ x: curr.x, y: curr.y });
-                    curr = curr.parent;
-                }
-                return path.reverse();
-            }
-
-            closedSet.add(`${current.x},${current.y}`);
-
-            const neighbors = [
-                { x: current.x, y: current.y - 1 },
-                { x: current.x, y: current.y + 1 },
-                { x: current.x - 1, y: current.y },
-                { x: current.x + 1, y: current.y }
-            ];
-
-            for (let n of neighbors) {
-                if (!this.mapManager.isRoad(n.x, n.y)) continue;
-
-                const neighborKey = `${n.x},${n.y}`;
-                if (closedSet.has(neighborKey)) continue;
-
-                const tentativeG = current.g + 1;
-
-                let neighborNode = openSet.find(node => node.x === n.x && node.y === n.y);
-                if (!neighborNode) {
-                    neighborNode = {
-                        x: n.x,
-                        y: n.y,
-                        parent: current,
-                        g: tentativeG,
-                        h: Math.abs(n.x - endX) + Math.abs(n.y - endY)
-                    };
-                    neighborNode.f = neighborNode.g + neighborNode.h;
-                    openSet.push(neighborNode);
-                } else if (tentativeG < neighborNode.g) {
-                    neighborNode.parent = current;
-                    neighborNode.g = tentativeG;
-                    neighborNode.f = neighborNode.g + neighborNode.h;
-                }
-            }
-        }
-
-        return null; // No path found
     }
 
     getValidMoves() {
