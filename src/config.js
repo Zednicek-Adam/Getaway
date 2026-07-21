@@ -61,9 +61,15 @@ export const CONFIG = {
             1: { units: { police: 1 }, duration: 380, ai: 'near' },
             2: { units: { police: 2 }, duration: 360, ai: 'near' },
             3: { units: { police: 3 }, duration: 340, ai: 'direct' },
-            4: { units: { police: 4 }, duration: 320, ai: 'intercept' },
-            5: { units: { police: 5 }, duration: 300, ai: 'intercept' },
+            4: { units: { police: 3, swat: 1 }, duration: 320, ai: 'intercept' },
+            5: { units: { police: 3, swat: 2 }, duration: 300, ai: 'intercept' },
         },
+    },
+
+    SWAT: {
+        MOVE_DURATION: 400,
+        HP: 2,
+        RAM_DAMAGE: 1,
     },
 
     DIAMOND_CAR: {

@@ -214,7 +214,7 @@ export class GameScene extends Phaser.Scene {
             if (unitsOnTile.length > 0) {
                 this.explodeAt(bomb.gridX, bomb.gridY);
                 for (const unit of unitsOnTile) {
-                    this.policeManager.destroyUnit(unit); // Queues an 8s respawn
+                    this.policeManager.damageUnit(unit, 1); // 1 hp; SWAT survives the first hit
                 }
                 this.state.onPoliceBombed(); // Once per detonation (+1 star, chase refresh)
             } else if (!expired) {
@@ -274,7 +274,7 @@ export class GameScene extends Phaser.Scene {
                 (u.gridX === r.gridX && u.gridY === r.gridY) ||
                 (u.isMoving && u.targetX === r.gridX && u.targetY === r.gridY));
             if (unit) {
-                this.policeManager.destroyUnit(unit); // WP4 swaps to damageUnit(unit, 1)
+                this.policeManager.damageUnit(unit, 1); // 1 hp; SWAT survives the first hit
                 this.explodeAt(r.gridX, r.gridY);
                 this.state.onPoliceBombed(); // +1 star, chase refresh (same as bombs)
                 r.destroy();

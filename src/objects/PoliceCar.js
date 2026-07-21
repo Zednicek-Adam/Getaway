@@ -4,8 +4,8 @@ import { CONFIG } from '../config';
 import { findPath } from '../pathfinding';
 
 export class PoliceCar extends Car {
-    constructor(scene, gridX, gridY, mapManager, target, manager = null) {
-        super(scene, gridX, gridY, mapManager, { textureKey: 'policeCar' });
+    constructor(scene, gridX, gridY, mapManager, target, manager = null, options = {}) {
+        super(scene, gridX, gridY, mapManager, { textureKey: 'policeCar', ...options });
         this.target = target;   // The Player Car
         this.manager = manager; // PoliceManager (null-safe: standalone = permanent roam)
 
@@ -21,6 +21,7 @@ export class PoliceCar extends Car {
         this.stunRemaining = 0;
         this.ramDamage = 1;
         this.unitType = 'police';
+        this.hp = 1; // regular police die to any single hit
     }
 
     update(time, delta) {

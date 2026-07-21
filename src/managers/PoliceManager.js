@@ -1,9 +1,12 @@
 import { CONFIG } from '../config';
 import { PoliceCar } from '../objects/PoliceCar';
+import { SwatVan } from '../objects/SwatVan';
 
-// Owns the police fleet: reconciles unit count and speed to the star table
-// each frame, tracks the player's last-known position, and handles despawns
-// and (WP5) bombed-unit respawns.
+const UNIT_TYPES = ['police', 'swat'];
+
+// Owns the mixed police fleet (regular cars + SWAT vans): reconciles per-type
+// unit count and speed to the star table each frame, tracks the player's
+// last-known position, and handles despawns and bombed-unit respawns.
 export class PoliceManager {
     constructor(scene, mapManager, state, playerCar) {
         this.scene = scene;
@@ -11,26 +14,32 @@ export class PoliceManager {
         this.state = state;
         this.playerCar = playerCar;
 
-        this.units = [];           // PoliceCar instances
-        this.pendingRespawns = []; // scene.time.now timestamps (bombed units, WP5)
+        this.units = [];           // PoliceCar / SwatVan instances
+        this.pendingRespawns = []; // { time, type } — destroyed units awaiting replacement
         this.lastKnown = null;     // { x, y } — where the player was last seen
     }
 
     update(time, delta) {
-        // (a) Reconcile fleet size to the star table
-        const target = this.targetCount();
-        while (this.units.length < target) {
-            this.spawnUnit();
-        }
-        if (this.units.length > target) {
-            this.despawnFarthest(this.units.length - target);
+        // (a) Reconcile fleet size per unit type to the star table
+        for (const type of UNIT_TYPES) {
+            const target = this.targetCount(type);
+            while (this.countOf(type) < target) {
+                this.spawnUnit(type);
+            }
+            const surplus = this.countOf(type) - target;
+            if (surplus > 0) {
+                this.despawnFarthest(surplus, type);
+            }
         }
 
-        // (b) Per-star speed applies to every unit, mid-move included
-        // (Car.update clamps t at 1, so a shortened duration is safe)
+        // (b) Per-star speed applies to regular police only, mid-move included
+        // (Car.update clamps t at 1, so a shortened duration is safe). SWAT
+        // vans keep their constructor-set duration permanently.
         const duration = CONFIG.POLICE.BY_STARS[this.state.stars].duration;
         for (const unit of this.units) {
-            unit.moveConfig.duration = duration;
+            if (unit.unitType === 'police') {
+                unit.moveConfig.duration = duration;
+            }
         }
 
         // (c) Drive the units
@@ -43,38 +52,48 @@ export class PoliceManager {
             this.lastKnown = { x: this.playerCar.gridX, y: this.playerCar.gridY };
         }
 
-        // (e) Queued respawns whose time arrived (skip when the fleet is full)
-        while (this.pendingRespawns.length > 0 && this.pendingRespawns[0] <= time) {
-            this.pendingRespawns.shift();
-            if (this.units.length < this.targetCount()) {
-                this.spawnUnit();
+        // (e) Queued respawns whose time arrived (skip when that type is full).
+        // Entries are pushed in time order, so the head is always the earliest.
+        while (this.pendingRespawns.length > 0 && this.pendingRespawns[0].time <= time) {
+            const entry = this.pendingRespawns.shift();
+            if (this.countOf(entry.type) < this.targetCount(entry.type)) {
+                this.spawnUnit(entry.type);
             }
         }
     }
 
-    targetCount() {
-        return CONFIG.POLICE.BY_STARS[this.state.stars].units.police;
+    targetCount(type) {
+        return CONFIG.POLICE.BY_STARS[this.state.stars].units[type] || 0;
     }
 
-    spawnUnit() {
+    countOf(type) {
+        return this.units.filter(u => u.unitType === type).length;
+    }
+
+    spawnUnit(type) {
         const spawn = this.mapManager.getSpawnPointAwayFrom(
             this.playerCar.gridX, this.playerCar.gridY, CONFIG.POLICE.SPAWN_MIN_DIST);
 
-        const unit = new PoliceCar(this.scene, spawn.x, spawn.y, this.mapManager, this.playerCar, this);
+        const unit = type === 'swat'
+            ? new SwatVan(this.scene, spawn.x, spawn.y, this.mapManager, this.playerCar, this)
+            : new PoliceCar(this.scene, spawn.x, spawn.y, this.mapManager, this.playerCar, this);
         unit.faceAnyOpenDirection();
         this.units.push(unit);
         return unit;
     }
 
-    // Remove the n units farthest from the player; units within the spot
-    // radius never vanish in view (deferred — retried next frame naturally)
-    despawnFarthest(n) {
+    // Remove the n units of the given type farthest from the player; units
+    // within the spot radius never vanish in view (deferred — retried next
+    // frame naturally)
+    despawnFarthest(n, type) {
         const px = this.playerCar.gridX;
         const py = this.playerCar.gridY;
         const manhattan = (u) => Math.abs(u.gridX - px) + Math.abs(u.gridY - py);
 
-        const byDistanceDesc = [...this.units].sort((a, b) => manhattan(b) - manhattan(a));
-        for (const unit of byDistanceDesc) {
+        const candidates = this.units
+            .filter(u => u.unitType === type)
+            .sort((a, b) => manhattan(b) - manhattan(a));
+        for (const unit of candidates) {
             if (n <= 0) break;
             if (manhattan(unit) <= CONFIG.CHASE.SPOT_RADIUS) continue;
             this.removeUnit(unit);
@@ -82,10 +101,24 @@ export class PoliceManager {
         }
     }
 
-    // WP5: bombed unit — remove immediately, queue a delayed replacement
+    // Bombed/rocketed unit — remove immediately, queue a typed replacement
     destroyUnit(unit) {
         this.removeUnit(unit);
-        this.pendingRespawns.push(this.scene.time.now + CONFIG.POLICE.RESPAWN_AFTER_BOMB_MS);
+        this.pendingRespawns.push({
+            time: this.scene.time.now + CONFIG.POLICE.RESPAWN_AFTER_BOMB_MS,
+            type: unit.unitType,
+        });
+    }
+
+    // Apply damage; destroy at 0 hp (returns true), otherwise stun the survivor
+    damageUnit(unit, amount) {
+        unit.hp -= amount;
+        if (unit.hp <= 0) {
+            this.destroyUnit(unit);
+            return true; // destroyed
+        }
+        unit.stun(CONFIG.DAMAGE.POLICE_STUN_MS); // survivor reels
+        return false;
     }
 
     removeUnit(unit) {
