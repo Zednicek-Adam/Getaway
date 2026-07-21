@@ -5,15 +5,13 @@ import { findPath } from '../pathfinding';
 import { isOpposite } from '../turnQueue';
 
 export class PoliceCar extends Car {
-    constructor(scene, gridX, gridY, mapManager, target) {
+    constructor(scene, gridX, gridY, mapManager, target, manager = null) {
         super(scene, gridX, gridY, mapManager, { textureKey: 'policeCar' });
-        this.target = target; // The Player Car
+        this.target = target;   // The Player Car
+        this.manager = manager; // PoliceManager (null-safe: standalone = permanent roam)
 
-        // Slightly slower or faster?
-        // Let's make it same speed for now
-        this.moveConfig.duration = CONFIG.POLICE.LEGACY_DURATION; // Slower than player
-
-        this.chaseTimer = 0; // Chase timer in ms
+        // Baseline speed; PoliceManager re-applies the per-star duration each frame
+        this.moveConfig.duration = CONFIG.POLICE.BY_STARS[0].duration;
 
         // Siren animation (policeblue.png is a 4x2 sheet)
         this.sirenOn = false;
@@ -21,12 +19,21 @@ export class PoliceCar extends Car {
         this.sirenBlinkInterval = 150; // ms
     }
 
-    // Override update to handle chase timer
     update(time, delta) {
-        if (this.chaseTimer > 0) {
-            this.chaseTimer -= delta;
-            if (this.chaseTimer < 0) this.chaseTimer = 0;
+        this.updateSiren(delta);
 
+        super.update(time, delta);
+
+        // Keep siren updating even if not moving
+        this.applyDirectionFrame();
+    }
+
+    isChaseActive() {
+        return !!this.manager && this.manager.state.isChasing();
+    }
+
+    updateSiren(delta) {
+        if (this.isChaseActive()) {
             this.sirenBlinkTimer += delta;
             if (this.sirenBlinkTimer >= this.sirenBlinkInterval) {
                 this.sirenBlinkTimer = 0;
@@ -36,11 +43,6 @@ export class PoliceCar extends Car {
             this.sirenOn = false;
             this.sirenBlinkTimer = 0;
         }
-
-        super.update(time, delta);
-
-        // Keep siren updating even if not moving
-        this.applyDirectionFrame();
     }
 
     getFrameForDirection(direction) {
@@ -58,53 +60,106 @@ export class PoliceCar extends Car {
     }
 
     decideNextMove() {
-        // Simple Chaser Logic
-        // 1. Get valid directions from current tile
         const validMoves = this.getValidMoves();
-
         if (validMoves.length === 0) return; // Stuck?
 
-        // 2. Pick best move towards target or random if not chasing
+        const mode = this.isChaseActive()
+            ? CONFIG.POLICE.BY_STARS[this.manager.state.stars].ai
+            : 'roam';
+
         let bestMove = null;
-
-        if (this.chaseTimer > 0) {
-            const path = findPath(
-                (x, y) => this.mapManager.isRoad(x, y),
-                this.gridX, this.gridY,
-                this.target.gridX, this.target.gridY
-            );
-
-            if (path && path.length > 0) {
-                const nextX = path[0].x;
-                const nextY = path[0].y;
-
-                if (nextX > this.gridX) bestMove = DIRECTIONS.RIGHT;
-                else if (nextX < this.gridX) bestMove = DIRECTIONS.LEFT;
-                else if (nextY > this.gridY) bestMove = DIRECTIONS.DOWN;
-                else if (nextY < this.gridY) bestMove = DIRECTIONS.UP;
-            } else {
-                // Fallback to random if no path found
-                const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
-                if (forwardMoves.length > 0) {
-                    bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
-                } else {
-                    bestMove = validMoves[Math.floor(Math.random() * validMoves.length)];
-                }
+        if (mode !== 'roam') {
+            const goal = this.pickChaseGoal(mode);
+            if (goal) {
+                bestMove = this.stepTowards(goal.x, goal.y);
             }
-        } else {
-            // Random movement when not chasing
-            // Try not to U-turn unless it's a dead end
-            const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
-            if (forwardMoves.length > 0) {
-                bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
-            } else {
-                bestMove = validMoves[Math.floor(Math.random() * validMoves.length)]; // Dead end
-            }
+        }
+
+        // No goal or no path — fall back to roaming
+        if (bestMove === null) {
+            bestMove = this.pickRoamMove(validMoves);
         }
 
         if (bestMove !== null) {
             this.setBufferedInput(bestMove);
         }
+    }
+
+    // Chase target tile for the current AI mode; null means roam instead
+    pickChaseGoal(mode) {
+        const player = this.target;
+
+        if (mode === 'direct') {
+            return { x: player.gridX, y: player.gridY };
+        }
+
+        if (mode === 'intercept') {
+            return this.projectInterceptTile();
+        }
+
+        if (mode === 'near') {
+            const dist = Math.abs(player.gridX - this.gridX) + Math.abs(player.gridY - this.gridY);
+            if (dist <= CONFIG.POLICE.AWARE_RADIUS) {
+                return { x: player.gridX, y: player.gridY };
+            }
+            const lastKnown = this.manager?.lastKnown;
+            if (lastKnown && !(lastKnown.x === this.gridX && lastKnown.y === this.gridY)) {
+                return lastKnown;
+            }
+            return null; // Already at last-known (or none) — roam
+        }
+
+        return null;
+    }
+
+    // Player position projected forward along their facing, walking tile by
+    // tile and stopping at the last road tile (falls back to the player tile)
+    projectInterceptTile() {
+        const player = this.target;
+
+        let dx = 0;
+        let dy = 0;
+        switch (player.direction) {
+            case DIRECTIONS.UP: dy = -1; break;
+            case DIRECTIONS.DOWN: dy = 1; break;
+            case DIRECTIONS.LEFT: dx = -1; break;
+            case DIRECTIONS.RIGHT: dx = 1; break;
+        }
+
+        let x = player.gridX;
+        let y = player.gridY;
+        for (let i = 0; i < CONFIG.POLICE.INTERCEPT_LOOKAHEAD; i++) {
+            if (!this.mapManager.isRoad(x + dx, y + dy)) break;
+            x += dx;
+            y += dy;
+        }
+        return { x, y };
+    }
+
+    // First step of the A* path towards (goalX, goalY); null when unreachable
+    stepTowards(goalX, goalY) {
+        const path = findPath(
+            (x, y) => this.mapManager.isRoad(x, y),
+            this.gridX, this.gridY,
+            goalX, goalY
+        );
+        if (!path || path.length === 0) return null;
+
+        const next = path[0];
+        if (next.x > this.gridX) return DIRECTIONS.RIGHT;
+        if (next.x < this.gridX) return DIRECTIONS.LEFT;
+        if (next.y > this.gridY) return DIRECTIONS.DOWN;
+        if (next.y < this.gridY) return DIRECTIONS.UP;
+        return null;
+    }
+
+    // Random movement; try not to U-turn unless it's a dead end
+    pickRoamMove(validMoves) {
+        const forwardMoves = validMoves.filter(m => !isOpposite(m, this.direction));
+        if (forwardMoves.length > 0) {
+            return forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
+        }
+        return validMoves[Math.floor(Math.random() * validMoves.length)]; // Dead end
     }
 
     getValidMoves() {

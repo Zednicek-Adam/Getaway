@@ -12,16 +12,19 @@ export class UIManager {
         this.lastFuel = null;
         this.lastBombs = null;
         this.lastQueueKey = null;
+        this.lastStars = null;
+        this.lastChaseActive = null;
+        this.lastChaseWidth = null;
 
         // UI Panel Background
-        this.panel = this.scene.add.rectangle(10, 10, 260, 180, 0x1a1a1a, 0.8)
+        this.panel = this.scene.add.rectangle(10, 10, 260, 230, 0x1a1a1a, 0.8)
             .setOrigin(0)
             .setStrokeStyle(4, 0xB22222)
             .setDepth(99)
             .setScrollFactor(0);
 
         // Striped pattern for panel background (simulated using small lines)
-        for (let i = 10; i < 190; i += 20) {
+        for (let i = 10; i < 240; i += 20) {
             this.scene.add.rectangle(10, i, 260, 5, 0x000000, 0.4)
                 .setOrigin(0)
                 .setDepth(99)
@@ -130,10 +133,41 @@ export class UIManager {
                 .setAlpha(0.12);
             this.queueArrows.push(arrow);
         }
+
+        // Wanted stars — filled gold while active, dark gray otherwise
+        this.starShapes = [];
+        for (let i = 0; i < 5; i++) {
+            const star = this.scene.add.star(40 + i * 28, 192, 5, 5, 11, 0x555555)
+                .setStrokeStyle(2, 0x000000)
+                .setDepth(100)
+                .setScrollFactor(0)
+                .setAlpha(0.35);
+            this.starShapes.push(star);
+        }
+
+        // Chase countdown bar (hidden while no chase is running)
+        this.chaseBarX = 25;
+        this.chaseBarY = 210;
+        this.chaseBarWidth = 230;
+        this.chaseBarHeight = 10;
+
+        this.chaseBarBg = this.scene.add.rectangle(this.chaseBarX, this.chaseBarY, this.chaseBarWidth, this.chaseBarHeight, 0x333333)
+            .setOrigin(0, 0)
+            .setStrokeStyle(2, 0x000000)
+            .setDepth(100)
+            .setScrollFactor(0)
+            .setVisible(false);
+
+        this.chaseBarFill = this.scene.add.rectangle(this.chaseBarX, this.chaseBarY, this.chaseBarWidth, this.chaseBarHeight, 0xFF2222)
+            .setOrigin(0, 0)
+            .setDepth(101)
+            .setScrollFactor(0)
+            .setVisible(false);
     }
 
     // Pure renderer: called every frame with a HUD snapshot
-    // { banked, carried, lives, fuel, fuelMax, bombs, queue }
+    // { banked, carried, lives, fuel, fuelMax, bombs, queue,
+    //   stars, chaseCountdown, chaseCountdownMax }
     update(hud) {
         if (hud.banked !== this.lastBanked) {
             this.lastBanked = hud.banked;
@@ -167,6 +201,40 @@ export class UIManager {
         if (queueKey !== this.lastQueueKey) {
             this.lastQueueKey = queueKey;
             this.renderQueue(queue);
+        }
+
+        if (hud.stars !== this.lastStars) {
+            this.lastStars = hud.stars;
+            this.renderStars(hud.stars);
+        }
+
+        this.renderChaseBar(hud.chaseCountdown, hud.chaseCountdownMax);
+    }
+
+    renderStars(stars) {
+        this.starShapes.forEach((shape, i) => {
+            if (i < stars) {
+                shape.setFillStyle(0xFFD700).setAlpha(1);
+            } else {
+                shape.setFillStyle(0x555555).setAlpha(0.35);
+            }
+        });
+    }
+
+    renderChaseBar(countdown, countdownMax) {
+        const active = countdown > 0;
+        if (active !== this.lastChaseActive) {
+            this.lastChaseActive = active;
+            this.chaseBarBg.setVisible(active);
+            this.chaseBarFill.setVisible(active);
+        }
+        if (!active) return;
+
+        const fraction = Math.max(0, Math.min(1, countdown / countdownMax));
+        const width = fraction * this.chaseBarWidth;
+        if (width !== this.lastChaseWidth) {
+            this.lastChaseWidth = width;
+            this.chaseBarFill.setSize(width, this.chaseBarHeight);
         }
     }
 

@@ -162,6 +162,31 @@ export class MapManager {
         return { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
     }
 
+    // Random reachable road tile at least minDist Manhattan from (x, y).
+    // Bounded retries per round, then the distance requirement relaxes so a
+    // point is always found on small maps. Pass a precomputed reachable set
+    // to skip the BFS.
+    getSpawnPointAwayFrom(x, y, minDist, reachable = null) {
+        let reach = reachable || this.computeReachable(x, y);
+        if (reach.size === 0) {
+            // (x, y) isn't road — fall back to the player spawn's road network
+            reach = this.computeReachable(this.playerSpawnPoint.x, this.playerSpawnPoint.y);
+        }
+
+        for (let dist = minDist; dist >= 0; dist -= 3) {
+            for (let i = 0; i < 30; i++) {
+                const point = this.getRandomSpawnPoint();
+                if (Math.abs(point.x - x) + Math.abs(point.y - y) >= dist &&
+                    reach.has(`${point.x},${point.y}`)) {
+                    return point;
+                }
+            }
+        }
+
+        // Absolute fallback (unreachable-island edge case)
+        return this.getRandomSpawnPoint();
+    }
+
     // BFS flood-fill over road tiles; returns a Set of "x,y" keys.
     computeReachable(fromX, fromY) {
         const reachable = new Set();

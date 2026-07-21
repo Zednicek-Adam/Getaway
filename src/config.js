@@ -32,7 +32,6 @@ export const CONFIG = {
     },
 
     CHASE: {
-        LEGACY_CHASE_MS: 10000,  // pre-star-system fixed chase duration
         COUNTDOWN_MS: 20000,     // chase countdown once stars are active
         SPOT_RADIUS: 6,          // tiles within which police "spot" the player
         SPOTTED_FLOOR: 0.25,     // countdown can't drop below this fraction while spotted
@@ -41,8 +40,10 @@ export const CONFIG = {
     },
 
     POLICE: {
-        LEGACY_DURATION: 350,    // ms per tile (pre-star-system speed)
         SPAWN_MIN_DIST: 15,      // Manhattan distance from player
+        AWARE_RADIUS: 10,        // 'near' AI chases the live player inside this range
+        INTERCEPT_LOOKAHEAD: 3,  // 'intercept' AI aims this many tiles ahead of the player
+        RESPAWN_AFTER_BOMB_MS: 8000, // delay before a bombed unit is replaced
         BY_STARS: {
             0: { units: { police: 0 }, duration: 380, ai: 'roam' },
             1: { units: { police: 1 }, duration: 380, ai: 'near' },

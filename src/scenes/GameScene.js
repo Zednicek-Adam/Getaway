@@ -5,7 +5,7 @@ import { Car } from '../objects/Car';
 import { InputManager } from '../managers/InputManager';
 import { UIManager } from '../managers/UIManager';
 import { COLLECTIBLE_TYPES } from '../objects/Collectible';
-import { PoliceCar } from '../objects/PoliceCar';
+import { PoliceManager } from '../managers/PoliceManager';
 import { CONFIG } from '../config';
 import { GameState } from '../GameState';
 
@@ -52,16 +52,9 @@ export class GameScene extends Phaser.Scene {
         this.playerCar.waitingForInput = true; // Don't auto-move until player presses a key
         this.playerCar.updatePosition(0);
 
-        // Police Spawn
-        let policeSpawn = this.mapManager.getRandomSpawnPoint();
-        let attempts = 0;
-        // Ensure not on top of player
-        while (policeSpawn.x === spawnPoint.x && policeSpawn.y === spawnPoint.y && attempts < 100) {
-            policeSpawn = this.mapManager.getRandomSpawnPoint();
-            attempts++;
-        }
-        this.policeCar = new PoliceCar(this, policeSpawn.x, policeSpawn.y, this.mapManager, this.playerCar);
-        this.setInitialDirection(this.policeCar);
+        // Police fleet — 0 units at 0 stars; the manager reconciles the
+        // count/speed/AI to the star table every frame
+        this.policeManager = new PoliceManager(this, this.mapManager, this.state, this.playerCar);
 
         this.mapManager.spawnRandomCollectibles(CONFIG.COLLECTIBLES.INITIAL_COUNT);
 
@@ -79,15 +72,6 @@ export class GameScene extends Phaser.Scene {
         this.gameOver = false;
     }
 
-    setInitialDirection(car) {
-        if (this.mapManager.isRoad(car.gridX + 1, car.gridY)) car.direction = DIRECTIONS.RIGHT;
-        else if (this.mapManager.isRoad(car.gridX - 1, car.gridY)) car.direction = DIRECTIONS.LEFT;
-        else if (this.mapManager.isRoad(car.gridX, car.gridY + 1)) car.direction = DIRECTIONS.DOWN;
-        else if (this.mapManager.isRoad(car.gridX, car.gridY - 1)) car.direction = DIRECTIONS.UP;
-
-        car.updatePosition(0); // Refresh visual rotation
-    }
-
     update(time, delta) {
         if (this.gameOver) return;
         if (!this.playerCar) return;
@@ -98,18 +82,15 @@ export class GameScene extends Phaser.Scene {
             this.playerCar.enqueueTurn(dir);
         }
         this.playerCar.update(time, delta);
-        if (this.policeCar) {
-            this.policeCar.update(time, delta);
-        }
+        this.policeManager.update(time, delta);
 
         // (b) Deposit — ordered before the catch check so a catch on the base
         // pad banks the carried money first
         if (this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY) && this.state.carried > 0) {
             const amount = this.state.deposit();
             this.uiManager.showToast(`+$${amount} BANKED`);
-            if (this.policeCar) {
-                this.policeCar.chaseTimer = 0; // Legacy chase ends on deposit
-            }
+            // deposit() zeroed the countdown — stars decay via tick() and the
+            // manager thins the fleet as they drop
             this.pulseBaseMarker();
         }
 
@@ -120,8 +101,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         // (d) Catch check (same tile or swap-through), skipped while invulnerable
-        if (this.policeCar && !this.state.isInvulnerable() &&
-            this.carsCollide(this.playerCar, this.policeCar)) {
+        if (!this.state.isInvulnerable() &&
+            this.policeManager.getCollidingUnit(this.carsCollide.bind(this), this.playerCar)) {
             this.handleCaught();
             if (this.gameOver) return;
         }
@@ -133,7 +114,7 @@ export class GameScene extends Phaser.Scene {
         if (this.playerCar.isMoving) {
             this.state.drainFuel(CONFIG.FUEL.DRAIN_PER_SEC * (delta / 1000));
         }
-        this.state.tick(delta, { spotted: false });
+        this.state.tick(delta, { spotted: this.policeManager.isPlayerSpotted() });
         if (this.state.fuel <= 0) {
             this.handleGameOver("OUT OF FUEL!");
             return;
@@ -148,6 +129,9 @@ export class GameScene extends Phaser.Scene {
             fuelMax: CONFIG.FUEL.MAX,
             bombs: this.state.bombs,
             queue: this.playerCar.turnQueue.toArray(),
+            stars: this.state.stars,
+            chaseCountdown: this.state.chaseCountdown,
+            chaseCountdownMax: CONFIG.CHASE.COUNTDOWN_MS,
         });
     }
 
@@ -169,7 +153,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.respawnPlayerAtBase();
-        this.respawnPoliceFar();
+        // onCaught() reset stars to 0 — the fleet stays empty until the next pickup
+        this.policeManager.despawnAll();
         this.blinkPlayerDuringInvuln();
     }
 
@@ -189,29 +174,6 @@ export class GameScene extends Phaser.Scene {
         car.updatePosition(0);
 
         this.state.addFuel(CONFIG.FUEL.MAX); // Full tank on respawn (clamped)
-    }
-
-    respawnPoliceFar() {
-        if (!this.policeCar) return;
-
-        let spawn = this.mapManager.getRandomSpawnPoint();
-        let attempts = 0;
-        while (attempts < 50 &&
-            Math.abs(spawn.x - this.playerCar.gridX) + Math.abs(spawn.y - this.playerCar.gridY) < CONFIG.POLICE.SPAWN_MIN_DIST) {
-            spawn = this.mapManager.getRandomSpawnPoint();
-            attempts++;
-        }
-
-        const police = this.policeCar;
-        police.gridX = spawn.x;
-        police.gridY = spawn.y;
-        police.targetX = spawn.x;
-        police.targetY = spawn.y;
-        police.isMoving = false;
-        police.moveTimer = 0;
-        police.turnQueue.clear();
-        police.chaseTimer = 0;
-        this.setInitialDirection(police);
     }
 
     blinkPlayerDuringInvuln() {
@@ -261,10 +223,8 @@ export class GameScene extends Phaser.Scene {
         if (!item) return;
 
         if (item.type === COLLECTIBLE_TYPES.MONEY) {
-            this.state.pickupMoney();
-            if (this.policeCar) {
-                this.policeCar.chaseTimer = CONFIG.CHASE.LEGACY_CHASE_MS;
-            }
+            this.state.pickupMoney(); // Refreshes the chase countdown
+            this.policeManager.onChaseEvent();
         } else if (item.type === COLLECTIBLE_TYPES.BOMB) {
             // Inventory full — leave the bomb on the road (WP5 wires laying/exploding)
             if (!this.state.pickupBomb()) return;

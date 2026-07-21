@@ -183,6 +183,18 @@ export class Car {
         }
     }
 
+    // Face the first open road direction (used right after spawning)
+    faceAnyOpenDirection() {
+        const order = [DIRECTIONS.RIGHT, DIRECTIONS.LEFT, DIRECTIONS.DOWN, DIRECTIONS.UP];
+        for (const dir of order) {
+            if (this.canMove(dir)) {
+                this.direction = dir;
+                break;
+            }
+        }
+        this.updatePosition(0); // Refresh visual frame
+    }
+
     performUturn(newDir) {
         if (this.isMoving) {
             // Flip logic

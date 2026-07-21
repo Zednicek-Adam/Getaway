@@ -37,6 +37,13 @@ describe('GameState', () => {
             state.addStars(4);
             expect(state.stars).toBe(5);
         });
+
+        it('pickupMoney at high heat caps stars at 5', () => {
+            const state = new GameState();
+            state.heat = 100; // Way past the top threshold
+            state.pickupMoney();
+            expect(state.stars).toBe(5);
+        });
     });
 
     describe('deposit', () => {
@@ -91,6 +98,19 @@ describe('GameState', () => {
 
             state.tick(CONFIG.CHASE.STAR_DECAY_MS);
             expect(state.stars).toBe(0);
+        });
+
+        it('stops decaying at 0 stars', () => {
+            const state = new GameState();
+            state.addStars(1);
+
+            state.tick(CONFIG.CHASE.STAR_DECAY_MS * 10);
+            expect(state.stars).toBe(0);
+            expect(state.heat).toBe(0);
+
+            state.tick(CONFIG.CHASE.STAR_DECAY_MS * 10);
+            expect(state.stars).toBe(0);
+            expect(state.starDecayTimer).toBe(0);
         });
 
         it('does not decay stars while the chase countdown is running', () => {
