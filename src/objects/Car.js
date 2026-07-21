@@ -27,6 +27,7 @@ export class Car {
         this.direction = DIRECTIONS.RIGHT;
         this.turnQueue = new TurnQueue(CONFIG.PLAYER.QUEUE_MAX); // Buffered turns (FIFO)
         this.isMoving = false;
+        this.halted = false; // Player brake toggle (stop to refuel / wait)
         this.moveConfig = {
             duration: CONFIG.PLAYER.MOVE_DURATION, // ms to cross one tile (Speed)
         };
@@ -96,25 +97,45 @@ export class Car {
 
     tryMove() {
         // Logic:
-        // 1. Is there a queued turn? If it's legal here, take it (consume it).
-        // 2. Else, CAN we go straight? The queued turn is KEPT and retried
-        //    at every subsequent tile until legal or cancelled.
-        // 3. Else, Stop (blocked/dead-end: the car waits; the player can
-        //    queue a valid direction or U-turn out).
+        // 1. A queued turn fires as soon as it's legal (consume it).
+        // 2. If it isn't legal here AND this is a decision point (a turn was
+        //    possible, or we can't continue straight), the queued turn is
+        //    STALE — drop it so the buffer never sticks, and try the next one.
+        // 3. On a plain straight corridor the turn is KEPT for the next junction.
+        // 4. Otherwise go straight; if that's blocked too, stop.
 
-        // Don't auto-move if waiting for player's first input
-        if (this.waitingForInput) return;
+        // Don't auto-move if waiting for first input, or braked by the player
+        if (this.waitingForInput || this.halted) return;
 
-        const front = this.turnQueue.peek();
-        if (front !== undefined && this.canMove(front)) {
-            this.startMove(front);
-            this.turnQueue.shift(); // Turn Consumed
-            return;
+        while (this.turnQueue.length > 0) {
+            const front = this.turnQueue.peek();
+            if (this.canMove(front)) {
+                this.turnQueue.shift(); // Turn consumed
+                this.startMove(front);
+                return;
+            }
+
+            // Front turn isn't possible here. Drop it if we're at a genuine
+            // decision point (some other turn exists, or straight is blocked);
+            // keep it on a corridor so an early press survives to the junction.
+            const atDecisionPoint = this.hasTurnOption() || !this.canMove(this.direction);
+            if (atDecisionPoint) {
+                this.turnQueue.shift(); // Stale — discard and re-evaluate
+                continue;
+            }
+            break; // Corridor — keep the queued turn, continue straight
         }
 
         if (this.canMove(this.direction)) {
-            this.startMove(this.direction); // Queue untouched — front retried at next tile
+            this.startMove(this.direction);
         }
+    }
+
+    // True when the car could turn onto a road other than straight-ahead or
+    // its reverse — i.e. it's sitting on a real intersection / forced bend.
+    hasTurnOption() {
+        return this.getValidMoves().some(
+            (d) => d !== this.direction && !isOpposite(d, this.direction));
     }
 
     canMove(dir) {
@@ -154,10 +175,11 @@ export class Car {
     // Player input path: queue the turn (or U-turn immediately when the
     // queue is empty and the press opposes the direction of travel)
     enqueueTurn(dir) {
-        // First input clears the initial wait state
+        // First input clears the initial wait state; steering also releases the brake
         if (this.waitingForInput) {
             this.waitingForInput = false;
         }
+        this.halted = false;
 
         if (this.turnQueue.length === 0 && isOpposite(dir, this.direction)) {
             this.performUturn(dir);

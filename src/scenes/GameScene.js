@@ -92,6 +92,10 @@ export class GameScene extends Phaser.Scene {
         if (this.inputManager.consumeBombPress()) {
             this.tryDropBomb();
         }
+        if (this.inputManager.consumeStopToggle()) {
+            // Brake toggle — stop to refuel at a station, or wait; steering resumes
+            this.playerCar.halted = !this.playerCar.halted;
+        }
         this.playerCar.update(time, delta);
         this.policeManager.update(time, delta);
         if (this.diamondCar) {
@@ -120,8 +124,10 @@ export class GameScene extends Phaser.Scene {
             this.collectDiamondCar();
         }
 
-        // (e) Catch check (same tile or swap-through), skipped while invulnerable
-        if (!this.state.isInvulnerable() &&
+        // (e) Catch check (same tile or swap-through). Skipped while invulnerable
+        // or while parked on the base pad — the safehouse is a safe zone.
+        const atSafehouse = this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY);
+        if (!this.state.isInvulnerable() && !atSafehouse &&
             this.policeManager.getCollidingUnit(this.carsCollide.bind(this), this.playerCar)) {
             this.handleCaught();
             if (this.gameOver) return;
@@ -299,6 +305,7 @@ export class GameScene extends Phaser.Scene {
         car.moveTimer = 0;
         car.direction = DIRECTIONS.UP;
         car.turnQueue.clear();
+        car.halted = false;
         car.waitingForInput = true;
         car.updatePosition(0);
 
