@@ -14,8 +14,7 @@ export class Collectible {
         this.gridX = gridX;
         this.gridY = gridY;
 
-        this.visual = this.scene.add.graphics();
-        this.render();
+        this.visual = this.createVisual();
 
         // Position visual
         this.visual.x = gridX * TILE_SIZE + TILE_SIZE / 2;
@@ -32,36 +31,35 @@ export class Collectible {
         });
     }
 
-    render() {
-        this.visual.clear();
-
-        let color = 0xFFFFFF;
-        let radius = TILE_SIZE * 0.25;
-
-        switch (this.type) {
-            case COLLECTIBLE_TYPES.MONEY:
-                color = COLORS.MONEY;
-                break;
-            case COLLECTIBLE_TYPES.FUEL:
-                color = COLORS.FUEL;
-                break;
-            case COLLECTIBLE_TYPES.BOMB:
-                color = COLORS.BOMB;
-                break;
+    createVisual() {
+        // Money reads as a "$" symbol rather than a coin blob
+        if (this.type === COLLECTIBLE_TYPES.MONEY) {
+            return this.scene.add.text(0, 0, '$', {
+                fontFamily: '"Press Start 2P"',
+                fontSize: '26px',
+                color: '#FFD700',
+                stroke: '#000000',
+                strokeThickness: 5,
+            }).setOrigin(0.5);
         }
 
-        this.visual.fillStyle(color, 1);
-        this.visual.fillCircle(0, 0, radius);
+        // Other collectibles stay as coloured circles
+        const g = this.scene.add.graphics();
+        const radius = TILE_SIZE * 0.25;
+        const color = this.type === COLLECTIBLE_TYPES.FUEL ? COLORS.FUEL : COLORS.BOMB;
 
-        // Outline
-        this.visual.lineStyle(2, 0xFFFFFF, 0.8);
-        this.visual.strokeCircle(0, 0, radius);
+        g.fillStyle(color, 1);
+        g.fillCircle(0, 0, radius);
+        g.lineStyle(2, 0xFFFFFF, 0.8);
+        g.strokeCircle(0, 0, radius);
 
         // Small white fuse dot so bombs read as bombs
         if (this.type === COLLECTIBLE_TYPES.BOMB) {
-            this.visual.fillStyle(0xFFFFFF, 1);
-            this.visual.fillCircle(radius * 0.4, -radius * 0.7, 3);
+            g.fillStyle(0xFFFFFF, 1);
+            g.fillCircle(radius * 0.4, -radius * 0.7, 3);
         }
+
+        return g;
     }
 
     destroy() {
