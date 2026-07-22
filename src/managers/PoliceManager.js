@@ -236,6 +236,9 @@ export class PoliceManager {
         if (this.mapManager.getCollectibleAt(x, y)) return;            // don't bury a pickup
         if (x === player.gridX && y === player.gridY) return;          // player's current tile
         if (x === player.targetX && y === player.targetY) return;      // player's target tile
+        // Never bury a laid bomb — it could never detonate (cops route around
+        // blocked tiles, so nothing would ever trigger its collision).
+        if ((this.scene.bombs || []).some(b => b.gridX === x && b.gridY === y)) return;
 
         this.mapManager.setBlocked(x, y, true);
         this.roadblocks.push(new Roadblock(this.scene, x, y));

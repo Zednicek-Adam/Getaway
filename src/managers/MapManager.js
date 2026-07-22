@@ -3,6 +3,12 @@ import { Collectible, pickCollectibleType } from '../objects/Collectible';
 import { NetworkGenerator } from '../generators/NetworkGenerator';
 import { CONFIG } from '../config';
 
+// Inclusive integer in [min, max] — replaces Phaser.Math.Between so this
+// module stays importable in plain node (tests import it directly).
+function randomIntBetween(min, max) {
+    return min + Math.floor(Math.random() * (max - min + 1));
+}
+
 export class MapManager {
     constructor(scene, width, height) {
         this.scene = scene;
@@ -144,8 +150,8 @@ export class MapManager {
     getRandomSpawnPoint() {
         // 1. Try Random Sampling
         for (let i = 0; i < 500; i++) {
-            const x = Phaser.Math.Between(2, this.width - 3);
-            const y = Phaser.Math.Between(2, this.height - 3);
+            const x = randomIntBetween(2, this.width - 3);
+            const y = randomIntBetween(2, this.height - 3);
             if (this.isRoad(x, y)) {
                 return { x, y };
             }
@@ -359,14 +365,15 @@ export class MapManager {
         let attempts = 0;
         while (spawned < count && attempts < 100) {
             attempts++;
-            const x = Phaser.Math.Between(1, this.width - 2);
-            const y = Phaser.Math.Between(1, this.height - 2);
+            const x = randomIntBetween(1, this.width - 2);
+            const y = randomIntBetween(1, this.height - 2);
 
             const typeCode = this.getTile(x, y);
 
             // Check if road, no existing collectible, and keep base/station pads clear
             if (typeCode !== null && typeCode !== TILE_TYPES.GRASS && typeCode !== TILE_TYPES.BUILDING &&
-                !this.getCollectibleAt(x, y) && !this.isBasePad(x, y) && !this.getFuelStationAt(x, y)) {
+                !this.getCollectibleAt(x, y) && !this.isBasePad(x, y) && !this.getFuelStationAt(x, y) &&
+                !this.isBlocked(x, y)) {
                 // Weighted type from the spawn table (fuel no longer spawns —
                 // stations are the fuel source)
                 const type = pickCollectibleType(Math.random(), CONFIG.COLLECTIBLES.WEIGHTS);

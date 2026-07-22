@@ -13,6 +13,9 @@ export class UIManager {
         this.lastBombs = null;
         this.lastRockets = null;
         this.lastDamage = null;
+        this.lastMaxDamage = null;
+        this.lastMaxLives = null;
+        this.lastFuelMax = null;
         this.lastNitroActive = null;
         this.lastQueueKey = null;
         this.lastStars = null;
@@ -199,8 +202,11 @@ export class UIManager {
             strokeThickness: 4
         }).setDepth(100).setScrollFactor(0);
 
+        // Pool sized to the highest armor level so upgrades have slots; each
+        // frame renderDamage() shows only the first maxDamage pips.
         this.damagePips = [];
-        for (let i = 0; i < CONFIG.DAMAGE.MAX_HITS; i++) {
+        const maxDamagePips = Math.max(...CONFIG.GARAGE.TRACKS.armor.values);
+        for (let i = 0; i < maxDamagePips; i++) {
             const pip = this.scene.add.rectangle(125 + i * 24, 235, 16, 16, 0x33FF66)
                 .setOrigin(0)
                 .setStrokeStyle(2, 0x000000)
@@ -226,13 +232,18 @@ export class UIManager {
             this.carryText.setColor(hud.carried > 0 ? '#FFFFFF' : '#888888');
         }
 
-        if (hud.lives !== this.lastLives) {
+        if (hud.lives !== this.lastLives || hud.maxLives !== this.lastMaxLives) {
             this.lastLives = hud.lives;
-            this.lifePips.forEach((pip, i) => pip.setAlpha(i < hud.lives ? 1 : 0.15));
+            this.lastMaxLives = hud.maxLives;
+            this.lifePips.forEach((pip, i) => {
+                pip.setVisible(i < hud.maxLives);
+                pip.setAlpha(i < hud.lives ? 1 : 0.15);
+            });
         }
 
-        if (hud.fuel !== this.lastFuel) {
+        if (hud.fuel !== this.lastFuel || hud.fuelMax !== this.lastFuelMax) {
             this.lastFuel = hud.fuel;
+            this.lastFuelMax = hud.fuelMax;
             this.renderFuel(hud.fuel, hud.fuelMax);
         }
 
@@ -246,8 +257,9 @@ export class UIManager {
             this.rocketText.setText(`RKT: ${hud.rockets}`);
         }
 
-        if (hud.damage !== this.lastDamage) {
+        if (hud.damage !== this.lastDamage || hud.maxDamage !== this.lastMaxDamage) {
             this.lastDamage = hud.damage;
+            this.lastMaxDamage = hud.maxDamage;
             this.renderDamage(hud.damage, hud.maxDamage);
         }
 
@@ -275,6 +287,7 @@ export class UIManager {
     renderDamage(damage, maxDamage) {
         const remaining = maxDamage - damage;
         this.damagePips.forEach((pip, i) => {
+            pip.setVisible(i < maxDamage);
             if (i < remaining) {
                 pip.setFillStyle(0x33FF66).setAlpha(1);
             } else {
@@ -498,11 +511,6 @@ export class UIManager {
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
-        });
-
-        // Click to Restart is handled in GameScene.js, but we update text to look active
-        restartText.on('pointerdown', () => {
-            this.scene.scene.restart();
         });
     }
 }

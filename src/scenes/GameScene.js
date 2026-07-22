@@ -80,6 +80,7 @@ export class GameScene extends Phaser.Scene {
 
         // Pause menu logic
         this.input.keyboard.on('keydown-ESC', () => {
+            if (this.gameOver) return;
             this.scene.pause('GameScene');
             this.scene.launch('PauseScene');
         });
