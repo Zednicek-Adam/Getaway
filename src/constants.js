@@ -22,7 +22,13 @@ export const COLORS = {
   BUILDING: 0x888888,  // Light Gray
   MONEY: 0xFFD700,     // Gold
   FUEL: 0x00FF00,      // Green (Bright)
-  BOMB: 0x000000,      // Black
+  BOMB: 0x222222,      // Dark Gray/Black
+  REPAIR: 0x00FFFF,    // Cyan
+  LIFE: 0xFF1493,      // Deep Pink
+  NITRO: 0x00E5FF,     // Bright Cyan
+  ROCKET: 0xFF4500,    // Orange Red
+  BASE: 0x00FF88,      // Mint Green / Safe zone
+  GAS_STATION: 0xFF8800 // Amber / Gas Station
 };
 
 export const TILE_TYPES = {
@@ -39,5 +45,9 @@ export const TILE_TYPES = {
   ROAD_INT_T_B_L: 10,
   ROAD_INT_T_B_R: 11,
   BUILDING: 12,
+  BASE: 13,
+  GAS_STATION: 14,
+  TUNNEL: 15,
   ROAD_GENERIC: 1, // Fallback to horizontal
 };
+

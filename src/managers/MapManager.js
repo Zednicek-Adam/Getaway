@@ -15,6 +15,19 @@ export class MapManager {
         this.initializeGrid();
         this.generateProceduralMap();
         this.autoTileRoads();
+        
+        // Base / Safehouse location at player spawn
+        this.baseLocation = { x: this.playerSpawnPoint.x, y: this.playerSpawnPoint.y };
+        this.grid[this.baseLocation.y][this.baseLocation.x] = TILE_TYPES.BASE;
+
+        // Gas Stations across map
+        this.gasStations = [];
+        this.spawnGasStations(3);
+
+        // Tunnel Overpasses across map
+        this.tunnels = [];
+        this.spawnTunnels(4);
+
         this.spawnRandomCollectibles(15);
     }
 
@@ -187,6 +200,12 @@ export class MapManager {
     spawnRandomCollectibles(count) {
         let spawned = 0;
         let attempts = 0;
+        const availableTypes = [
+            COLLECTIBLE_TYPES.MONEY, COLLECTIBLE_TYPES.MONEY, COLLECTIBLE_TYPES.MONEY,
+            COLLECTIBLE_TYPES.JERRY_CAN,
+            COLLECTIBLE_TYPES.REPAIR, COLLECTIBLE_TYPES.LIFE,
+            COLLECTIBLE_TYPES.NITRO, COLLECTIBLE_TYPES.BOMB, COLLECTIBLE_TYPES.ROCKET
+        ];
         while (spawned < count && attempts < 100) {
             attempts++;
             const x = Phaser.Math.Between(1, this.width - 2);
@@ -196,8 +215,7 @@ export class MapManager {
 
             // Check if road and no existing collectible
             if (typeCode !== null && typeCode !== TILE_TYPES.GRASS && typeCode !== TILE_TYPES.BUILDING && !this.getCollectibleAt(x, y)) {
-                // Random Type
-                const type = Math.random() > 0.5 ? COLLECTIBLE_TYPES.MONEY : COLLECTIBLE_TYPES.FUEL;
+                const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
 
                 const item = new Collectible(this.scene, type, x, y);
                 this.collectibles.push(item);
@@ -218,14 +236,121 @@ export class MapManager {
         }
     }
 
+    spawnGasStations(count) {
+        let spawned = 0;
+        let attempts = 0;
+        while (spawned < count && attempts < 200) {
+            attempts++;
+            const x = Phaser.Math.Between(3, this.width - 4);
+            const y = Phaser.Math.Between(3, this.height - 4);
+
+            // Ensure distance from base
+            const distFromBase = Math.abs(x - this.baseLocation.x) + Math.abs(y - this.baseLocation.y);
+            if (this.isRoad(x, y) && distFromBase > 10 && !this.gasStations.some(g => g.x === x && g.y === y)) {
+                this.grid[y][x] = TILE_TYPES.GAS_STATION;
+                this.gasStations.push({ x, y });
+                spawned++;
+            }
+        }
+    }
+
+    spawnTunnels(count) {
+        let spawned = 0;
+        let attempts = 0;
+        while (spawned < count && attempts < 200) {
+            attempts++;
+            const x = Phaser.Math.Between(3, this.width - 4);
+            const y = Phaser.Math.Between(3, this.height - 4);
+
+            if (this.isRoad(x, y) && !this.gasStations.some(g => g.x === x && g.y === y) && (x !== this.baseLocation.x || y !== this.baseLocation.y)) {
+                this.grid[y][x] = TILE_TYPES.TUNNEL;
+                this.tunnels.push({ x, y });
+                spawned++;
+            }
+        }
+    }
+
     render(layer) {
+        // Map render using tilemap data fallback for special tiles
+        const tileData = this.grid.map(row => row.map(cell => {
+            if (cell === TILE_TYPES.BASE || cell === TILE_TYPES.GAS_STATION || cell === TILE_TYPES.TUNNEL) return TILE_TYPES.ROAD_INT_ALL;
+            return cell;
+        }));
+
         const map = this.scene.make.tilemap({
-            data: this.grid,
+            data: tileData,
             tileWidth: TILE_SIZE,
             tileHeight: TILE_SIZE
         });
         const tiles = map.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 1, 2);
         const tileLayer = map.createLayer(0, tiles, 0, 0);
         tileLayer.setDepth(0); // Ground layer
+
+        // Render Base Visual Marker
+        if (this.baseLocation) {
+            const bx = this.baseLocation.x * TILE_SIZE + TILE_SIZE / 2;
+            const by = this.baseLocation.y * TILE_SIZE + TILE_SIZE / 2;
+
+            const baseBg = this.scene.add.rectangle(bx, by, TILE_SIZE - 4, TILE_SIZE - 4, 0x00FF88, 0.4)
+                .setDepth(1).setStrokeStyle(3, 0x00FF88);
+            
+            this.scene.add.text(bx, by, 'BASE', {
+                fontFamily: '"Press Start 2P"',
+                fontSize: '10px',
+                fill: '#00FF88',
+                stroke: '#000000',
+                strokeThickness: 3
+            }).setOrigin(0.5).setDepth(2);
+
+            this.scene.tweens.add({
+                targets: baseBg,
+                alpha: 0.8,
+                duration: 800,
+                yoyo: true,
+                repeat: -1
+            });
+        }
+
+        // Render Gas Stations Markers
+        for (let gas of this.gasStations) {
+            const gx = gas.x * TILE_SIZE + TILE_SIZE / 2;
+            const gy = gas.y * TILE_SIZE + TILE_SIZE / 2;
+
+            const gasBg = this.scene.add.rectangle(gx, gy, TILE_SIZE - 4, TILE_SIZE - 4, 0xFF8800, 0.4)
+                .setDepth(1).setStrokeStyle(3, 0xFF8800);
+
+            this.scene.add.text(gx, gy, 'GAS', {
+                fontFamily: '"Press Start 2P"',
+                fontSize: '10px',
+                fill: '#FF8800',
+                stroke: '#000000',
+                strokeThickness: 3
+            }).setOrigin(0.5).setDepth(2);
+
+            this.scene.tweens.add({
+                targets: gasBg,
+                alpha: 0.8,
+                duration: 1000,
+                yoyo: true,
+                repeat: -1
+            });
+        }
+
+        // Render Tunnel Overpass Roofs (high depth so car is underneath)
+        for (let tunnel of this.tunnels) {
+            const tx = tunnel.x * TILE_SIZE + TILE_SIZE / 2;
+            const ty = tunnel.y * TILE_SIZE + TILE_SIZE / 2;
+
+            this.scene.add.rectangle(tx, ty, TILE_SIZE + 4, TILE_SIZE + 4, 0x111122, 0.95)
+                .setDepth(160).setStrokeStyle(3, 0x555577);
+
+            this.scene.add.text(tx, ty, 'TUNNEL', {
+                fontFamily: '"Press Start 2P"',
+                fontSize: '8px',
+                fill: '#8888BB',
+                stroke: '#000000',
+                strokeThickness: 2
+            }).setOrigin(0.5).setDepth(161);
+        }
     }
 }

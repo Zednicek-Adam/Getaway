@@ -23,11 +23,12 @@ export class Car {
 
         // Movement State
         this.direction = DIRECTIONS.RIGHT;
-        this.nextDirection = DIRECTIONS.RIGHT; // Buffered Input
+        this.turnQueue = []; // Queue of queued directions
         this.isMoving = false;
         this.moveConfig = {
             duration: 300, // ms to cross one tile (Speed)
         };
+        this.speedMultiplier = 1.0;
         this.moveTimer = 0;
 
         // Visuals
@@ -40,7 +41,8 @@ export class Car {
         if (this.isMoving) {
             this.moveTimer += delta;
 
-            const t = Math.min(this.moveTimer / this.moveConfig.duration, 1);
+            const effectiveDuration = this.moveConfig.duration * (this.speedMultiplier || 1.0);
+            const t = Math.min(this.moveTimer / effectiveDuration, 1);
 
             this.updatePosition(t);
 
@@ -92,39 +94,55 @@ export class Car {
     }
 
     tryMove() {
-        // Logic:
-        // 1. Is there a buffered turn? If yes, CAN we turn there?
-        // 2. If no buffered turn or invalid turn, CAN we go straight?
-        // 3. Else, Stop.
-
-        // Don't auto-move if waiting for player's first input
         if (this.waitingForInput) return;
 
-        let attempts = [];
+        let moved = false;
 
-        // If we have a buffered next direction
-        if (this.nextDirection !== null) {
-            attempts.push(this.nextDirection);
-        }
-
-        // Always try current direction as fallback (unless we just did a 180, handled separately)
-        if (this.nextDirection !== this.direction) {
-            attempts.push(this.direction);
-        }
-
-        for (let dir of attempts) {
-            if (this.canMove(dir)) {
-                this.startMove(dir);
-                // Clear buffer if we used it
-                if (dir === this.nextDirection) {
-                    this.nextDirection = null; // Turn Consumed
-                }
-                return;
+        // 1. Try to take the next queued turn
+        while (this.turnQueue.length > 0) {
+            let nextDir = this.turnQueue[0];
+            if (this.canMove(nextDir)) {
+                this.startMove(nextDir);
+                this.turnQueue.shift(); // Turn Consumed
+                moved = true;
+                break;
+            } else {
+                // If queued turn is invalid here, we wait until next intersection
+                break;
             }
         }
 
-        // If we are here, we are blocked.
-        // Maybe Stop?
+        // 2. If no valid queued turn found, keep going in current direction
+        if (!moved) {
+            if (this.canMove(this.direction)) {
+                this.startMove(this.direction);
+                moved = true;
+            }
+        }
+
+        // 3. Wall / Dead End
+        if (!moved) {
+            this.isMoving = false;
+            this.waitingForInput = true;
+            this.turnQueue = []; // clear queued inputs when stopped
+        }
+        
+        if (this.scene && this.scene.uiManager && this === this.scene.playerCar) {
+            this.scene.uiManager.updateQueue(this.turnQueue);
+        }
+    }
+
+    stopImmediately() {
+        this.isMoving = false;
+        this.waitingForInput = true;
+        this.targetX = this.gridX;
+        this.targetY = this.gridY;
+        this.moveTimer = 0;
+        this.turnQueue = [];
+        this.updatePosition(0);
+        if (this.scene && this.scene.uiManager && this === this.scene.playerCar) {
+            this.scene.uiManager.updateQueue(this.turnQueue);
+        }
     }
 
     canMove(dir) {
@@ -164,15 +182,32 @@ export class Car {
     setBufferedInput(newDirection) {
         // First input clears the initial wait state
         if (this.waitingForInput) {
-            this.waitingForInput = false;
+            if (this.canMove(newDirection)) {
+                this.direction = newDirection;
+                this.waitingForInput = false;
+                this.tryMove();
+            } else if (this.isOpposite(newDirection, this.direction)) {
+                this.performUturn(newDirection);
+                this.waitingForInput = false;
+                this.tryMove();
+            }
+            // If they pressed into the wall, do nothing, stay waiting
+            return;
         }
 
         // Check for 180 turn immediately
-        if (this.isOpposite(newDirection, this.direction)) {
+        if (this.isOpposite(newDirection, this.direction) && this.turnQueue.length === 0) {
             this.performUturn(newDirection);
-            this.nextDirection = null; // Consumed
         } else {
-            this.nextDirection = newDirection;
+            if (this.turnQueue.length < 3) {
+                let lastDir = this.turnQueue.length > 0 ? this.turnQueue[this.turnQueue.length - 1] : this.direction;
+                if (newDirection !== lastDir) {
+                    this.turnQueue.push(newDirection);
+                    if (this.scene && this.scene.uiManager && this === this.scene.playerCar) {
+                        this.scene.uiManager.updateQueue(this.turnQueue);
+                    }
+                }
+            }
         }
     }
 
@@ -181,6 +216,14 @@ export class Car {
             (dir1 === DIRECTIONS.DOWN && dir2 === DIRECTIONS.UP) ||
             (dir1 === DIRECTIONS.LEFT && dir2 === DIRECTIONS.RIGHT) ||
             (dir1 === DIRECTIONS.RIGHT && dir2 === DIRECTIONS.LEFT);
+    }
+    
+    getOpposite(dir) {
+        if (dir === DIRECTIONS.UP) return DIRECTIONS.DOWN;
+        if (dir === DIRECTIONS.DOWN) return DIRECTIONS.UP;
+        if (dir === DIRECTIONS.LEFT) return DIRECTIONS.RIGHT;
+        if (dir === DIRECTIONS.RIGHT) return DIRECTIONS.LEFT;
+        return dir;
     }
 
     performUturn(newDir) {
@@ -194,10 +237,15 @@ export class Car {
             this.targetY = tempY;
 
             // Reverse progress
-            this.moveTimer = this.moveConfig.duration - this.moveTimer;
+            const effectiveDuration = this.moveConfig.duration * (this.speedMultiplier || 1.0);
+            this.moveTimer = effectiveDuration - this.moveTimer;
         }
 
         this.direction = newDir;
+        this.turnQueue = []; // Clear queued turns on U-turn
+        if (this.scene && this.scene.uiManager && this === this.scene.playerCar) {
+            this.scene.uiManager.updateQueue(this.turnQueue);
+        }
     }
 
     render() {

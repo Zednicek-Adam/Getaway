@@ -48,6 +48,26 @@ export class PoliceCar extends Car {
         return baseFrame + (this.sirenOn ? 4 : 0);
     }
 
+    hasLineOfSight() {
+        if (!this.target) return false;
+
+        // Straight line check (orthogonal or diagonal raycast)
+        const dx = Math.sign(this.target.gridX - this.gridX);
+        const dy = Math.sign(this.target.gridY - this.gridY);
+
+        let cx = this.gridX + dx;
+        let cy = this.gridY + dy;
+
+        while (cx !== this.target.gridX || cy !== this.target.gridY) {
+            if (!this.mapManager.isRoad(cx, cy)) {
+                return false; // Building blocked vision!
+            }
+            if (cx !== this.target.gridX) cx += dx;
+            if (cy !== this.target.gridY) cy += dy;
+        }
+        return true;
+    }
+
     // Override tryMove to evaluate routing at every tile/intersection
     tryMove() {
         this.decideNextMove();
@@ -55,17 +75,21 @@ export class PoliceCar extends Car {
     }
 
     decideNextMove() {
-        // Simple Chaser Logic
-        // 1. Get valid directions from current tile
         const validMoves = this.getValidMoves();
+        if (validMoves.length === 0) return;
 
-        if (validMoves.length === 0) return; // Stuck?
+        const hasLOS = this.hasLineOfSight();
+        if (hasLOS) {
+            this.lastKnownTarget = { x: this.target.gridX, y: this.target.gridY };
+        }
 
-        // 2. Pick best move towards target or random if not chasing
         let bestMove = null;
 
         if (this.chaseTimer > 0) {
-            const path = this.findPathAStar(this.gridX, this.gridY, this.target.gridX, this.target.gridY);
+            const destX = hasLOS ? this.target.gridX : (this.lastKnownTarget ? this.lastKnownTarget.x : this.target.gridX);
+            const destY = hasLOS ? this.target.gridY : (this.lastKnownTarget ? this.lastKnownTarget.y : this.target.gridY);
+
+            const path = this.findPathAStar(this.gridX, this.gridY, destX, destY);
 
             if (path && path.length > 1) {
                 const nextX = path[1].x;
@@ -76,7 +100,6 @@ export class PoliceCar extends Car {
                 else if (nextY > this.gridY) bestMove = DIRECTIONS.DOWN;
                 else if (nextY < this.gridY) bestMove = DIRECTIONS.UP;
             } else {
-                // Fallback to random if no path found
                 const forwardMoves = validMoves.filter(m => !this.isOpposite(m, this.direction));
                 if (forwardMoves.length > 0) {
                     bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
@@ -85,13 +108,11 @@ export class PoliceCar extends Car {
                 }
             }
         } else {
-            // Random movement when not chasing
-            // Try not to U-turn unless it's a dead end
             const forwardMoves = validMoves.filter(m => !this.isOpposite(m, this.direction));
             if (forwardMoves.length > 0) {
                 bestMove = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
             } else {
-                bestMove = validMoves[Math.floor(Math.random() * validMoves.length)]; // Dead end
+                bestMove = validMoves[Math.floor(Math.random() * validMoves.length)];
             }
         }
 
@@ -180,4 +201,7 @@ export class PoliceCar extends Car {
         return moves;
     }
 
+    takeHit() {
+        return true; // Standard police are destroyed in 1 hit
+    }
 }
