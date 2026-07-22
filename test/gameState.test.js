@@ -193,13 +193,13 @@ describe('GameState', () => {
     });
 
     describe('bombs', () => {
-        it('caps pickup at MAX_BOMBS and leaves the count unchanged when full', () => {
+        it('caps pickup at maxBombs and leaves the count unchanged when full', () => {
             const state = new GameState();
-            for (let i = 0; i < CONFIG.PLAYER.MAX_BOMBS; i++) {
+            for (let i = 0; i < state.maxBombs; i++) {
                 expect(state.pickupBomb()).toBe(true);
             }
             expect(state.pickupBomb()).toBe(false);
-            expect(state.bombs).toBe(CONFIG.PLAYER.MAX_BOMBS);
+            expect(state.bombs).toBe(state.maxBombs);
         });
 
         it('useBomb decrements and returns false at 0', () => {
@@ -222,13 +222,13 @@ describe('GameState', () => {
     });
 
     describe('rockets', () => {
-        it('caps pickup at MAX_CARRY and leaves the count unchanged when full', () => {
+        it('caps pickup at maxRockets and leaves the count unchanged when full', () => {
             const state = new GameState();
-            for (let i = 0; i < CONFIG.ROCKET.MAX_CARRY; i++) {
+            for (let i = 0; i < state.maxRockets; i++) {
                 expect(state.pickupRocket()).toBe(true);
             }
             expect(state.pickupRocket()).toBe(false);
-            expect(state.rockets).toBe(CONFIG.ROCKET.MAX_CARRY);
+            expect(state.rockets).toBe(state.maxRockets);
         });
 
         it('useRocket decrements and returns false at 0', () => {
@@ -322,13 +322,71 @@ describe('GameState', () => {
     });
 
     describe('fuel', () => {
-        it('clamps drain at 0 and refill at MAX', () => {
+        it('clamps drain at 0 and refill at maxFuel', () => {
             const state = new GameState();
-            state.drainFuel(CONFIG.FUEL.MAX + 50);
+            state.drainFuel(state.maxFuel + 50);
             expect(state.fuel).toBe(0);
 
-            state.addFuel(CONFIG.FUEL.MAX + 50);
-            expect(state.fuel).toBe(CONFIG.FUEL.MAX);
+            state.addFuel(state.maxFuel + 50);
+            expect(state.fuel).toBe(state.maxFuel);
+        });
+    });
+
+    describe('upgrades', () => {
+        it('constructor applies banked + upgrade-derived stats', () => {
+            const state = new GameState({ banked: 5000, upgrades: { fuelTank: 3, armor: 1 } });
+            expect(state.banked).toBe(5000);
+            expect(state.maxFuel).toBe(200);
+            expect(state.fuel).toBe(200);
+            expect(state.maxDamage).toBe(4);
+            expect(state.moveDuration).toBe(300); // engine still level 0
+        });
+
+        it('applyUpgrades raises maxes mid-run without touching current counts', () => {
+            const state = new GameState();
+
+            state.damage = 2;
+            state.applyUpgrades({ armor: 3 });
+            expect(state.maxDamage).toBe(6);
+            expect(state.damage).toBe(2); // unchanged
+
+            state.fuel = 10;
+            state.applyUpgrades({ armor: 3, fuelTank: 3 });
+            expect(state.maxFuel).toBe(200);
+            expect(state.fuel).toBe(10); // unchanged
+        });
+    });
+
+    describe('onOutOfFuel', () => {
+        it('costs a life and refills the tank when lives remain', () => {
+            const state = new GameState();
+            state.pickupMoney();
+            expect(state.lives).toBeGreaterThan(1);
+
+            state.onOutOfFuel();
+            expect(state.lives).toBe(CONFIG.PLAYER.LIVES - 1);
+            expect(state.carried).toBe(0);
+            expect(state.stars).toBe(0);
+            expect(state.fuel).toBe(state.maxFuel);
+            expect(state.isInvulnerable()).toBe(true);
+            expect(state.gameOver).toBe(false);
+        });
+
+        it('at 1 life ends the game with the OUT OF FUEL reason', () => {
+            const state = new GameState();
+            state.lives = 1;
+            state.onOutOfFuel();
+            expect(state.gameOver).toBe(true);
+            expect(state.gameOverReason).toBe('OUT OF FUEL!');
+        });
+
+        it('a normal catch chain to 0 lives still reports BUSTED!', () => {
+            const state = new GameState();
+            for (let i = 0; i < CONFIG.PLAYER.LIVES; i++) {
+                state.onCaught();
+            }
+            expect(state.gameOver).toBe(true);
+            expect(state.gameOverReason).toBe('BUSTED!');
         });
     });
 });

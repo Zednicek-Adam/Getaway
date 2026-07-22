@@ -1,18 +1,23 @@
 import { CONFIG } from './config';
+import { statsForUpgrades } from './garage';
 
 // Pure game state — no Phaser dependencies, unit-testable.
 export class GameState {
-    constructor() {
+    constructor({ banked = 0, upgrades } = {}) {
+        const stats = statsForUpgrades(upgrades);
         this.carried = 0;
-        this.banked = 0;
+        this.banked = banked;
         this.lives = CONFIG.PLAYER.LIVES;
-        this.fuel = CONFIG.FUEL.MAX;
+        this.moveDuration = stats.moveDuration; // derived from engine upgrade
+        this.maxFuel = stats.maxFuel;           // derived from fuelTank upgrade
+        this.fuel = this.maxFuel;
         this.bombs = 0;
+        this.maxBombs = stats.maxBombs;         // derived from bombBay upgrade
         this.rockets = 0;
-        this.maxRockets = CONFIG.ROCKET.MAX_CARRY; // instance field — Milestone 3 prep
+        this.maxRockets = stats.maxRockets;     // derived from rocketRack upgrade
         this.damage = 0;
-        this.maxDamage = CONFIG.DAMAGE.MAX_HITS; // instance field — Milestone 3 prep
-        this.maxLives = CONFIG.PLAYER.MAX_LIVES;  // instance field — Milestone 3 prep
+        this.maxDamage = stats.maxDamage;       // derived from armor upgrade
+        this.maxLives = CONFIG.PLAYER.MAX_LIVES;
         this.nitroRemaining = 0;
         this.stars = 0;
         this.heat = 0;
@@ -37,7 +42,7 @@ export class GameState {
     }
 
     pickupBomb() {
-        if (this.bombs >= CONFIG.PLAYER.MAX_BOMBS) return false;
+        if (this.bombs >= this.maxBombs) return false;
         this.bombs++;
         return true;
     }
@@ -163,7 +168,28 @@ export class GameState {
     }
 
     addFuel(amount) {
-        this.fuel = Math.min(CONFIG.FUEL.MAX, this.fuel + amount);
+        this.fuel = Math.min(this.maxFuel, this.fuel + amount);
+    }
+
+    // Recompute the five derived stats after a garage purchase mid-run.
+    // Deliberately does NOT touch current fuel/damage/bombs/rockets counts:
+    // maxes only grow, so existing counts stay valid (buying armor while
+    // damaged just increases remaining hits).
+    applyUpgrades(upgrades) {
+        const stats = statsForUpgrades(upgrades);
+        this.moveDuration = stats.moveDuration;
+        this.maxFuel = stats.maxFuel;
+        this.maxDamage = stats.maxDamage;
+        this.maxBombs = stats.maxBombs;
+        this.maxRockets = stats.maxRockets;
+    }
+
+    // Running dry costs a life (same as a catch), then refills the tank so the
+    // respawn doesn't immediately re-trigger the out-of-fuel check.
+    onOutOfFuel() {
+        this.onCaught();          // lose carried, a life, stars/heat reset, invuln, maybe gameOver
+        this.fuel = this.maxFuel; // full tank on respawn; prevents immediate re-trigger
+        if (this.gameOver) this.gameOverReason = 'OUT OF FUEL!';
     }
 
     addStars(count) {

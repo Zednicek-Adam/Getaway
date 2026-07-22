@@ -11,6 +11,7 @@ import { Rocket } from '../objects/Rocket';
 import { DiamondCar } from '../objects/DiamondCar';
 import { CONFIG } from '../config';
 import { GameState } from '../GameState';
+import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
 
 export class GameScene extends Phaser.Scene {
@@ -29,8 +30,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // Game State (recreated on every restart)
-        this.state = new GameState();
+        // Game State (recreated on every restart) — seeded from the persistent save
+        this.storage = getBrowserStorage();
+        this.save = loadSave(this.storage);
+        this.state = new GameState({ banked: this.save.banked, upgrades: this.save.upgrades });
 
         // Map System
         this.mapManager = new MapManager(this, MAP_WIDTH, MAP_HEIGHT);
@@ -110,7 +113,7 @@ export class GameScene extends Phaser.Scene {
         // at most one frame (accepted).
         const nitroFactor = this.state.isNitroActive() ? CONFIG.NITRO.SPEED_FACTOR : 1;
         const heliFactor = this.policeManager.isHeliOverhead() ? CONFIG.HELICOPTER.SLOW_FACTOR : 1;
-        this.playerCar.moveConfig.duration = CONFIG.PLAYER.MOVE_DURATION * nitroFactor * heliFactor;
+        this.playerCar.moveConfig.duration = this.state.moveDuration * nitroFactor * heliFactor;
 
         this.playerCar.update(time, delta);
 
@@ -144,6 +147,8 @@ export class GameScene extends Phaser.Scene {
         // pad banks the carried money first
         if (this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY) && this.state.carried > 0) {
             const amount = this.state.deposit();
+            this.save.banked = this.state.banked;
+            writeSave(this.storage, this.save);
             this.uiManager.showToast(`+$${amount} BANKED`);
             // deposit() zeroed the countdown — stars decay via tick() and the
             // manager thins the fleet as they drop
@@ -189,8 +194,9 @@ export class GameScene extends Phaser.Scene {
         }
         this.state.tick(delta, { spotted: this.policeManager.isPlayerSpotted() });
         if (this.state.fuel <= 0) {
-            this.handleGameOver("OUT OF FUEL!");
-            return;
+            this.state.onOutOfFuel();
+            this.handleCaught();
+            if (this.gameOver) return;
         }
 
         // (i) HUD snapshot
@@ -199,7 +205,8 @@ export class GameScene extends Phaser.Scene {
             carried: this.state.carried,
             lives: this.state.lives,
             fuel: this.state.fuel,
-            fuelMax: CONFIG.FUEL.MAX,
+            fuelMax: this.state.maxFuel,
+            maxLives: this.state.maxLives,
             bombs: this.state.bombs,
             rockets: this.state.rockets,
             damage: this.state.damage,
@@ -419,7 +426,7 @@ export class GameScene extends Phaser.Scene {
         car.waitingForInput = true;
         car.updatePosition(0);
 
-        this.state.addFuel(CONFIG.FUEL.MAX); // Full tank on respawn (clamped)
+        this.state.addFuel(this.state.maxFuel); // Full tank on respawn (clamped)
     }
 
     // Blink the player for durationMs. Kills any running blink first so a

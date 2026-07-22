@@ -102,4 +102,16 @@ export const CONFIG = {
         SPOT_RADIUS_TILES: 2,  // spotlight / spot radius
         SLOW_FACTOR: 1.25,     // player move-duration multiplier while overhead
     },
+
+    GARAGE: {
+        MAX_LEVEL: 3,
+        PRICES: [500, 1500, 4000],   // cost of level 1 / 2 / 3, uniform across tracks
+        TRACKS: {
+            engine:     { label: 'ENGINE',    values: [300, 270, 245, 225] }, // ms/tile, index = level
+            fuelTank:   { label: 'FUEL TANK', values: [100, 130, 160, 200] },
+            armor:      { label: 'ARMOR',     values: [3, 4, 5, 6] },
+            bombBay:    { label: 'BOMB BAY',  values: [3, 4, 5, 6] },
+            rocketRack: { label: 'ROCKETS',   values: [2, 3, 4, 5] },
+        },
+    },
 };
