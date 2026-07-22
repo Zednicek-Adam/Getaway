@@ -85,6 +85,17 @@ export class GameScene extends Phaser.Scene {
             this.scene.launch('PauseScene');
         });
 
+        // Garage — only on the base pad, scene-level so pausing disables it
+        this.input.keyboard.on('keydown-G', () => {
+            if (this.gameOver) return;
+            if (!this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) return;
+            this.scene.pause('GameScene');
+            this.scene.launch('GarageScene', { gameState: this.state, save: this.save, storage: this.storage });
+        });
+
+        // One-shot per-run garage hint (fires the first time on the base pad)
+        this.garageHintShown = false;
+
         this.gameOver = false;
     }
 
@@ -142,6 +153,13 @@ export class GameScene extends Phaser.Scene {
         this.policeManager.update(time, delta);
         if (this.diamondCar) {
             this.diamondCar.update(time, delta);
+        }
+
+        // (b0) Garage hint — first time on the base pad each run (even carrying $0)
+        if (!this.garageHintShown &&
+            this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) {
+            this.garageHintShown = true;
+            this.uiManager.showToast('PRESS G FOR GARAGE');
         }
 
         // (b) Deposit — ordered before the catch check so a catch on the base

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
 import { PauseScene } from './scenes/PauseScene';
+import { GarageScene } from './scenes/GarageScene';
 import { TILE_SIZE, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './constants';
 
 const config = {
@@ -16,7 +17,7 @@ const config = {
       debug: false,
     },
   },
-  scene: [MenuScene, GameScene, PauseScene],
+  scene: [MenuScene, GameScene, PauseScene, GarageScene],
 };
 
 // Wait for the font to load before creating the game

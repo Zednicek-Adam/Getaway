@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { loadSave, getBrowserStorage } from '../storage';
 
 export class MenuScene extends Phaser.Scene {
     constructor() {
@@ -41,6 +42,17 @@ export class MenuScene extends Phaser.Scene {
             strokeThickness: 4
         }).setOrigin(0.5);
         this.menuContainer.add(subtitle);
+
+        // Persistent bank readout (gold, small) — shows $0 fine when empty
+        const banked = loadSave(getBrowserStorage()).banked;
+        const bankText = this.add.text(width / 2, height / 3 + 92, `BANK: $${banked}`, {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '12px',
+            fill: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+        this.menuContainer.add(bankText);
 
 
         // --- Start Button ---
