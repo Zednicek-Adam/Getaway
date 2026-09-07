@@ -103,7 +103,7 @@ export class MenuScene extends Phaser.Scene {
 
         const showInstructions = () => {
             if (this.isTransitioning) return;
-            this.scene.start('InstructionsScene');
+            this.scene.start('InstructionsScene', { returnTo: 'MenuScene' });
         };
 
         const options = [

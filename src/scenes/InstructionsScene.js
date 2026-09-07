@@ -12,6 +12,13 @@ export class InstructionsScene extends Phaser.Scene {
         super({ key: 'InstructionsScene' });
     }
 
+    // Reached from the main menu and from the pause menu, so BACK has to know
+    // where it came from. Opening from pause leaves GameScene paused and
+    // untouched underneath, so the run survives the detour.
+    init(data) {
+        this.returnTo = (data && data.returnTo) || 'MenuScene';
+    }
+
     create() {
         const { width, height } = this.scale;
         const centre = width / 2;
@@ -137,7 +144,7 @@ export class InstructionsScene extends Phaser.Scene {
         const armedAt = Date.now();
         const goBack = () => {
             if (Date.now() - armedAt < 250) return;
-            this.scene.start('MenuScene');
+            this.scene.start(this.returnTo);
         };
 
         back.on('pointerover', () => back.setFill('#FFD700'));

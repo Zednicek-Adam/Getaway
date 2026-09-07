@@ -55,8 +55,25 @@ export class PauseScene extends Phaser.Scene {
         };
         restartText.on('pointerdown', restartAction);
 
+        // Instructions Button
+        const instructionsText = this.add.text(width / 2, startY + spacing * 2, 'INSTRUCTIONS', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '24px',
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        // Swaps this overlay for the instructions page and comes back here.
+        // GameScene stays paused underneath the whole time, so the run is
+        // exactly where it was left.
+        const instructionsAction = () => {
+            this.scene.start('InstructionsScene', { returnTo: 'PauseScene' });
+        };
+        instructionsText.on('pointerdown', instructionsAction);
+
         // Main Menu Button
-        const mainMenuText = this.add.text(width / 2, startY + spacing * 2, 'MAIN MENU', {
+        const mainMenuText = this.add.text(width / 2, startY + spacing * 3, 'MAIN MENU', {
             fontFamily: '"Press Start 2P"',
             fontSize: '24px',
             fill: '#FFFFFF',
@@ -77,13 +94,14 @@ export class PauseScene extends Phaser.Scene {
         const options = [
             { text: resumeText, action: resumeAction },
             { text: restartText, action: restartAction },
+            { text: instructionsText, action: instructionsAction },
             { text: mainMenuText, action: mainMenuAction }
         ];
 
         let selectedIndex = 0;
 
         // Arrows setup
-        const arrowOffset = 150; // clears MAIN MENU, the widest label
+        const arrowOffset = 190; // clears INSTRUCTIONS, the widest label
 
         const leftArrow = this.add.text(width / 2 - arrowOffset, startY, '>', {
             fontFamily: '"Press Start 2P"',
@@ -156,15 +174,20 @@ export class PauseScene extends Phaser.Scene {
             updateSelection();
         });
 
-        this.input.keyboard.on('keydown-ENTER', () => {
-            options[selectedIndex].action();
-        });
+        // A held key repeats, and the repeat lands on whichever scene was just
+        // switched to — without this, holding ENTER on INSTRUCTIONS would
+        // bounce between this menu and the instructions page. Date.now()
+        // rather than this.time.now; see the note in MenuScene.
+        const armedAt = Date.now();
+        const guard = (fn) => () => {
+            if (Date.now() - armedAt < 250) return;
+            fn();
+        };
 
-        this.input.keyboard.on('keydown-SPACE', () => {
-            options[selectedIndex].action();
-        });
+        this.input.keyboard.on('keydown-ENTER', guard(() => options[selectedIndex].action()));
+        this.input.keyboard.on('keydown-SPACE', guard(() => options[selectedIndex].action()));
 
         // Escape to resume
-        this.input.keyboard.on('keydown-ESC', resumeAction);
+        this.input.keyboard.on('keydown-ESC', guard(resumeAction));
     }
 }
