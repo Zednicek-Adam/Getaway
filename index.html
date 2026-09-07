@@ -4,15 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>fiery-curie</title>
+    <title>The Getaway</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-      body {
+      /* Phaser's Scale Manager centers the canvas inside #app, so #app has to
+         be a definite full-viewport box for it to have something to center
+         against — an auto-height div would size itself to the canvas instead. */
+      html, body {
         margin: 0;
         padding: 0;
+        height: 100%;
         background-color: #000;
+        /* Keeps a scrollbar from appearing, resizing the parent, and making
+           the FIT calculation oscillate. */
+        overflow: hidden;
+      }
+      #app {
+        width: 100%;
+        height: 100%;
       }
       /* Load font so canvas can use it immediately */
       #font-loader {
