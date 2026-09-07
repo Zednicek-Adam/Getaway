@@ -55,25 +55,66 @@ export class MenuScene extends Phaser.Scene {
         this.menuContainer.add(bankText);
 
 
-        // --- Start Button ---
+        // --- Menu options ---
         const startY = height * 2 / 3;
+        const optionSpacing = 60;
 
-        // Start Text
-        const startText = this.add.text(width / 2, startY, 'START', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '24px',
-            fill: '#FFFFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-        this.menuContainer.add(startText);
+        const makeOption = (label, y) => {
+            const text = this.add.text(width / 2, y, label, {
+                fontFamily: '"Press Start 2P"',
+                fontSize: '24px',
+                fill: '#FFFFFF',
+                stroke: '#000000',
+                strokeThickness: 4
+            }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+            this.menuContainer.add(text);
+            return text;
+        };
 
-        // Hover effect for text
-        startText.on('pointerover', () => startText.setFill('#FFD700'));
-        startText.on('pointerout', () => startText.setFill('#FFFFFF'));
+        const startText = makeOption('START', startY);
+        const instructionsText = makeOption('INSTRUCTIONS', startY + optionSpacing);
 
-        // Arrows setup
-        const arrowOffset = 80;
+        // Track whether transition is already in progress
+        this.isTransitioning = false;
+
+        // Start Game Action — garage door slide-up transition
+        const startGame = () => {
+            if (this.isTransitioning) return;
+            this.isTransitioning = true;
+
+            // Stop arrow tweens so they don't fight the slide
+            this.tweens.killAll();
+
+            // Launch GameScene behind the menu so it's visible as menu slides up
+            this.scene.launch('GameScene');
+            this.scene.bringToTop('MenuScene');
+
+            // Slide the entire menu container upward off-screen
+            this.tweens.add({
+                targets: this.menuContainer,
+                y: -height,
+                duration: 600,
+                ease: 'Power2',
+                onComplete: () => {
+                    this.scene.stop('MenuScene');
+                }
+            });
+        };
+
+        const showInstructions = () => {
+            if (this.isTransitioning) return;
+            this.scene.start('InstructionsScene');
+        };
+
+        const options = [
+            { text: startText, action: startGame },
+            { text: instructionsText, action: showInstructions },
+        ];
+
+        let selectedIndex = 0;
+
+        // Wide enough to clear INSTRUCTIONS, the longest label
+        const arrowOffset = 190;
 
         const leftArrow = this.add.text(width / 2 - arrowOffset, startY, '>', {
             fontFamily: '"Press Start 2P"',
@@ -112,35 +153,49 @@ export class MenuScene extends Phaser.Scene {
             ease: 'Sine.easeInOut'
         });
 
-        // Track whether transition is already in progress
-        this.isTransitioning = false;
-
-        // Start Game Action — garage door slide-up transition
-        const startGame = () => {
-            if (this.isTransitioning) return;
-            this.isTransitioning = true;
-
-            // Stop arrow tweens so they don't fight the slide
-            this.tweens.killAll();
-
-            // Launch GameScene behind the menu so it's visible as menu slides up
-            this.scene.launch('GameScene');
-            this.scene.bringToTop('MenuScene');
-
-            // Slide the entire menu container upward off-screen
-            this.tweens.add({
-                targets: this.menuContainer,
-                y: -height,
-                duration: 600,
-                ease: 'Power2',
-                onComplete: () => {
-                    this.scene.stop('MenuScene');
-                }
+        const updateSelection = () => {
+            options.forEach((opt, index) => {
+                opt.text.setFill(index === selectedIndex ? '#FFD700' : '#FFFFFF');
             });
+            const selectedY = options[selectedIndex].text.y;
+            leftArrow.y = selectedY;
+            rightArrow.y = selectedY;
         };
 
-        startText.on('pointerdown', startGame);
-        this.input.keyboard.once('keydown-ENTER', startGame);
-        this.input.keyboard.once('keydown-SPACE', startGame);
+        updateSelection();
+
+        options.forEach((opt, index) => {
+            opt.text.on('pointerover', () => {
+                selectedIndex = index;
+                updateSelection();
+            });
+            opt.text.on('pointerdown', opt.action);
+        });
+
+        this.input.keyboard.on('keydown-UP', () => {
+            selectedIndex = (selectedIndex - 1 + options.length) % options.length;
+            updateSelection();
+        });
+
+        this.input.keyboard.on('keydown-DOWN', () => {
+            selectedIndex = (selectedIndex + 1) % options.length;
+            updateSelection();
+        });
+
+        // Held keys repeat, and the repeat can land on the scene we just
+        // switched to — holding ENTER on the instructions page would otherwise
+        // bounce straight back here and start a run. Ignore the first moment.
+        // Date.now() rather than this.time.now: the Scene Clock is seeded from
+        // wall-clock at construction but then reassigned to the game loop's
+        // performance.now() timebase, so a value read in create() is not
+        // comparable to one read in a later callback.
+        const armedAt = Date.now();
+        const activate = () => {
+            if (Date.now() - armedAt < 250) return;
+            options[selectedIndex].action();
+        };
+
+        this.input.keyboard.on('keydown-ENTER', activate);
+        this.input.keyboard.on('keydown-SPACE', activate);
     }
 }

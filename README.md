@@ -47,7 +47,8 @@ default) or by running the tank dry. Either way, carried money is gone.
 | `G` | Open the garage (only while parked on the safehouse pad) |
 | `Esc` | Pause |
 
-Touch devices can swipe to steer.
+Touch devices can swipe to steer. The main menu's INSTRUCTIONS page shows the
+same summary in-game, and the pause menu can drop you back to the main menu.
 
 The car drives itself forward; you only choose turns. Because turns are buffered,
 you can line up a sequence through an intersection before you reach it.

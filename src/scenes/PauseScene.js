@@ -55,15 +55,35 @@ export class PauseScene extends Phaser.Scene {
         };
         restartText.on('pointerdown', restartAction);
 
+        // Main Menu Button
+        const mainMenuText = this.add.text(width / 2, startY + spacing * 2, 'MAIN MENU', {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '24px',
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        // Abandons the run: carried cash is lost, exactly as it would be on a
+        // bust. Banked cash and upgrades were already written to storage when
+        // they were earned, so quitting here costs nothing that was safe.
+        const mainMenuAction = () => {
+            this.scene.stop('GameScene');
+            this.scene.start('MenuScene');
+            this.scene.stop();
+        };
+        mainMenuText.on('pointerdown', mainMenuAction);
+
         const options = [
             { text: resumeText, action: resumeAction },
-            { text: restartText, action: restartAction }
+            { text: restartText, action: restartAction },
+            { text: mainMenuText, action: mainMenuAction }
         ];
 
         let selectedIndex = 0;
 
         // Arrows setup
-        const arrowOffset = 100; // slightly wider than RESTART
+        const arrowOffset = 150; // clears MAIN MENU, the widest label
 
         const leftArrow = this.add.text(width / 2 - arrowOffset, startY, '>', {
             fontFamily: '"Press Start 2P"',
@@ -118,14 +138,11 @@ export class PauseScene extends Phaser.Scene {
         updateSelection();
 
         // Mouse hover interactions
-        resumeText.on('pointerover', () => {
-            selectedIndex = 0;
-            updateSelection();
-        });
-
-        restartText.on('pointerover', () => {
-            selectedIndex = 1;
-            updateSelection();
+        options.forEach((opt, index) => {
+            opt.text.on('pointerover', () => {
+                selectedIndex = index;
+                updateSelection();
+            });
         });
 
         // Keyboard interactions

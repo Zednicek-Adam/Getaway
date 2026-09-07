@@ -3,6 +3,7 @@ import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
 import { PauseScene } from './scenes/PauseScene';
 import { GarageScene } from './scenes/GarageScene';
+import { InstructionsScene } from './scenes/InstructionsScene';
 import { TILE_SIZE, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './constants';
 
 const config = {
@@ -26,7 +27,7 @@ const config = {
       debug: false,
     },
   },
-  scene: [MenuScene, GameScene, PauseScene, GarageScene],
+  scene: [MenuScene, GameScene, PauseScene, GarageScene, InstructionsScene],
 };
 
 // Wait for the font to load before creating the game
