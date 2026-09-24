@@ -8,6 +8,11 @@ Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 
 **Play it:** https://zednicek-adam.github.io/Getaway/
 
+| | |
+| --- | --- |
+| ![Title screen](docs/screenshots/title.png) | ![A five-star chase](docs/screenshots/chase.png) |
+| ![The garage](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
+
 ## The loop
 
 Money you pick up is **carried**, not earned. Carried money is lost when the
