@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
 import { PauseScene } from './scenes/PauseScene';
@@ -10,8 +11,10 @@ const config = {
   type: Phaser.AUTO,
   width: VIEWPORT_WIDTH * TILE_SIZE,
   height: VIEWPORT_HEIGHT * TILE_SIZE,
-  backgroundColor: '#222222',
+  backgroundColor: '#0b0c14',
   parent: 'app',
+  // Nearest-neighbour sampling + whole-pixel rendering keeps every sprite crisp
+  pixelArt: true,
   scale: {
     // The design resolution (1280x960) is taller than most browser viewports,
     // so centering alone would push the bottom of the canvas off-screen. FIT
@@ -27,7 +30,7 @@ const config = {
       debug: false,
     },
   },
-  scene: [MenuScene, GameScene, PauseScene, GarageScene, InstructionsScene],
+  scene: [BootScene, MenuScene, GameScene, PauseScene, GarageScene, InstructionsScene],
 };
 
 // Wait for the font to load before creating the game
@@ -35,5 +38,7 @@ window.addEventListener('load', () => {
   // A small delay to ensure the webfont is processed by the browser
   setTimeout(() => {
     const game = new Phaser.Game(config);
+    // Dev-server only: lets the console (and screenshot scripts) reach scenes
+    if (import.meta.env.DEV) window.game = game;
   }, 100);
 });

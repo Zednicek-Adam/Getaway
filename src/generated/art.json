@@ -1,0 +1,721 @@
+{
+ "city": {
+  "roads": {
+   "0,0": [
+    0
+   ],
+   "1,0": [
+    1
+   ],
+   "2,0": [
+    2
+   ],
+   "3,0": [
+    3
+   ],
+   "3,1": [
+    4
+   ],
+   "4,0": [
+    5
+   ],
+   "5,0": [
+    6,
+    7,
+    8
+   ],
+   "6,0": [
+    9
+   ],
+   "6,2": [
+    10
+   ],
+   "7,0": [
+    11
+   ],
+   "7,1": [
+    12
+   ],
+   "7,2": [
+    13
+   ],
+   "7,3": [
+    14
+   ],
+   "8,0": [
+    15
+   ],
+   "9,0": [
+    16
+   ],
+   "9,8": [
+    17
+   ],
+   "10,0": [
+    18,
+    19,
+    20
+   ],
+   "11,0": [
+    21
+   ],
+   "11,1": [
+    22
+   ],
+   "11,8": [
+    23
+   ],
+   "11,9": [
+    24
+   ],
+   "12,0": [
+    25
+   ],
+   "12,4": [
+    26
+   ],
+   "13,0": [
+    27
+   ],
+   "13,4": [
+    28
+   ],
+   "13,8": [
+    29
+   ],
+   "13,12": [
+    30
+   ],
+   "14,0": [
+    31
+   ],
+   "14,2": [
+    32
+   ],
+   "14,4": [
+    33
+   ],
+   "14,6": [
+    34
+   ],
+   "15,0": [
+    35
+   ],
+   "15,1": [
+    36
+   ],
+   "15,2": [
+    37
+   ],
+   "15,3": [
+    38
+   ],
+   "15,4": [
+    39
+   ],
+   "15,5": [
+    40
+   ],
+   "15,6": [
+    41
+   ],
+   "15,7": [
+    42
+   ],
+   "15,8": [
+    43
+   ],
+   "15,9": [
+    44
+   ],
+   "15,10": [
+    45
+   ],
+   "15,11": [
+    46
+   ],
+   "15,12": [
+    47
+   ],
+   "15,13": [
+    48
+   ],
+   "15,14": [
+    49
+   ],
+   "15,15": [
+    50
+   ]
+  },
+  "pieces": [
+   {
+    "name": "bldg_1x1_brick_0",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     51
+    ]
+   },
+   {
+    "name": "bldg_1x1_brick_1",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     52
+    ]
+   },
+   {
+    "name": "bldg_2x1_brick",
+    "kind": "building",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     53,
+     54
+    ]
+   },
+   {
+    "name": "bldg_1x2_brick",
+    "kind": "building",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     55,
+     56
+    ]
+   },
+   {
+    "name": "bldg_2x2_brick",
+    "kind": "building",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     57,
+     58,
+     59,
+     60
+    ]
+   },
+   {
+    "name": "bldg_1x1_concrete_0",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     61
+    ]
+   },
+   {
+    "name": "bldg_1x1_concrete_1",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     62
+    ]
+   },
+   {
+    "name": "bldg_2x1_concrete",
+    "kind": "building",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     63,
+     64
+    ]
+   },
+   {
+    "name": "bldg_1x2_concrete",
+    "kind": "building",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     65,
+     66
+    ]
+   },
+   {
+    "name": "bldg_2x2_concrete",
+    "kind": "building",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     67,
+     68,
+     69,
+     70
+    ]
+   },
+   {
+    "name": "bldg_1x1_sand_0",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     71
+    ]
+   },
+   {
+    "name": "bldg_1x1_sand_1",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     72
+    ]
+   },
+   {
+    "name": "bldg_2x1_sand",
+    "kind": "building",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     73,
+     74
+    ]
+   },
+   {
+    "name": "bldg_1x2_sand",
+    "kind": "building",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     75,
+     76
+    ]
+   },
+   {
+    "name": "bldg_2x2_sand",
+    "kind": "building",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     77,
+     78,
+     79,
+     80
+    ]
+   },
+   {
+    "name": "bldg_1x1_teal_0",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     81
+    ]
+   },
+   {
+    "name": "bldg_1x1_teal_1",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     82
+    ]
+   },
+   {
+    "name": "bldg_2x1_teal",
+    "kind": "building",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     83,
+     84
+    ]
+   },
+   {
+    "name": "bldg_1x2_teal",
+    "kind": "building",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     85,
+     86
+    ]
+   },
+   {
+    "name": "bldg_2x2_teal",
+    "kind": "building",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     87,
+     88,
+     89,
+     90
+    ]
+   },
+   {
+    "name": "bldg_1x1_office_0",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     91
+    ]
+   },
+   {
+    "name": "bldg_1x1_office_1",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     92
+    ]
+   },
+   {
+    "name": "bldg_2x1_office",
+    "kind": "building",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     93,
+     94
+    ]
+   },
+   {
+    "name": "bldg_1x2_office",
+    "kind": "building",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     95,
+     96
+    ]
+   },
+   {
+    "name": "bldg_2x2_office",
+    "kind": "building",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     97,
+     98,
+     99,
+     100
+    ]
+   },
+   {
+    "name": "bldg_1x1_rose_0",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     101
+    ]
+   },
+   {
+    "name": "bldg_1x1_rose_1",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     102
+    ]
+   },
+   {
+    "name": "bldg_2x1_rose",
+    "kind": "building",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     103,
+     104
+    ]
+   },
+   {
+    "name": "bldg_1x2_rose",
+    "kind": "building",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     105,
+     106
+    ]
+   },
+   {
+    "name": "bldg_2x2_rose",
+    "kind": "building",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     107,
+     108,
+     109,
+     110
+    ]
+   },
+   {
+    "name": "bldg_1x1_olive_0",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     111
+    ]
+   },
+   {
+    "name": "bldg_1x1_olive_1",
+    "kind": "building",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     112
+    ]
+   },
+   {
+    "name": "bldg_2x1_olive",
+    "kind": "building",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     113,
+     114
+    ]
+   },
+   {
+    "name": "bldg_1x2_olive",
+    "kind": "building",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     115,
+     116
+    ]
+   },
+   {
+    "name": "bldg_2x2_olive",
+    "kind": "building",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     117,
+     118,
+     119,
+     120
+    ]
+   },
+   {
+    "name": "park_1x1_0",
+    "kind": "park",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     121
+    ]
+   },
+   {
+    "name": "park_1x1_1",
+    "kind": "park",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     122
+    ]
+   },
+   {
+    "name": "park_1x1_2",
+    "kind": "park",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     123
+    ]
+   },
+   {
+    "name": "park_1x1_3",
+    "kind": "park",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     124
+    ]
+   },
+   {
+    "name": "park_2x1_0",
+    "kind": "park",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     125,
+     126
+    ]
+   },
+   {
+    "name": "park_1x2_0",
+    "kind": "park",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     127,
+     128
+    ]
+   },
+   {
+    "name": "park_2x2_0",
+    "kind": "park",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     129,
+     130,
+     131,
+     132
+    ]
+   },
+   {
+    "name": "park_2x2_1",
+    "kind": "park",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     133,
+     134,
+     135,
+     136
+    ]
+   },
+   {
+    "name": "parking_2x1_0",
+    "kind": "parking",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     137,
+     138
+    ]
+   },
+   {
+    "name": "parking_2x1_1",
+    "kind": "parking",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     139,
+     140
+    ]
+   },
+   {
+    "name": "parking_2x1_2",
+    "kind": "parking",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     141,
+     142
+    ]
+   },
+   {
+    "name": "parking_2x1_3",
+    "kind": "parking",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     143,
+     144
+    ]
+   },
+   {
+    "name": "parking_2x1_4",
+    "kind": "parking",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     145,
+     146
+    ]
+   },
+   {
+    "name": "parking_2x2_0",
+    "kind": "parking",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     147,
+     148,
+     149,
+     150
+    ]
+   },
+   {
+    "name": "parking_2x2_1",
+    "kind": "parking",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     151,
+     152,
+     153,
+     154
+    ]
+   },
+   {
+    "name": "parking_2x2_2",
+    "kind": "parking",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     155,
+     156,
+     157,
+     158
+    ]
+   },
+   {
+    "name": "plaza_1x1_0",
+    "kind": "plaza",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     159
+    ]
+   },
+   {
+    "name": "plaza_1x1_1",
+    "kind": "plaza",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     160
+    ]
+   }
+  ],
+  "pavement": 161,
+  "tileSize": 64,
+  "margin": 1,
+  "spacing": 2
+ },
+ "pickups": {
+  "coin": 0,
+  "repair": 6,
+  "nitro": 7,
+  "rocket": 8,
+  "bomb": 9,
+  "life": 11,
+  "planted": 12
+ },
+ "icons": {
+  "coin": 0,
+  "bag": 1,
+  "heart": 2,
+  "heartEmpty": 3,
+  "fuel": 4,
+  "bomb": 5,
+  "rocket": 6,
+  "shield": 7,
+  "shieldEmpty": 8,
+  "star": 9,
+  "starEmpty": 10,
+  "arrow": 11,
+  "gauge": 12,
+  "wrench": 13,
+  "bolt": 14
+ },
+ "logo": {
+  "width": 736,
+  "height": 196
+ }
+}

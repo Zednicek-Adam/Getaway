@@ -1,5 +1,9 @@
 import Phaser from 'phaser';
 import { loadSave, getBrowserStorage } from '../storage';
+import { label, panel, icon, money, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
+
+// Parallax speeds in texture pixels per millisecond
+const SCROLL = { far: 0.012, near: 0.035, street: 0.3 };
 
 export class MenuScene extends Phaser.Scene {
     constructor() {
@@ -12,67 +16,27 @@ export class MenuScene extends Phaser.Scene {
         // Container for all menu elements (so we can slide them as one unit)
         this.menuContainer = this.add.container(0, 0);
 
-        // Background panel (solid fill inside the container)
-        const bg = this.add.rectangle(0, 0, width, height, 0x1a1a1a).setOrigin(0);
-        this.menuContainer.add(bg);
+        // Night-city backdrop with a chase playing out on the street
+        this.layers = cityBackdrop(this, this.menuContainer);
+        this.createChase();
 
-        // Add some "bars" or stripes for a bank robber feel
-        for (let i = 0; i < height; i += 40) {
-            const bar = this.add.rectangle(0, i, width, 10, 0x000000, 0.3).setOrigin(0);
-            this.menuContainer.add(bar);
-        }
+        // Title
+        const logo = this.add.image(width / 2, 160, 'logo');
+        this.menuContainer.add(logo);
+        this.tweens.add({ targets: logo, y: 168, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-        // Title text
-        const title = this.add.text(width / 2, height / 3, 'THE GETAWAY', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '48px',
-            fill: '#FFD700', // Gold color
-            stroke: '#B22222', // Deep red stroke
-            strokeThickness: 8,
-            shadow: { offsetX: 4, offsetY: 4, color: '#000000', fill: true }
-        }).setOrigin(0.5);
-        this.menuContainer.add(title);
-
-        // Subtitle text
-        const subtitle = this.add.text(width / 2, height / 3 + 60, 'PIXEL REMAKE', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '16px',
-            fill: '#FFFFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5);
+        const subtitle = label(this, width / 2, 290, 'PIXEL REMAKE', { color: UI_COLORS.white }).setOrigin(0.5);
         this.menuContainer.add(subtitle);
 
-        // Persistent bank readout (gold, small) — shows $0 fine when empty
+        // Persistent bank readout — shows $0 fine when empty
         const banked = loadSave(getBrowserStorage()).banked;
-        const bankText = this.add.text(width / 2, height / 3 + 92, `BANK: $${banked}`, {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '12px',
-            fill: '#FFD700',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5);
-        this.menuContainer.add(bankText);
-
-
-        // --- Menu options ---
-        const startY = height * 2 / 3;
-        const optionSpacing = 60;
-
-        const makeOption = (label, y) => {
-            const text = this.add.text(width / 2, y, label, {
-                fontFamily: '"Press Start 2P"',
-                fontSize: '24px',
-                fill: '#FFFFFF',
-                stroke: '#000000',
-                strokeThickness: 4
-            }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-            this.menuContainer.add(text);
-            return text;
-        };
-
-        const startText = makeOption('START', startY);
-        const instructionsText = makeOption('INSTRUCTIONS', startY + optionSpacing);
+        const bankLabel = label(this, 0, 0, `BANK ${money(banked)}`, { color: UI_COLORS.gold }).setOrigin(0, 0.5);
+        const bankW = Math.ceil((bankLabel.width + 72) / 2) * 2;
+        const bankX = width / 2 - bankW / 2;
+        const bankPanel = panel(this, bankX, 598, bankW, 52);
+        const coin = icon(this, bankX + 28, 624, 'coin');
+        bankLabel.setPosition(bankX + 50, 624);
+        this.menuContainer.add([bankPanel, coin, bankLabel]);
 
         // Track whether transition is already in progress
         this.isTransitioning = false;
@@ -82,7 +46,7 @@ export class MenuScene extends Phaser.Scene {
             if (this.isTransitioning) return;
             this.isTransitioning = true;
 
-            // Stop arrow tweens so they don't fight the slide
+            // Stop the idle tweens so they don't fight the slide
             this.tweens.killAll();
 
             // Launch GameScene behind the menu so it's visible as menu slides up
@@ -106,80 +70,14 @@ export class MenuScene extends Phaser.Scene {
             this.scene.start('InstructionsScene', { returnTo: 'MenuScene' });
         };
 
-        const options = [
-            { text: startText, action: startGame },
-            { text: instructionsText, action: showInstructions },
-        ];
-
-        let selectedIndex = 0;
-
-        // Wide enough to clear INSTRUCTIONS, the longest label
-        const arrowOffset = 190;
-
-        const leftArrow = this.add.text(width / 2 - arrowOffset, startY, '>', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '24px',
-            fill: '#B22222',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5);
-        this.menuContainer.add(leftArrow);
-
-        const rightArrow = this.add.text(width / 2 + arrowOffset, startY, '<', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '24px',
-            fill: '#B22222',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5);
-        this.menuContainer.add(rightArrow);
-
-        // Arrow pulsing animation
-        this.tweens.add({
-            targets: [leftArrow],
-            x: width / 2 - arrowOffset + 15,
-            duration: 500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-
-        this.tweens.add({
-            targets: [rightArrow],
-            x: width / 2 + arrowOffset - 15,
-            duration: 500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-
-        const updateSelection = () => {
-            options.forEach((opt, index) => {
-                opt.text.setFill(index === selectedIndex ? '#FFD700' : '#FFFFFF');
-            });
-            const selectedY = options[selectedIndex].text.y;
-            leftArrow.y = selectedY;
-            rightArrow.y = selectedY;
-        };
-
-        updateSelection();
-
-        options.forEach((opt, index) => {
-            opt.text.on('pointerover', () => {
-                selectedIndex = index;
-                updateSelection();
-            });
-            opt.text.on('pointerdown', opt.action);
-        });
-
-        this.input.keyboard.on('keydown-UP', () => {
-            selectedIndex = (selectedIndex - 1 + options.length) % options.length;
-            updateSelection();
-        });
-
-        this.input.keyboard.on('keydown-DOWN', () => {
-            selectedIndex = (selectedIndex + 1) % options.length;
-            updateSelection();
+        this.menu = createMenu(this, {
+            x: width / 2,
+            y: 410,
+            items: [
+                { label: 'START', action: startGame },
+                { label: 'INSTRUCTIONS', action: showInstructions },
+            ],
+            container: this.menuContainer,
         });
 
         // Held keys repeat, and the repeat can land on the scene we just
@@ -192,10 +90,40 @@ export class MenuScene extends Phaser.Scene {
         const armedAt = Date.now();
         const activate = () => {
             if (Date.now() - armedAt < 250) return;
-            options[selectedIndex].action();
+            this.menu.activate();
         };
 
         this.input.keyboard.on('keydown-ENTER', activate);
         this.input.keyboard.on('keydown-SPACE', activate);
+    }
+
+    // The getaway car tearing along the street with a patrol car on its tail
+    createChase() {
+        const roadY = 888;
+        const police = this.add.sprite(330, roadY, 'menuCars', 2).play('menu-police');
+        const player = this.add.sprite(790, roadY, 'menuCars', 0).play('menu-player');
+        this.sirenGlow = this.add.image(330, roadY - 38, 'glow').setBlendMode('ADD').setScale(3).setAlpha(0.7);
+        this.menuContainer.add([this.sirenGlow, police, player]);
+
+        // Cars jostle on their suspension, out of step with each other
+        this.tweens.add({ targets: player, y: roadY - 4, duration: 180, yoyo: true, repeat: -1 });
+        this.tweens.add({ targets: police, y: roadY - 4, duration: 210, yoyo: true, repeat: -1, delay: 90 });
+        // The cop surges and drops back as if trying to close the gap
+        this.tweens.add({
+            targets: [police, this.sirenGlow], x: '+=90', duration: 2200, yoyo: true, repeat: -1,
+            ease: 'Sine.easeInOut',
+        });
+        // Keep the glow in step with the light bar frame (red first, then blue)
+        police.on('animationupdate', (anim, frame) => {
+            this.sirenGlow.setTint(frame.index === 1 ? 0xff2a3a : 0x2a6aff);
+        });
+    }
+
+    update(time, delta) {
+        const { far, near, street } = this.layers;
+        this.scroll = (this.scroll || 0) + delta;
+        far.tilePositionX = Math.floor(this.scroll * SCROLL.far);
+        near.tilePositionX = Math.floor(this.scroll * SCROLL.near);
+        street.tilePositionX = Math.floor(this.scroll * SCROLL.street);
     }
 }
