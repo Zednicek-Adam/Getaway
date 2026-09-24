@@ -136,7 +136,7 @@ python tools/generate_art.py
 ```
 
 This rewrites every PNG in `public/art/`, `public/favicon.png`, and the tile/frame
-manifest in `src/generated/art.json`. The output is deterministic — re-running it
+manifest in `src/generated/art.json`. The output is deterministic. Re-running it
 without changes produces byte-identical files, so only real art changes show up
 in a diff.
 
