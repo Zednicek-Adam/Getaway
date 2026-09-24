@@ -1,347 +1,229 @@
 import { CONFIG } from '../config';
 import { DIRECTIONS } from '../constants';
+import { ICON } from '../art';
+import { label, panel, icon, money, UI_COLORS, dim, createMenu } from '../ui/ui';
+
+const HUD_DEPTH = 100;
+
+// Fuel bar colour by fill level
+const FUEL_COLOURS = [
+    [0.5, 0x6fe08a],
+    [0.2, 0xffc933],
+    [0, 0xff4d5a],
+];
 
 export class UIManager {
     constructor(scene) {
         this.scene = scene;
 
         // Dirty-check cache of last rendered HUD values
-        this.lastBanked = null;
-        this.lastCarried = null;
-        this.lastLives = null;
-        this.lastFuel = null;
-        this.lastBombs = null;
-        this.lastRockets = null;
-        this.lastDamage = null;
-        this.lastMaxDamage = null;
-        this.lastMaxLives = null;
-        this.lastFuelMax = null;
-        this.lastNitroActive = null;
-        this.lastQueueKey = null;
-        this.lastStars = null;
-        this.lastChaseActive = null;
-        this.lastChaseWidth = null;
-
-        // UI Panel Background
-        this.panel = this.scene.add.rectangle(10, 10, 260, 270, 0x1a1a1a, 0.8)
-            .setOrigin(0)
-            .setStrokeStyle(4, 0xB22222)
-            .setDepth(99)
-            .setScrollFactor(0);
-
-        // Striped pattern for panel background (simulated using small lines)
-        for (let i = 10; i < 280; i += 20) {
-            this.scene.add.rectangle(10, i, 260, 5, 0x000000, 0.4)
-                .setOrigin(0)
-                .setDepth(99)
-                .setScrollFactor(0);
-        }
-
-        // UI Text Objects
-        this.bankText = this.scene.add.text(25, 25, 'BANK: $0', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#FFD700',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
-
-        this.carryText = this.scene.add.text(25, 50, 'CARRY: $0', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#888888',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
-
-        this.livesLabel = this.scene.add.text(25, 75, 'LIVES:', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#FFFFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
-
-        // Life pips — small red squares (the pixel font has no heart glyph).
-        // Built to MAX_LIVES so the extra-life pickup has slots; tighter
-        // spacing keeps 5 pips inside the panel.
-        this.lifePips = [];
-        for (let i = 0; i < CONFIG.PLAYER.MAX_LIVES; i++) {
-            const pip = this.scene.add.rectangle(120 + i * 22, 75, 14, 14, 0xFF3344)
-                .setOrigin(0)
-                .setStrokeStyle(2, 0x000000)
-                .setDepth(100)
-                .setScrollFactor(0);
-            this.lifePips.push(pip);
-        }
-
-        this.fuelLabel = this.scene.add.text(25, 100, 'FUEL:', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#FFFFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
-
-        // Fuel Gauge Settings
-        this.gaugeX = 100;
-        this.gaugeY = 100;
-        this.gaugeWidth = 90;
-        this.gaugeHeight = 14;
-
-        // Fuel Gauge Background
-        this.fuelGaugeBg = this.scene.add.rectangle(this.gaugeX, this.gaugeY, this.gaugeWidth, this.gaugeHeight, 0x333333)
-            .setOrigin(0, 0)
-            .setStrokeStyle(4, 0x888888)
-            .setDepth(100)
-            .setScrollFactor(0);
-
-        // Fuel Gauge Fill
-        this.fuelGaugeFill = this.scene.add.rectangle(this.gaugeX, this.gaugeY, this.gaugeWidth, this.gaugeHeight, 0x00FF00)
-            .setOrigin(0, 0)
-            .setDepth(101)
-            .setScrollFactor(0);
-
-        this.fuelPercentText = this.scene.add.text(this.gaugeX + this.gaugeWidth + 10, 102, '100%', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '10px',
-            fill: '#00FF00',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
-
-        // NITRO indicator — cyan, near the fuel gauge; hidden until nitro is
-        // active, then alpha-flashes (tween created/killed on the dirty edge).
-        this.nitroText = this.scene.add.text(this.gaugeX + this.gaugeWidth + 10, 116, 'NITRO', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '10px',
-            fill: '#66FFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0).setVisible(false);
+        this.last = {};
         this.nitroTween = null;
+        this.starTween = null;
+        this.fuelTween = null;
 
-        this.bombText = this.scene.add.text(25, 128, 'BOMBS: 0', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#FFFFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
+        const { width, height } = scene.scale;
 
-        // Rocket inventory — orange, sharing the BOMBS row to the right
-        this.rocketText = this.scene.add.text(160, 128, 'RKT: 0', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#FF8800',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
+        // --- Status panel (top-left) -----------------------------------------
+        this.fix(panel(scene, 16, 16, 344, 204));
 
-        this.queueLabel = this.scene.add.text(25, 153, 'NEXT:', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#FFFFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
+        this.fix(icon(scene, 44, 46, 'coin'));
+        this.fix(label(scene, 68, 38, 'BANK', { color: UI_COLORS.dim }));
+        this.bankText = this.fix(label(scene, 340, 38, '$0', { color: UI_COLORS.gold }).setOrigin(1, 0));
 
-        // Queued-turn arrows — white triangles rotated per direction
-        // (shapes, not text: the pixel font lacks arrow glyphs)
+        this.fix(icon(scene, 44, 82, 'bag'));
+        this.fix(label(scene, 68, 74, 'CARRY', { color: UI_COLORS.dim }));
+        this.carryText = this.fix(label(scene, 340, 74, '$0').setOrigin(1, 0));
+
+        // Life hearts — built to MAX_LIVES so the extra-life pickup has slots
+        this.hearts = [];
+        for (let i = 0; i < CONFIG.PLAYER.MAX_LIVES; i++) {
+            this.hearts.push(this.fix(icon(scene, 44 + i * 34, 122, 'heart')));
+        }
+
+        // Armour pips show REMAINING hits. Pool sized to the highest armor
+        // level so upgrades have slots; only the first maxDamage are shown.
+        this.shields = [];
+        const maxShields = Math.max(...CONFIG.GARAGE.TRACKS.armor.values);
+        for (let i = 0; i < maxShields; i++) {
+            this.shields.push(this.fix(icon(scene, 44 + i * 30, 158, 'shield')));
+        }
+
+        // Fuel gauge: segmented bar
+        this.fix(icon(scene, 44, 194, 'fuel'));
+        this.gauge = { x: 68, y: 186, w: 192, h: 16 };
+        const g = this.gauge;
+        this.fix(scene.add.rectangle(g.x - 4, g.y - 4, g.w + 8, g.h + 8, 0x0a0b11).setOrigin(0));
+        this.fix(scene.add.rectangle(g.x, g.y, g.w, g.h, 0x2a2e3f).setOrigin(0));
+        this.fuelFill = this.fix(scene.add.rectangle(g.x, g.y, g.w, g.h, 0x6fe08a).setOrigin(0));
+        this.fuelShine = this.fix(scene.add.rectangle(g.x, g.y, g.w, 4, 0xffffff, 0.35).setOrigin(0));
+        for (let sx = g.x + 16; sx < g.x + g.w; sx += 16) {
+            this.fix(scene.add.rectangle(sx - 1, g.y, 2, g.h, 0x0a0b11, 0.55).setOrigin(0));
+        }
+        this.fuelPercentText = this.fix(label(scene, 340, 186, '100%', { color: UI_COLORS.green }).setOrigin(1, 0));
+
+        // --- Arsenal panel (under the status panel) ---------------------------
+        this.fix(panel(scene, 16, 228, 344, 56));
+        this.fix(icon(scene, 44, 256, 'bomb'));
+        this.bombText = this.fix(label(scene, 66, 248, 'x0'));
+        this.fix(icon(scene, 142, 256, 'rocket'));
+        this.rocketText = this.fix(label(scene, 164, 248, 'x0', { color: UI_COLORS.orange }));
+        this.nitroIcon = this.fix(icon(scene, 240, 256, 'bolt'));
+        this.nitroText = this.fix(label(scene, 262, 248, 'NOS', { color: UI_COLORS.cyan }));
+        this.renderNitro(false);
+
+        // --- Wanted level (top-right) -----------------------------------------
+        const wantedW = 5 * 40 + 36;
+        const wx = width - 16 - wantedW;
+        this.fix(panel(scene, wx, 16, wantedW, 96));
+        this.fix(label(scene, wx + wantedW / 2, 28, 'WANTED', { color: UI_COLORS.dim }).setOrigin(0.5, 0));
+        this.stars = [];
+        for (let i = 0; i < 5; i++) {
+            this.stars.push(this.fix(icon(scene, wx + 38 + i * 40, 66, 'starEmpty')));
+        }
+        this.chaseBar = { x: wx + 18, y: 88, w: wantedW - 36, h: 8 };
+        const c = this.chaseBar;
+        this.chaseBarBg = this.fix(scene.add.rectangle(c.x, c.y, c.w, c.h, 0x2a2e3f).setOrigin(0).setVisible(false));
+        this.chaseBarFill = this.fix(scene.add.rectangle(c.x, c.y, c.w, c.h, 0xff4d5a).setOrigin(0).setVisible(false));
+
+        // --- Turn queue (bottom-centre) ----------------------------------------
+        const qW = 96 + CONFIG.PLAYER.QUEUE_MAX * 44;
+        const qx = (width - qW) / 2;
+        const qy = height - 16 - 56;
+        this.fix(panel(scene, qx, qy, qW, 56));
+        this.fix(label(scene, qx + 18, qy + 20, 'NEXT', { color: UI_COLORS.dim }));
         this.queueArrows = [];
         for (let i = 0; i < CONFIG.PLAYER.QUEUE_MAX; i++) {
-            const arrow = this.scene.add.triangle(
-                133 + i * 26, 161,   // center position
-                8, 0, 0, 16, 16, 16, // points up by default
-                0xFFFFFF
-            )
-                .setStrokeStyle(2, 0x000000)
-                .setDepth(100)
-                .setScrollFactor(0)
-                .setAlpha(0.12);
-            this.queueArrows.push(arrow);
+            this.queueArrows.push(this.fix(icon(scene, qx + 118 + i * 44, qy + 28, 'arrow').setAlpha(0.15)));
         }
+    }
 
-        // Wanted stars — filled gold while active, dark gray otherwise
-        this.starShapes = [];
-        for (let i = 0; i < 5; i++) {
-            const star = this.scene.add.star(40 + i * 28, 192, 5, 5, 11, 0x555555)
-                .setStrokeStyle(2, 0x000000)
-                .setDepth(100)
-                .setScrollFactor(0)
-                .setAlpha(0.35);
-            this.starShapes.push(star);
-        }
+    // Pin a display object to the screen above the world
+    fix(obj) {
+        return obj.setScrollFactor(0).setDepth(HUD_DEPTH);
+    }
 
-        // Chase countdown bar (hidden while no chase is running)
-        this.chaseBarX = 25;
-        this.chaseBarY = 210;
-        this.chaseBarWidth = 230;
-        this.chaseBarHeight = 10;
+    changed(key, value) {
+        if (this.last[key] === value) return false;
+        this.last[key] = value;
+        return true;
+    }
 
-        this.chaseBarBg = this.scene.add.rectangle(this.chaseBarX, this.chaseBarY, this.chaseBarWidth, this.chaseBarHeight, 0x333333)
-            .setOrigin(0, 0)
-            .setStrokeStyle(2, 0x000000)
-            .setDepth(100)
-            .setScrollFactor(0)
-            .setVisible(false);
-
-        this.chaseBarFill = this.scene.add.rectangle(this.chaseBarX, this.chaseBarY, this.chaseBarWidth, this.chaseBarHeight, 0xFF2222)
-            .setOrigin(0, 0)
-            .setDepth(101)
-            .setScrollFactor(0)
-            .setVisible(false);
-
-        // Damage row — square pips showing REMAINING hits (full = 3 lit green).
-        // Clones the lifePips pattern; each hit dims a pip to red-ish.
-        this.damageLabel = this.scene.add.text(25, 235, 'DMG:', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '14px',
-            fill: '#FFFFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setDepth(100).setScrollFactor(0);
-
-        // Pool sized to the highest armor level so upgrades have slots; each
-        // frame renderDamage() shows only the first maxDamage pips.
-        this.damagePips = [];
-        const maxDamagePips = Math.max(...CONFIG.GARAGE.TRACKS.armor.values);
-        for (let i = 0; i < maxDamagePips; i++) {
-            const pip = this.scene.add.rectangle(125 + i * 24, 235, 16, 16, 0x33FF66)
-                .setOrigin(0)
-                .setStrokeStyle(2, 0x000000)
-                .setDepth(100)
-                .setScrollFactor(0);
-            this.damagePips.push(pip);
-        }
+    // A quick scale "punch" so changing numbers catch the eye
+    punch(obj) {
+        obj.setScale(1.25);
+        this.scene.tweens.add({ targets: obj, scale: 1, duration: 180, ease: 'Back.easeOut' });
     }
 
     // Pure renderer: called every frame with a HUD snapshot
     // { banked, carried, lives, fuel, fuelMax, bombs, rockets, damage, maxDamage,
     //   nitroActive, queue, stars, chaseCountdown, chaseCountdownMax }
     update(hud) {
-        if (hud.banked !== this.lastBanked) {
-            this.lastBanked = hud.banked;
-            this.bankText.setText(`BANK: $${hud.banked}`);
+        if (this.changed('banked', hud.banked)) {
+            this.bankText.setText(money(hud.banked));
+            if (hud.banked > 0) this.punch(this.bankText);
         }
 
-        if (hud.carried !== this.lastCarried) {
-            this.lastCarried = hud.carried;
-            this.carryText.setText(`CARRY: $${hud.carried}`);
+        if (this.changed('carried', hud.carried)) {
+            this.carryText.setText(money(hud.carried));
             // Brighter while money is at risk
-            this.carryText.setColor(hud.carried > 0 ? '#FFFFFF' : '#888888');
+            this.carryText.setColor(hud.carried > 0 ? UI_COLORS.white : UI_COLORS.faint);
+            if (hud.carried > 0) this.punch(this.carryText);
         }
 
-        if (hud.lives !== this.lastLives || hud.maxLives !== this.lastMaxLives) {
-            this.lastLives = hud.lives;
-            this.lastMaxLives = hud.maxLives;
-            this.lifePips.forEach((pip, i) => {
-                pip.setVisible(i < hud.maxLives);
-                pip.setAlpha(i < hud.lives ? 1 : 0.15);
+        if (this.changed('lives', `${hud.lives}/${hud.maxLives}`)) {
+            this.hearts.forEach((heart, i) => {
+                heart.setVisible(i < hud.maxLives);
+                heart.setFrame(i < hud.lives ? ICON.heart : ICON.heartEmpty);
             });
         }
 
-        if (hud.fuel !== this.lastFuel || hud.fuelMax !== this.lastFuelMax) {
-            this.lastFuel = hud.fuel;
-            this.lastFuelMax = hud.fuelMax;
+        if (this.changed('fuel', `${hud.fuel}/${hud.fuelMax}`)) {
             this.renderFuel(hud.fuel, hud.fuelMax);
         }
 
-        if (hud.bombs !== this.lastBombs) {
-            this.lastBombs = hud.bombs;
-            this.bombText.setText(`BOMBS: ${hud.bombs}`);
+        if (this.changed('bombs', hud.bombs)) {
+            this.bombText.setText(`x${hud.bombs}`).setColor(hud.bombs > 0 ? UI_COLORS.white : UI_COLORS.faint);
         }
 
-        if (hud.rockets !== this.lastRockets) {
-            this.lastRockets = hud.rockets;
-            this.rocketText.setText(`RKT: ${hud.rockets}`);
+        if (this.changed('rockets', hud.rockets)) {
+            this.rocketText.setText(`x${hud.rockets}`).setColor(hud.rockets > 0 ? UI_COLORS.orange : UI_COLORS.faint);
         }
 
-        if (hud.damage !== this.lastDamage || hud.maxDamage !== this.lastMaxDamage) {
-            this.lastDamage = hud.damage;
-            this.lastMaxDamage = hud.maxDamage;
+        if (this.changed('damage', `${hud.damage}/${hud.maxDamage}`)) {
             this.renderDamage(hud.damage, hud.maxDamage);
         }
 
-        if (hud.nitroActive !== this.lastNitroActive) {
-            this.lastNitroActive = hud.nitroActive;
+        if (this.changed('nitro', hud.nitroActive)) {
             this.renderNitro(hud.nitroActive);
         }
 
         const queue = hud.queue || [];
-        const queueKey = queue.join(',');
-        if (queueKey !== this.lastQueueKey) {
-            this.lastQueueKey = queueKey;
+        if (this.changed('queue', queue.join(','))) {
             this.renderQueue(queue);
         }
 
-        if (hud.stars !== this.lastStars) {
-            this.lastStars = hud.stars;
+        if (this.changed('stars', hud.stars)) {
             this.renderStars(hud.stars);
         }
 
         this.renderChaseBar(hud.chaseCountdown, hud.chaseCountdownMax);
     }
 
-    // Pips show remaining hits: lit green while intact, dimmed red once spent
+    // Shields show remaining hits: lit while intact, hollow once spent
     renderDamage(damage, maxDamage) {
         const remaining = maxDamage - damage;
-        this.damagePips.forEach((pip, i) => {
-            pip.setVisible(i < maxDamage);
-            if (i < remaining) {
-                pip.setFillStyle(0x33FF66).setAlpha(1);
-            } else {
-                pip.setFillStyle(0xFF3344).setAlpha(0.2);
-            }
+        this.shields.forEach((s, i) => {
+            s.setVisible(i < maxDamage);
+            s.setFrame(i < remaining ? ICON.shield : ICON.shieldEmpty);
         });
     }
 
-    // Toggle the NITRO indicator; a looping alpha-flash runs while visible and
-    // is killed (alpha restored) when it hides.
+    // Nitro reads as dim/hollow until active, then flashes
     renderNitro(active) {
+        if (this.nitroTween) {
+            this.nitroTween.stop();
+            this.nitroTween = null;
+        }
+        const targets = [this.nitroIcon, this.nitroText];
+        targets.forEach(t => t.setAlpha(active ? 1 : 0.25));
         if (active) {
-            this.nitroText.setVisible(true).setAlpha(1);
             this.nitroTween = this.scene.tweens.add({
-                targets: this.nitroText,
-                alpha: 0.25,
-                duration: 250,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut',
+                targets, alpha: 0.35, duration: 180, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
             });
-        } else {
-            if (this.nitroTween) {
-                this.nitroTween.stop();
-                this.nitroTween = null;
-            }
-            this.nitroText.setAlpha(1).setVisible(false);
         }
     }
 
     renderStars(stars) {
-        this.starShapes.forEach((shape, i) => {
-            if (i < stars) {
-                shape.setFillStyle(0xFFD700).setAlpha(1);
-            } else {
-                shape.setFillStyle(0x555555).setAlpha(0.35);
-            }
+        if (this.starTween) {
+            this.starTween.stop();
+            this.starTween = null;
+        }
+        this.stars.forEach((s, i) => {
+            s.setAlpha(1).setFrame(i < stars ? ICON.star : ICON.starEmpty);
+            if (i === stars - 1) this.punch(s);
         });
+        if (stars > 0) {
+            // Earned stars flash like a light bar
+            this.starTween = this.scene.tweens.add({
+                targets: this.stars.slice(0, stars), alpha: 0.45, duration: 280, yoyo: true, repeat: -1,
+            });
+        }
     }
 
     renderChaseBar(countdown, countdownMax) {
         const active = countdown > 0;
-        if (active !== this.lastChaseActive) {
-            this.lastChaseActive = active;
+        if (this.changed('chaseActive', active)) {
             this.chaseBarBg.setVisible(active);
             this.chaseBarFill.setVisible(active);
         }
         if (!active) return;
 
         const fraction = Math.max(0, Math.min(1, countdown / countdownMax));
-        const width = fraction * this.chaseBarWidth;
-        if (width !== this.lastChaseWidth) {
-            this.lastChaseWidth = width;
-            this.chaseBarFill.setSize(width, this.chaseBarHeight);
+        // Snap to 2px steps so the bar shrinks on the pixel grid
+        const w = Math.round((fraction * this.chaseBar.w) / 2) * 2;
+        if (this.changed('chaseWidth', w)) {
+            this.chaseBarFill.width = w;
         }
     }
 
@@ -355,162 +237,87 @@ export class UIManager {
 
         this.queueArrows.forEach((arrow, i) => {
             if (i < queue.length) {
-                arrow.setAngle(angleByDirection[queue[i]]);
-                arrow.setAlpha(1);
+                arrow.setAngle(angleByDirection[queue[i]]).setAlpha(1);
             } else {
-                arrow.setAlpha(0.12); // Dim unused slot
+                arrow.setAngle(0).setAlpha(0.15); // Dim unused slot
             }
         });
     }
 
     renderFuel(fuel, fuelMax) {
-        const percent = (fuel / fuelMax) * 100;
+        const fraction = Math.max(0, Math.min(1, fuel / fuelMax));
+        const w = Math.round((fraction * this.gauge.w) / 2) * 2;
+        this.fuelFill.width = w;
+        this.fuelShine.width = w;
 
-        // Update Gauge Fill Width
-        const fillWidth = (fuel / fuelMax) * this.gaugeWidth;
-        this.fuelGaugeFill.setSize(fillWidth, this.gaugeHeight);
+        const colour = FUEL_COLOURS.find(([min]) => fraction > min || min === 0)[1];
+        this.fuelFill.setFillStyle(colour);
+        const css = `#${colour.toString(16).padStart(6, '0')}`;
+        this.fuelPercentText.setText(`${Math.floor(fraction * 100)}%`).setColor(css);
 
-        // Update Percentage Text
-        this.fuelPercentText.setText(`${Math.floor(percent)}%`);
-
-        // Color change based on fuel level
-        let colorHex = 0x00FF00;
-        let colorStr = '#00FF00';
-
-        if (percent < 20) {
-            colorHex = 0xFF0000;
-            colorStr = '#FF0000';
-        } else if (percent < 50) {
-            colorHex = 0xFFFF00;
-            colorStr = '#FFFF00';
+        // Low fuel: the gauge blinks
+        const low = fraction < 0.2;
+        if (low && !this.fuelTween) {
+            this.fuelTween = this.scene.tweens.add({
+                targets: [this.fuelFill, this.fuelPercentText], alpha: 0.3, duration: 260, yoyo: true, repeat: -1,
+            });
+        } else if (!low && this.fuelTween) {
+            this.fuelTween.stop();
+            this.fuelTween = null;
+            this.fuelFill.setAlpha(1);
+            this.fuelPercentText.setAlpha(1);
         }
-
-        this.fuelGaugeFill.setFillStyle(colorHex);
-        this.fuelPercentText.setColor(colorStr);
     }
 
     showToast(text) {
         const { width } = this.scene.scale;
+        const t = label(this.scene, 0, 0, text, { size: 16, color: UI_COLORS.gold }).setOrigin(0.5);
+        const w = Math.ceil((t.width + 48) / 2) * 2;
+        const bg = panel(this.scene, -w / 2, -26, w, 52, 'gold');
+        const toast = this.scene.add.container(width / 2, 150, [bg, t])
+            .setScrollFactor(0).setDepth(150).setScale(0.4).setAlpha(0);
 
-        const toast = this.scene.add.text(width / 2, 120, text, {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '16px',
-            fill: '#FFD700',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setDepth(150).setScrollFactor(0);
-
+        this.scene.tweens.add({ targets: toast, scale: 1, alpha: 1, duration: 160, ease: 'Back.easeOut' });
         this.scene.tweens.add({
             targets: toast,
-            y: 90,
+            y: 118,
             alpha: 0,
-            duration: 1500,
+            delay: 900,
+            duration: 600,
             ease: 'Sine.easeIn',
             onComplete: () => toast.destroy()
         });
     }
 
     showGameOver(reason) {
-        const { width, height } = this.scene.scale;
+        const scene = this.scene;
+        const { width, height } = scene.scale;
 
-        // Overlay background
-        this.scene.add.rectangle(0, 0, width, height, 0x000000, 0.7)
-            .setOrigin(0)
-            .setDepth(190)
-            .setScrollFactor(0);
+        dim(scene, 0.75).setDepth(190);
 
-        // Bank Robber Theme Panel
-        const panelWidth = width * 0.8;
-        const panelHeight = height * 0.6;
-        const panelX = width / 2;
-        const panelY = height / 2;
+        const pw = 720;
+        const ph = 420;
+        const box = scene.add.container(width / 2, height / 2).setScrollFactor(0).setDepth(195);
+        box.add(panel(scene, -pw / 2, -ph / 2, pw, ph, 'red'));
 
-        this.scene.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x1a1a1a)
-            .setOrigin(0.5)
-            .setStrokeStyle(6, 0xB22222)
-            .setDepth(195)
-            .setScrollFactor(0);
-
-        // Subdued stripes for panel
-        for (let i = panelY - panelHeight / 2; i < panelY + panelHeight / 2; i += 40) {
-            this.scene.add.rectangle(panelX - panelWidth / 2, i, panelWidth, 10, 0x000000, 0.3)
-                .setOrigin(0)
-                .setDepth(195)
-                .setScrollFactor(0);
+        // Hazard stripes along the top edge
+        for (let x = -pw / 2 + 20; x < pw / 2 - 30; x += 32) {
+            box.add(scene.add.rectangle(x, -ph / 2 + 22, 16, 8, 0xffc933).setOrigin(0));
         }
 
-        // Game Over Text
-        this.scene.add.text(width / 2, panelY - 60, `GAME OVER`, {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '32px',
-            fill: '#B22222',
-            stroke: '#000000',
-            strokeThickness: 6,
-            align: 'center',
-            shadow: { offsetX: 3, offsetY: 3, color: '#000000', fill: true }
-        }).setOrigin(0.5).setDepth(200).setScrollFactor(0);
+        box.add(label(scene, 0, -100, 'GAME OVER', { size: 48, color: UI_COLORS.red }).setOrigin(0.5));
+        box.add(label(scene, 0, -24, reason, { size: 24, color: UI_COLORS.gold }).setOrigin(0.5));
 
-        // Reason Text
-        this.scene.add.text(width / 2, panelY, reason, {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '16px',
-            fill: '#FFD700',
-            stroke: '#000000',
-            strokeThickness: 4,
-            align: 'center'
-        }).setOrigin(0.5).setDepth(200).setScrollFactor(0);
+        // Drop-in entrance
+        box.y = -ph;
+        scene.tweens.add({ targets: box, y: height / 2, duration: 520, ease: 'Bounce.easeOut' });
 
-        // --- Restart Button ---
-        const restartY = panelY + 80;
-
-        const restartText = this.scene.add.text(width / 2, restartY, 'RESTART', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '20px',
-            fill: '#FFFFFF',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setDepth(200).setScrollFactor(0).setInteractive({ useHandCursor: true });
-
-        // Hover effect for text
-        restartText.on('pointerover', () => restartText.setFill('#FFD700'));
-        restartText.on('pointerout', () => restartText.setFill('#FFFFFF'));
-
-        // Arrows setup
-        const arrowOffset = 90;
-
-        const leftArrow = this.scene.add.text(width / 2 - arrowOffset, restartY, '>', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '20px',
-            fill: '#B22222',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setDepth(200).setScrollFactor(0);
-
-        const rightArrow = this.scene.add.text(width / 2 + arrowOffset, restartY, '<', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '20px',
-            fill: '#B22222',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setDepth(200).setScrollFactor(0);
-
-        // Arrow pulsing animation
-        this.scene.tweens.add({
-            targets: [leftArrow],
-            x: width / 2 - arrowOffset + 15,
-            duration: 500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
+        // Visual cue only: GameScene.handleGameOver already restarts on any
+        // click or ENTER, so the button itself must not restart a second time.
+        createMenu(scene, {
+            x: 0, y: 86, width: 320, items: [{ label: 'RESTART', action: () => {} }],
+            container: box,
         });
-
-        this.scene.tweens.add({
-            targets: [rightArrow],
-            x: width / 2 + arrowOffset - 15,
-            duration: 500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
+        box.add(label(scene, 0, 150, 'PRESS ENTER', { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
     }
 }

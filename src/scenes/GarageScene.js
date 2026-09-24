@@ -2,6 +2,17 @@ import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { canPurchase, purchase } from '../garage';
 import { writeSave } from '../storage';
+import { label, panel, icon, dim, money, UI_COLORS } from '../ui/ui';
+import { sparkBurst } from '../fx';
+
+// Icon per upgrade track (icons.png)
+const TRACK_ICONS = {
+    engine: 'gauge',
+    fuelTank: 'fuel',
+    armor: 'shield',
+    bombBay: 'bomb',
+    rocketRack: 'rocket',
+};
 
 // Overlay scene over the paused GameScene — mirrors PauseScene: owns its
 // keyboard listeners, closes by resuming + stopping itself. Renders the
@@ -20,146 +31,60 @@ export class GarageScene extends Phaser.Scene {
     create() {
         const { width, height } = this.scale;
 
-        // Full-screen dim
-        this.add.rectangle(0, 0, width, height, 0x000000, 0.7).setOrigin(0).setScrollFactor(0);
+        dim(this, 0.72);
 
-        // Centered panel
-        const panelWidth = width * 0.85;
-        const panelHeight = height * 0.8;
-        const panelX = width / 2;
-        const panelY = height / 2;
-        const panelTop = panelY - panelHeight / 2;
-        const panelLeft = panelX - panelWidth / 2;
+        const pw = 1040;
+        const ph = 800;
+        const left = (width - pw) / 2;
+        const top = (height - ph) / 2;
+        panel(this, left, top, pw, ph);
 
-        this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x1a1a1a)
-            .setOrigin(0.5)
-            .setStrokeStyle(6, 0xB22222)
-            .setScrollFactor(0);
-
-        // Subdued stripes
-        for (let i = panelTop; i < panelY + panelHeight / 2; i += 40) {
-            this.add.rectangle(panelLeft, i, panelWidth, 10, 0x000000, 0.3)
-                .setOrigin(0)
-                .setScrollFactor(0);
-        }
-
-        // Title
-        this.add.text(panelX, panelTop + 34, 'GARAGE', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '28px',
-            fill: '#B22222',
-            stroke: '#000000',
-            strokeThickness: 6,
-            shadow: { offsetX: 3, offsetY: 3, color: '#000000', fill: true }
-        }).setOrigin(0.5).setScrollFactor(0);
+        // Title flanked by wrenches
+        label(this, width / 2, top + 58, 'GARAGE', { size: 48, color: UI_COLORS.gold }).setOrigin(0.5);
+        icon(this, width / 2 - 200, top + 58, 'wrench').setScale(2);
+        icon(this, width / 2 + 200, top + 58, 'wrench').setScale(2).setFlipX(true);
 
         // Bank readout (refreshed after purchases)
-        this.bankReadout = this.add.text(panelX, panelTop + 70, '', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '16px',
-            fill: '#FFD700',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setScrollFactor(0);
+        icon(this, width / 2 - 110, top + 118, 'coin');
+        this.bankReadout = label(this, width / 2 - 86, top + 118, '', { color: UI_COLORS.gold }).setOrigin(0, 0.5);
 
-        // Column x positions inside the panel
-        const labelX = panelLeft + 30;
-        const pipsX = panelLeft + panelWidth * 0.40;
-        const valueX = panelLeft + panelWidth * 0.60;
-        const priceX = panelLeft + panelWidth - 30; // right-aligned
-
-        // Rows
         const tracks = Object.entries(CONFIG.GARAGE.TRACKS);
-        const rowsTop = panelTop + 108;
-        const rowSpacing = (panelHeight - 108 - 40) / tracks.length;
+        const rowW = pw - 80;
+        const rowH = 92;
+        const rowsTop = top + 160;
+        const spacing = 106;
+        const rowLeft = left + 40;
 
         this.rows = tracks.map(([key, def], i) => {
-            const y = rowsTop + rowSpacing * i + rowSpacing / 2;
+            const y = rowsTop + spacing * i + rowH / 2;
+            const idle = panel(this, rowLeft, y - rowH / 2, rowW, rowH);
+            const lit = panel(this, rowLeft, y - rowH / 2, rowW, rowH, 'gold').setVisible(false);
+            icon(this, rowLeft + 52, y, TRACK_ICONS[key]).setScale(2);
+            const name = label(this, rowLeft + 100, y, def.label, { size: 24 }).setOrigin(0, 0.5);
 
-            const label = this.add.text(labelX, y, def.label, {
-                fontFamily: '"Press Start 2P"',
-                fontSize: '14px',
-                fill: '#FFFFFF',
-                stroke: '#000000',
-                strokeThickness: 4
-            }).setOrigin(0, 0.5).setScrollFactor(0);
-
-            // Level pips — clone lifePips pattern; one per level (MAX_LEVEL)
+            // Level pips — one per purchasable level
             const pips = [];
-            const pipSize = 14;
-            const pipGap = 22;
+            const pipsX = rowLeft + 430;
             for (let p = 0; p < CONFIG.GARAGE.MAX_LEVEL; p++) {
-                const pip = this.add.rectangle(pipsX + p * pipGap, y, pipSize, pipSize, 0xFFD700)
-                    .setOrigin(0, 0.5)
-                    .setStrokeStyle(2, 0x000000)
-                    .setScrollFactor(0);
-                pips.push(pip);
+                const px = pipsX + p * 40;
+                this.add.rectangle(px, y - 16, 32, 32, 0x0a0b11).setOrigin(0);
+                const fill = this.add.rectangle(px + 4, y - 12, 24, 24, 0xffc933).setOrigin(0);
+                const shine = this.add.rectangle(px + 4, y - 12, 24, 6, 0xfff09a).setOrigin(0);
+                pips.push({ fill, shine });
             }
 
-            const value = this.add.text(valueX, y, '', {
-                fontFamily: '"Press Start 2P"',
-                fontSize: '11px',
-                fill: '#FFFFFF',
-                stroke: '#000000',
-                strokeThickness: 3
-            }).setOrigin(0, 0.5).setScrollFactor(0);
-
-            const price = this.add.text(priceX, y, '', {
-                fontFamily: '"Press Start 2P"',
-                fontSize: '14px',
-                fill: '#FFD700',
-                stroke: '#000000',
-                strokeThickness: 4
-            }).setOrigin(1, 0.5).setScrollFactor(0);
+            const value = label(this, rowLeft + 580, y, '', { size: 16 }).setOrigin(0, 0.5);
+            const price = label(this, rowLeft + rowW - 32, y, '', { size: 24, color: UI_COLORS.gold }).setOrigin(1, 0.5);
 
             // Interactive hit-area spanning the row for hover-select + click-buy
-            const hit = this.add.rectangle(panelX, y, panelWidth - 20, rowSpacing * 0.9, 0xffffff, 0.001)
-                .setOrigin(0.5)
-                .setScrollFactor(0)
-                .setInteractive({ useHandCursor: true });
+            const hit = this.add.zone(rowLeft + rowW / 2, y, rowW, rowH).setInteractive({ useHandCursor: true });
             hit.on('pointerover', () => this.select(i));
             hit.on('pointerdown', () => { this.select(i); this.attemptPurchase(); });
 
-            return { key, def, y, label, pips, value, price };
+            return { key, def, y, idle, lit, name, pips, value, price, priceX: price.x };
         });
 
-        // Selection arrows (pulsing), flanking the selected row
-        this.selectedIndex = 0;
-        this.arrowLeftBaseX = labelX - 22;
-        this.arrowRightBaseX = priceX + 22;
-
-        this.leftArrow = this.add.text(this.arrowLeftBaseX, this.rows[0].y, '>', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '18px',
-            fill: '#B22222',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setScrollFactor(0);
-
-        this.rightArrow = this.add.text(this.arrowRightBaseX, this.rows[0].y, '<', {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '18px',
-            fill: '#B22222',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setScrollFactor(0);
-
-        this.tweens.add({
-            targets: [this.leftArrow],
-            x: this.arrowLeftBaseX + 12,
-            duration: 500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-        this.tweens.add({
-            targets: [this.rightArrow],
-            x: this.arrowRightBaseX - 12,
-            duration: 500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
+        label(this, width / 2, top + ph - 40, 'ENTER BUY    ESC CLOSE', { color: UI_COLORS.dim }).setOrigin(0.5);
 
         this.select(0);
         this.refreshRows();
@@ -184,14 +109,17 @@ export class GarageScene extends Phaser.Scene {
 
     select(index) {
         this.selectedIndex = index;
-        const y = this.rows[index].y;
-        this.leftArrow.y = y;
-        this.rightArrow.y = y;
+        this.rows.forEach((row, i) => {
+            const on = i === index;
+            row.idle.setVisible(!on);
+            row.lit.setVisible(on);
+            row.name.setColor(on ? UI_COLORS.gold : UI_COLORS.white);
+        });
     }
 
     attemptPurchase() {
-        const track = this.rows[this.selectedIndex].key;
-        if (!purchase(this.save, track)) {
+        const row = this.rows[this.selectedIndex];
+        if (!purchase(this.save, row.key)) {
             this.flashPriceDenied(this.selectedIndex);
             return;
         }
@@ -199,49 +127,57 @@ export class GarageScene extends Phaser.Scene {
         this.gameState.applyUpgrades(this.save.upgrades);
         writeSave(this.storage, this.save);
         this.refreshRows();
+
+        // Celebrate the newly lit pip
+        const level = this.save.upgrades[row.key] || 0;
+        const pip = row.pips[level - 1];
+        if (pip) {
+            sparkBurst(this, pip.fill.x + 12, pip.fill.y + 12, { count: 8, radius: 48, tint: 0xffd040 });
+        }
     }
 
-    // Brief red flash on a denied purchase, then restore the correct color.
+    // Brief red flash + a shake on a denied purchase, then restore the correct color.
     flashPriceDenied(index) {
-        const price = this.rows[index].price;
-        price.setColor('#FF2222');
+        const row = this.rows[index];
+        row.price.setColor('#FF2222');
+        this.tweens.killTweensOf(row.price);
+        row.price.x = row.priceX;
+        this.tweens.add({ targets: row.price, x: row.priceX + 6, duration: 40, yoyo: true, repeat: 2 });
         this.time.delayedCall(180, () => this.refreshRows());
     }
 
     // Fully re-derive every row's texts/pips/colors + the bank readout.
     refreshRows() {
-        this.bankReadout.setText(`BANK: $${this.save.banked}`);
+        this.bankReadout.setText(`BANK ${money(this.save.banked)}`);
 
         this.rows.forEach((row) => {
             const level = this.save.upgrades[row.key] || 0;
             const values = row.def.values;
 
-            // Pips — gold for owned levels, dim gray otherwise
+            // Pips — gold for owned levels, dark otherwise
             row.pips.forEach((pip, p) => {
-                if (p < level) {
-                    pip.setFillStyle(0xFFD700).setAlpha(1);
-                } else {
-                    pip.setFillStyle(0x888888).setAlpha(0.35);
-                }
+                const owned = p < level;
+                pip.fill.setFillStyle(owned ? 0xffc933 : 0x2a2e3f);
+                pip.shine.setFillStyle(owned ? 0xfff09a : 0x353a4e);
             });
 
             // Value text: `current > next`, or just current at max
             const current = values[level];
             const maxed = level >= CONFIG.GARAGE.MAX_LEVEL;
             if (maxed) {
-                row.value.setText(`${current}`).setColor('#888888');
+                row.value.setText(`${current}`).setColor(UI_COLORS.dim);
             } else {
-                row.value.setText(`${current} > ${values[level + 1]}`).setColor('#FFFFFF');
+                row.value.setText(`${current} > ${values[level + 1]}`).setColor(UI_COLORS.white);
             }
 
             // Price text + color
             const check = canPurchase(this.save, row.key);
             if (check.reason === 'maxed') {
-                row.price.setText('MAX').setColor('#888888');
+                row.price.setText('MAX').setColor(UI_COLORS.green);
             } else if (check.ok) {
-                row.price.setText(`$${check.price}`).setColor('#FFD700');
+                row.price.setText(money(check.price)).setColor(UI_COLORS.gold);
             } else {
-                row.price.setText(`$${check.price}`).setColor('#888888');
+                row.price.setText(money(check.price)).setColor(UI_COLORS.faint);
             }
         });
     }

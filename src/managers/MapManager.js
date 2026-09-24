@@ -1,7 +1,9 @@
-import { TILE_SIZE, COLORS, TILE_TYPES, DIRECTIONS } from '../constants';
+import { TILE_SIZE, TILE_TYPES } from '../constants';
 import { Collectible, pickCollectibleType } from '../objects/Collectible';
 import { NetworkGenerator } from '../generators/NetworkGenerator';
 import { CONFIG } from '../config';
+import { buildGroundLayer } from '../cityLayout';
+import { ART } from '../art';
 
 // Inclusive integer in [min, max] — replaces Phaser.Math.Between so this
 // module stays importable in plain node (tests import it directly).
@@ -397,47 +399,47 @@ export class MapManager {
         }
     }
 
-    render(layer) {
+    // The logic grid only knows road / not road; cityLayout turns that into
+    // autotiled streets and dressed city blocks (purely cosmetic).
+    render() {
+        const landmarkCells = new Set([this.base, ...this.fuelStations]
+            .map(l => `${l.building.x},${l.building.y}`));
+        const data = buildGroundLayer(this.width, this.height, (x, y) => this.isRoad(x, y), landmarkCells);
+
         const map = this.scene.make.tilemap({
-            data: this.grid,
+            data,
             tileWidth: TILE_SIZE,
             tileHeight: TILE_SIZE
         });
-        const tiles = map.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 1, 2);
+        const tiles = map.addTilesetImage('city', 'city', TILE_SIZE, TILE_SIZE, ART.city.margin, ART.city.spacing);
         const tileLayer = map.createLayer(0, tiles, 0, 0);
         tileLayer.setDepth(0); // Ground layer
     }
 
     // The tilemap is static after render() — post-render grid edits don't show,
     // so landmarks are separate game objects. Must be called after render() and
-    // before the cars are created (same depth, add order keeps them below cars).
+    // before the cars are created (depth keeps them below cars regardless).
     renderLandmarks() {
-        this.baseMarker = this.createLandmarkMarker(this.base, 0xFFD700, '$', '#FFD700');
+        this.baseMarker = this.createLandmark(this.base, 'safehouse', 'padBase');
         for (const station of this.fuelStations) {
-            this.createLandmarkMarker(station, 0x00FF00, 'F', '#00FF00');
+            this.createLandmark(station, 'fuelStation', 'padFuel');
         }
     }
 
-    createLandmarkMarker(landmark, color, label, labelColor) {
+    createLandmark(landmark, buildingKey, padKey) {
         const bx = landmark.building.x * TILE_SIZE + TILE_SIZE / 2;
         const by = landmark.building.y * TILE_SIZE + TILE_SIZE / 2;
+        const building = this.scene.add.image(bx, by, buildingKey).setDepth(0.12);
 
-        // Building marker
-        const rect = this.scene.add.rectangle(bx, by, TILE_SIZE - 6, TILE_SIZE - 6, 0x2a2a2a)
-            .setStrokeStyle(3, color);
-        const text = this.scene.add.text(bx, by, label, {
-            fontFamily: '"Press Start 2P"',
-            fontSize: '24px',
-            fill: labelColor,
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5);
-
-        // Subtle highlight on the pad tile so the player knows where to stop
+        // Painted bay on the pad tile so the player knows where to stop; it
+        // breathes gently so it reads as a place to go, not road decoration
         const px = landmark.pad.x * TILE_SIZE + TILE_SIZE / 2;
         const py = landmark.pad.y * TILE_SIZE + TILE_SIZE / 2;
-        this.scene.add.rectangle(px, py, TILE_SIZE, TILE_SIZE, color, 0.25);
+        const pad = this.scene.add.image(px, py, padKey).setDepth(0.1);
+        this.scene.tweens.add({
+            targets: pad, alpha: 0.55, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        });
 
-        return [rect, text];
+        return building;
     }
 }

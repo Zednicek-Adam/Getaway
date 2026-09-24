@@ -1,4 +1,5 @@
-import { TILE_SIZE, COLORS } from '../constants';
+import { TILE_SIZE } from '../constants';
+import { PICKUP_FRAMES, ICON } from '../art';
 
 export const COLLECTIBLE_TYPES = {
     MONEY: 'money',
@@ -24,60 +25,34 @@ export function pickCollectibleType(roll, weights) {
     return COLLECTIBLE_TYPES.MONEY; // float-sum fallback
 }
 
-// Pixel-font glyphs in the shared "$" money style (green +, cyan N, orange R).
-// Money is gold; the rest reuse the exact same styling.
-export const COLLECTIBLE_GLYPHS = {
-    [COLLECTIBLE_TYPES.MONEY]: { char: '$', color: '#FFD700' },
-    [COLLECTIBLE_TYPES.REPAIR]: { char: '+', color: '#33FF66' },
-    [COLLECTIBLE_TYPES.NITRO]: { char: 'N', color: '#66FFFF' },
-    [COLLECTIBLE_TYPES.ROCKET]: { char: 'R', color: '#FF8800' },
+// Sprite frame + idle animation per pickup (pickups.png, see tools/art_sprites.py)
+const PICKUP_ART = {
+    [COLLECTIBLE_TYPES.MONEY]: { frame: PICKUP_FRAMES.coin, anim: 'coin-spin' },
+    [COLLECTIBLE_TYPES.REPAIR]: { frame: PICKUP_FRAMES.repair },
+    [COLLECTIBLE_TYPES.NITRO]: { frame: PICKUP_FRAMES.nitro },
+    [COLLECTIBLE_TYPES.ROCKET]: { frame: PICKUP_FRAMES.rocket },
+    [COLLECTIBLE_TYPES.BOMB]: { frame: PICKUP_FRAMES.bomb, anim: 'bomb-fuse' },
+    [COLLECTIBLE_TYPES.LIFE]: { frame: PICKUP_FRAMES.life },
 };
 
-// Builds a collectible's visual centred on (0, 0), unpositioned.
+// Builds a collectible's sprite centred on (0, 0), unpositioned.
 //
 // Shared by the road pickups and the instructions screen so the icons the
-// player is taught are literally the ones they'll see — `size` stands in for
-// TILE_SIZE so the legend can draw them smaller without redefining geometry.
+// player is taught are literally the ones they'll see. `size` is the tile
+// size the icon is drawn for: TILE_SIZE gives the in-game 32px sprite, and
+// multiples of it keep the pixel art on whole-pixel scales.
 export function createCollectibleIcon(scene, type, size = TILE_SIZE) {
-    const glyph = COLLECTIBLE_GLYPHS[type];
-    if (glyph) {
-        return scene.add.text(0, 0, glyph.char, {
-            fontFamily: '"Press Start 2P"',
-            fontSize: `${Math.round(size * 0.4)}px`,
-            color: glyph.color,
-            stroke: '#000000',
-            strokeThickness: 5,
-        }).setOrigin(0.5);
+    const art = PICKUP_ART[type];
+    const sprite = art
+        ? scene.add.sprite(0, 0, 'pickups', art.frame)
+        : scene.add.sprite(0, 0, 'icons', ICON.fuel); // legacy FUEL pickup
+    sprite.setScale(size / TILE_SIZE);
+    if (art && art.anim) {
+        // Desynchronise so a street full of coins doesn't spin in lockstep
+        const frames = scene.anims.get(art.anim).frames.length;
+        sprite.play({ key: art.anim, startFrame: Math.floor(Math.random() * frames) });
     }
-
-    // LIFE — a graphics heart (the pixel font has no heart glyph)
-    if (type === COLLECTIBLE_TYPES.LIFE) {
-        const g = scene.add.graphics();
-        const r = size * 0.12;
-        g.fillStyle(0xFF3344, 1);
-        g.fillCircle(-r, -r * 0.6, r);            // left lobe
-        g.fillCircle(r, -r * 0.6, r);             // right lobe
-        g.fillTriangle(-r * 2, -r * 0.2, r * 2, -r * 0.2, 0, r * 2); // bottom point
-        return g;
-    }
-
-    // Other collectibles stay as coloured circles (BOMB, legacy FUEL)
-    const g = scene.add.graphics();
-    const radius = size * 0.25;
-    const color = type === COLLECTIBLE_TYPES.FUEL ? COLORS.FUEL : COLORS.BOMB;
-
-    g.fillStyle(color, 1);
-    g.fillCircle(0, 0, radius);
-    g.lineStyle(2, 0xFFFFFF, 0.8);
-    g.strokeCircle(0, 0, radius);
-
-    // Small white fuse dot so bombs read as bombs
-    if (type === COLLECTIBLE_TYPES.BOMB) {
-        g.fillStyle(0xFFFFFF, 1);
-        g.fillCircle(radius * 0.4, -radius * 0.7, 3);
-    }
-
-    return g;
+    return sprite;
 }
 
 export class Collectible {
@@ -87,20 +62,25 @@ export class Collectible {
         this.gridX = gridX;
         this.gridY = gridY;
 
+        const cx = gridX * TILE_SIZE + TILE_SIZE / 2;
+        const cy = gridY * TILE_SIZE + TILE_SIZE / 2;
+
+        // Contact shadow stays on the road while the pickup floats above it
+        this.shadow = scene.add.image(cx, cy + 14, 'shadow').setDepth(0.2);
         this.visual = this.createVisual();
+        this.visual.setPosition(cx, cy - 2).setDepth(0.3);
 
-        // Position visual
-        this.visual.x = gridX * TILE_SIZE + TILE_SIZE / 2;
-        this.visual.y = gridY * TILE_SIZE + TILE_SIZE / 2;
-
-        // Add simple tween for "juice"
-        this.scene.tweens.add({
-            targets: this.visual,
-            scaleX: 1.2,
-            scaleY: 1.2,
-            duration: 500,
-            yoyo: true,
-            repeat: -1
+        // Pop in, then bob gently (shadow breathes in sync)
+        this.visual.setScale(0);
+        scene.tweens.add({ targets: this.visual, scale: 1, duration: 260, ease: 'Back.easeOut' });
+        const phase = Math.random() * 600;
+        scene.tweens.add({
+            targets: this.visual, y: cy - 8, duration: 600, delay: phase,
+            yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        });
+        scene.tweens.add({
+            targets: this.shadow, scaleX: 0.75, alpha: 0.6, duration: 600, delay: phase,
+            yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
         });
     }
 
@@ -110,5 +90,6 @@ export class Collectible {
 
     destroy() {
         this.visual.destroy();
+        this.shadow.destroy();
     }
 }
