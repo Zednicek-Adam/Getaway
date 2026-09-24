@@ -26,14 +26,13 @@ export function pickCollectibleType(roll, weights) {
 }
 
 // Sprite frame + idle animation per pickup (pickups.png, see tools/art_sprites.py)
-// `glow` tints the soft halo that lifts the pickup off the busy city ground
 const PICKUP_ART = {
-    [COLLECTIBLE_TYPES.MONEY]: { frame: PICKUP_FRAMES.coin, anim: 'coin-spin', glow: 0xffc933 },
-    [COLLECTIBLE_TYPES.REPAIR]: { frame: PICKUP_FRAMES.repair, glow: 0x6fe08a },
-    [COLLECTIBLE_TYPES.NITRO]: { frame: PICKUP_FRAMES.nitro, glow: 0x5fe0ff },
-    [COLLECTIBLE_TYPES.ROCKET]: { frame: PICKUP_FRAMES.rocket, glow: 0xff9a3c },
-    [COLLECTIBLE_TYPES.BOMB]: { frame: PICKUP_FRAMES.bomb, anim: 'bomb-fuse', glow: 0xff5040 },
-    [COLLECTIBLE_TYPES.LIFE]: { frame: PICKUP_FRAMES.life, glow: 0xff6070 },
+    [COLLECTIBLE_TYPES.MONEY]: { frame: PICKUP_FRAMES.coin, anim: 'coin-spin' },
+    [COLLECTIBLE_TYPES.REPAIR]: { frame: PICKUP_FRAMES.repair },
+    [COLLECTIBLE_TYPES.NITRO]: { frame: PICKUP_FRAMES.nitro },
+    [COLLECTIBLE_TYPES.ROCKET]: { frame: PICKUP_FRAMES.rocket },
+    [COLLECTIBLE_TYPES.BOMB]: { frame: PICKUP_FRAMES.bomb, anim: 'bomb-fuse' },
+    [COLLECTIBLE_TYPES.LIFE]: { frame: PICKUP_FRAMES.life },
 };
 
 // Builds a collectible's sprite centred on (0, 0), unpositioned.
@@ -66,12 +65,8 @@ export class Collectible {
         const cx = gridX * TILE_SIZE + TILE_SIZE / 2;
         const cy = gridY * TILE_SIZE + TILE_SIZE / 2;
 
-        // Contact shadow stays on the road while the pickup floats above it,
-        // and a pulsing halo makes it pop against the streets
+        // Contact shadow stays on the road while the pickup floats above it
         this.shadow = scene.add.image(cx, cy + 14, 'shadow').setDepth(0.2);
-        const tint = (PICKUP_ART[type] && PICKUP_ART[type].glow) || 0xffffff;
-        this.halo = scene.add.image(cx, cy - 2, 'glow')
-            .setBlendMode('ADD').setTint(tint).setScale(1.6).setAlpha(0.55).setDepth(0.25);
         this.visual = this.createVisual();
         this.visual.setPosition(cx, cy - 2).setDepth(0.3);
 
@@ -87,10 +82,6 @@ export class Collectible {
             targets: this.shadow, scaleX: 0.75, alpha: 0.6, duration: 600, delay: phase,
             yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
         });
-        scene.tweens.add({
-            targets: this.halo, alpha: 0.25, scale: 1.3, duration: 600, delay: phase,
-            yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-        });
     }
 
     createVisual() {
@@ -100,6 +91,5 @@ export class Collectible {
     destroy() {
         this.visual.destroy();
         this.shadow.destroy();
-        this.halo.destroy();
     }
 }

@@ -42,7 +42,6 @@ const IMAGES = {
     panel: 'panel.png',
     panelGold: 'panel_gold.png',
     panelRed: 'panel_red.png',
-    vignette: 'vignette.png',
     menuSky: 'menu_sky.png',
     menuFar: 'menu_far.png',
     menuNear: 'menu_near.png',

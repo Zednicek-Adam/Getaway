@@ -112,7 +112,6 @@ def main():
     save(spr.panel(hexc('#454b63'), hexc('#6a7190'), hexc('#2a2e3f')), 'panel.png')
     save(spr.panel(hexc('#c8932a'), hexc('#ffe07a'), hexc('#7a5214'), fill=(34, 28, 22, 242)), 'panel_gold.png')
     save(spr.panel(hexc('#9c2a2a'), hexc('#e0605a'), hexc('#5a1414'), fill=(30, 16, 22, 242)), 'panel_red.png')
-    save(spr.vignette(), 'vignette.png', scale=MENU)
 
     # Title screen
     save(art_menu.sky(), 'menu_sky.png', scale=MENU)

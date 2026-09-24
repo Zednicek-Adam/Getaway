@@ -884,18 +884,3 @@ def panel(border, border_l, border_d, fill=(20, 23, 34, 238)):
         a.put(x, y, shade(border_l, 1.2))
     return a
 
-
-def vignette(w=320, h=240):
-    a = Art(w, h)
-    for y in range(h):
-        for x in range(w):
-            nx = (x + 0.5 - w / 2) / (w / 2)
-            ny = (y + 0.5 - h / 2) / (h / 2)
-            d = math.sqrt(nx * nx * 0.9 + ny * ny)
-            v = max(0.0, d - 0.72) / 0.6
-            v = min(1.0, v)
-            steps = int(v * 4 + bayer(x, y) * 0.999)
-            al = [0, 40, 75, 110, 140][min(4, steps)]
-            if al:
-                a.set(x, y, (6, 6, 16, al))
-    return a

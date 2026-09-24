@@ -78,9 +78,6 @@ export class GameScene extends Phaser.Scene {
 
         this.mapManager.spawnRandomCollectibles(CONFIG.COLLECTIBLES.INITIAL_COUNT);
 
-        // Soft stepped vignette pulls the eye to the car (above the world, under the HUD)
-        this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(98);
-
         // Camera System
         this.cameras.main.setBounds(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE);
         // CRITICAL FIX: Follow the VISUAL game object, not the wrapper class

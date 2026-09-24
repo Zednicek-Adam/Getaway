@@ -120,11 +120,14 @@ reachable, well-spaced pads and auto-tiles the roads.
 Generation retries (up to 50 attempts) if a layout fails its reachability check.
 
 The logic grid only knows *road* and *not road*. `cityLayout.js` decides what
-that looks like: road cells pick one of 47 autotiles from their neighbours
-(curbs, lane dashes, crosswalks at crossroads, inner-corner curb nubs), and the
-remaining cells are carved into 1×1 / 2×1 / 1×2 / 2×2 lots dressed as buildings,
-parks, parking lots and plazas. It is purely cosmetic and never feeds back into
-gameplay.
+that looks like. Road cells pick one of 47 autotiles from their neighbours, and
+the streets carry their own sidewalks (lamps and hydrants included), so the
+buildings behind them pack wall to wall. Each block of non-road cells becomes a
+district: downtown towers in the middle, shops around them, then houses in
+fenced gardens, with an industrial quarter of warehouses and container yards on
+one side of town and parks scattered through the outskirts. Blocks are carved
+into 1×1 / 2×1 / 1×2 / 2×2 lots and dressed from that district's pieces. It is
+purely cosmetic and never feeds back into gameplay.
 
 ## Art
 
@@ -148,7 +151,7 @@ scaled with nearest-neighbour: 2× for the world (a 32px art tile is the game's
 | Module | Draws |
 | ------ | ----- |
 | `pixelkit.py` | canvas helpers: shapes, outlines, bevels, dithering, RotSprite rotation |
-| `art_city.py` | the city tileset: autotiled roads, 3/4-view buildings, parks, parking, plazas |
+| `art_city.py` | the city tileset: streets with sidewalks, and lot pieces for each district |
 | `art_sprites.py` | vehicles, helicopter, pickups, props, effects, HUD icons, UI panels |
 | `art_menu.py` | title-screen parallax skyline, side-view chase cars, the logo |
 
@@ -159,7 +162,7 @@ src/
   config.js         all gameplay tunables in one object
   constants.js      tile size, map dimensions, tile/direction enums
   art.js            asset keys, frame indices and shared animations
-  cityLayout.js     cosmetic city dressing: road autotiles + lot carving
+  cityLayout.js     cosmetic city dressing: road autotiles, districts, lots
   fx.js             one-shot effects (explosions, smoke, sparks, popups)
   GameState.js      pure run state — money, lives, fuel, stars, damage
   garage.js         upgrade pricing and derived-stat math
