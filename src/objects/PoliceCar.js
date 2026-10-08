@@ -88,7 +88,7 @@ export class PoliceCar extends Car {
         // Stunned after a ram — hold position. Car.update only calls tryMove
         // when !isMoving, so a mid-move stun lets the current lerp finish.
         if (this.stunRemaining > 0) return;
-        this.decideNextMove();
+        if (this.decideNextMove() === 'hold') return;
         super.tryMove();
     }
 
@@ -116,6 +116,10 @@ export class PoliceCar extends Car {
         let bestMove = null;
         if (mode !== 'roam') {
             const goal = this.pickChaseGoal(mode);
+            // Parked beside the crossing the rail-riding player must use: wait
+            if (goal && goal.x === this.gridX && goal.y === this.gridY && this.manager.state.onRails) {
+                return 'hold';
+            }
             if (goal) {
                 bestMove = this.stepTowards(goal.x, goal.y);
             }
@@ -134,6 +138,13 @@ export class PoliceCar extends Car {
     // Chase target tile for the current AI mode; null means roam instead
     pickChaseGoal(mode) {
         const player = this.target;
+
+        // The player is on the track where no cop can follow: wait for them
+        // beside a crossing instead
+        const rail = this.scene.railManager;
+        if (rail && this.manager && this.manager.state.onRails) {
+            return rail.policeGoal(this, player, mode);
+        }
 
         if (mode === 'direct') {
             return { x: player.gridX, y: player.gridY };

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
-import { canPurchase, purchase } from '../garage';
+import { canPurchase, purchase, canUnlock, unlock } from '../garage';
 import { writeSave } from '../storage';
 import { label, panel, icon, dim, money, UI_COLORS } from '../ui/ui';
 import { bindPad, hasGamepad } from '../gamepad';
@@ -13,11 +13,13 @@ const TRACK_ICONS = {
     armor: 'shield',
     bombBay: 'bomb',
     rocketRack: 'rocket',
+    railPass: 'ticket',
 };
 
 // Overlay scene over the paused GameScene — mirrors PauseScene: owns its
 // keyboard listeners, closes by resuming + stopping itself. Renders the
 // persistent upgrade shop; purchases mutate this.save and re-derive gameState.
+// Below the leveled tracks sit the one-time unlocks (CONFIG.GARAGE.UNLOCKS).
 export class GarageScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GarageScene' });
@@ -49,24 +51,27 @@ export class GarageScene extends Phaser.Scene {
         icon(this, width / 2 - 110, top + 118, 'coin');
         this.bankReadout = label(this, width / 2 - 86, top + 118, '', { color: UI_COLORS.gold }).setOrigin(0, 0.5);
 
-        const tracks = Object.entries(CONFIG.GARAGE.TRACKS);
+        const entries = [
+            ...Object.entries(CONFIG.GARAGE.TRACKS).map(([key, def]) => ({ key, def, kind: 'track' })),
+            ...Object.entries(CONFIG.GARAGE.UNLOCKS).map(([key, def]) => ({ key, def, kind: 'unlock' })),
+        ];
         const rowW = pw - 80;
-        const rowH = 92;
+        const rowH = 84;
         const rowsTop = top + 160;
-        const spacing = 106;
+        const spacing = 96;
         const rowLeft = left + 40;
 
-        this.rows = tracks.map(([key, def], i) => {
+        this.rows = entries.map(({ key, def, kind }, i) => {
             const y = rowsTop + spacing * i + rowH / 2;
             const idle = panel(this, rowLeft, y - rowH / 2, rowW, rowH);
             const lit = panel(this, rowLeft, y - rowH / 2, rowW, rowH, 'gold').setVisible(false);
             icon(this, rowLeft + 52, y, TRACK_ICONS[key]).setScale(2);
             const name = label(this, rowLeft + 100, y, def.label, { size: 24 }).setOrigin(0, 0.5);
 
-            // Level pips — one per purchasable level
+            // Level pips — one per purchasable level (unlocks have none)
             const pips = [];
             const pipsX = rowLeft + 430;
-            for (let p = 0; p < CONFIG.GARAGE.MAX_LEVEL; p++) {
+            for (let p = 0; kind === 'track' && p < CONFIG.GARAGE.MAX_LEVEL; p++) {
                 const px = pipsX + p * 40;
                 this.add.rectangle(px, y - 16, 32, 32, 0x0a0b11).setOrigin(0);
                 const fill = this.add.rectangle(px + 4, y - 12, 24, 24, 0xffc933).setOrigin(0);
@@ -74,7 +79,8 @@ export class GarageScene extends Phaser.Scene {
                 pips.push({ fill, shine });
             }
 
-            const value = label(this, rowLeft + 580, y, '', { size: 16 }).setOrigin(0, 0.5);
+            const value = label(this, rowLeft + (kind === 'track' ? 580 : 430), y, '', { size: 16 })
+                .setOrigin(0, 0.5);
             const price = label(this, rowLeft + rowW - 32, y, '', { size: 24, color: UI_COLORS.gold }).setOrigin(1, 0.5);
 
             // Interactive hit-area spanning the row for hover-select + click-buy
@@ -82,7 +88,7 @@ export class GarageScene extends Phaser.Scene {
             hit.on('pointerover', () => this.select(i));
             hit.on('pointerdown', () => { this.select(i); this.attemptPurchase(); });
 
-            return { key, def, y, idle, lit, name, pips, value, price, priceX: price.x };
+            return { key, def, kind, y, idle, lit, name, pips, value, price, priceX: price.x };
         });
 
         const hint = hasGamepad() ? 'A BUY    B CLOSE' : 'ENTER BUY    ESC CLOSE';
@@ -123,6 +129,10 @@ export class GarageScene extends Phaser.Scene {
 
     attemptPurchase() {
         const row = this.rows[this.selectedIndex];
+        if (row.kind === 'unlock') {
+            this.attemptUnlock(row);
+            return;
+        }
         if (!purchase(this.save, row.key)) {
             this.flashPriceDenied(this.selectedIndex);
             return;
@@ -140,6 +150,17 @@ export class GarageScene extends Phaser.Scene {
         }
     }
 
+    attemptUnlock(row) {
+        if (!unlock(this.save, row.key)) {
+            this.flashPriceDenied(this.selectedIndex);
+            return;
+        }
+        this.gameState.banked = this.save.banked;
+        writeSave(this.storage, this.save);
+        this.refreshRows();
+        sparkBurst(this, row.price.x - 48, row.y, { count: 10, radius: 56, tint: 0xb98af0 });
+    }
+
     // Brief red flash + a shake on a denied purchase, then restore the correct color.
     flashPriceDenied(index) {
         const row = this.rows[index];
@@ -155,6 +176,10 @@ export class GarageScene extends Phaser.Scene {
         this.bankReadout.setText(`BANK ${money(this.save.banked)}`);
 
         this.rows.forEach((row) => {
+            if (row.kind === 'unlock') {
+                this.refreshUnlockRow(row);
+                return;
+            }
             const level = this.save.upgrades[row.key] || 0;
             const values = row.def.values;
 
@@ -184,5 +209,16 @@ export class GarageScene extends Phaser.Scene {
                 row.price.setText(money(check.price)).setColor(UI_COLORS.faint);
             }
         });
+    }
+
+    refreshUnlockRow(row) {
+        const check = canUnlock(this.save, row.key);
+        if (check.reason === 'owned') {
+            row.value.setText('PASSES NOW SPAWN').setColor(UI_COLORS.dim);
+            row.price.setText('OWNED').setColor(UI_COLORS.green);
+            return;
+        }
+        row.value.setText('RIDE THE TRACKS').setColor(UI_COLORS.white);
+        row.price.setText(money(check.price)).setColor(check.ok ? UI_COLORS.gold : UI_COLORS.faint);
     }
 }

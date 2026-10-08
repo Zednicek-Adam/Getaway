@@ -21,6 +21,17 @@ export class Car {
         // the player is constructed with false so only they can crash into one.
         this.avoidsBlocked = options.avoidsBlocked ?? true;
 
+        // Rail riding (player only). `passable(x, y, car)` replaces the plain road
+        // check; `trackFollow(car)` returns the direction the track forces on a
+        // plain rail cell (null elsewhere); `railPath(t, car)` places the car on the
+        // drawn rails mid-move ({ x, y, heading } with heading 0-7 clockwise
+        // from up) or returns null for an ordinary road move.
+        this.passable = options.passable ?? null;
+        this.trackFollow = options.trackFollow ?? null;
+        this.railPath = options.railPath ?? null;
+        // Frames for the four diagonal headings: UR, DR, DL, UL
+        this.diagonalFrames = options.diagonalFrames ?? null;
+
         // Grid State
         this.gridX = gridX;
         this.gridY = gridY;
@@ -61,6 +72,15 @@ export class Car {
     }
 
     updatePosition(t) {
+        const onRail = this.railPath && this.railPath(t, this);
+        if (onRail) {
+            this.visual.x = onRail.x;
+            this.visual.y = onRail.y;
+            this.visual.rotation = 0;
+            this.applyHeadingFrame(onRail.heading);
+            return;
+        }
+
         // Lerp logic
         const startX = this.gridX * TILE_SIZE + TILE_SIZE / 2;
         const startY = this.gridY * TILE_SIZE + TILE_SIZE / 2;
@@ -79,6 +99,17 @@ export class Car {
 
     getFrameForDirection(direction) {
         return this.frameByDirection?.[direction];
+    }
+
+    // heading 0-7 clockwise from up; odd headings are the diagonals
+    applyHeadingFrame(heading) {
+        if (heading % 2 === 1 && this.diagonalFrames) {
+            this.visual.setFrame(this.diagonalFrames[(heading - 1) / 2]);
+            return;
+        }
+        const byHeading = [DIRECTIONS.UP, DIRECTIONS.RIGHT, DIRECTIONS.DOWN, DIRECTIONS.LEFT];
+        const frame = this.getFrameForDirection(byHeading[Math.round(heading / 2) % 4]);
+        if (frame !== undefined) this.visual.setFrame(frame);
     }
 
     applyDirectionFrame() {
@@ -110,6 +141,13 @@ export class Car {
 
         // Don't auto-move if waiting for first input, or braked by the player
         if (this.waitingForInput || this.halted) return;
+
+        // On plain track the rails steer: queued turns wait for a crossing
+        const forced = this.trackFollow && this.trackFollow(this);
+        if (forced !== null && forced !== undefined) {
+            if (this.canMove(forced)) this.startMove(forced);
+            return;
+        }
 
         while (this.turnQueue.length > 0) {
             const front = this.turnQueue.peek();
@@ -156,7 +194,10 @@ export class Car {
         const potentialX = this.gridX + dx;
         const potentialY = this.gridY + dy;
 
-        if (!this.mapManager.isRoad(potentialX, potentialY)) return false;
+        const open = this.passable
+            ? this.passable(potentialX, potentialY, this)
+            : this.mapManager.isRoad(potentialX, potentialY);
+        if (!open) return false;
         return !(this.avoidsBlocked && this.mapManager.isBlocked(potentialX, potentialY));
     }
 

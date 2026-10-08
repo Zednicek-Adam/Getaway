@@ -79,10 +79,44 @@ Money is the bulk of what spawns; the rest is weighted rarer.
 | orange missile token | Rocket | +1 rocket |
 | black bomb, lit fuse | Bomb | +1 bomb |
 | red heart | Extra life | +1 life, capped at 5 |
+| purple ticket token | Rail pass | Ride the train tracks once (only spawns after the garage unlock) |
 
 There is also a **diamond truck** (a silver armoured courier with a cyan gem on
 the roof) roaming the map. Ram it to steal a $1,000 diamond — but it costs you
 two stars instantly.
+
+## The railway
+
+A railway loops around the city, about nine tiles in from the map edges, and one
+train drives it nonstop at twice the base speed of your car. The corners are cut
+at 45 degrees, so the loop is an octagon. Downtown and the safehouse sit inside
+it and the outskirts outside it.
+
+Roads only cross the track at **level crossings**. Three seconds before the train
+reaches a crossing, the lamps flash and the barriers drop. They stay down until
+the last wagon has cleared. Anything the moving train runs into is wrecked:
+
+| Hit | Result |
+| --- | ------ |
+| You | A life and your carried money, whatever your armor |
+| Police / SWAT | Destroyed, replaced after the usual respawn delay |
+| Diamond truck | Destroyed; the diamond is left on the road for you to grab |
+
+Police never drive through lowered barriers, and while they're held on the other
+side of the loop they can't see you. Cross just before the train and the chase
+timer keeps running down while the cops wait or look for another way round.
+
+**Rail pass.** A one-time garage unlock ($3,000) adds rail passes to the pickups.
+With one in hand, turn off a crossing onto the track: the pass is spent, the car
+follows the rails on its own, and no police car can follow you. Turn onto the
+road at any crossing to get off. Getting back on takes another pass. The train
+is on the same loop, so watch the loop map in the top-right corner. Police wait
+for you beside the crossings ahead.
+
+**Bullion heist.** The train stops at the station (the purple pad beside the
+track) every lap. Every third lap the vault on its gold car is open for eight
+seconds. Park on the platform pad and each second pays $250 carried and adds 1
+heat. Staying the whole eight seconds is $2,000 and three stars.
 
 ## The garage
 
@@ -97,7 +131,8 @@ costing $500 / $1,500 / $4,000 out of banked money:
 | Bomb bay | 3 → 6 bombs |
 | Rockets | 2 → 5 rockets |
 
-Upgrades apply mid-run and persist across runs.
+Upgrades apply mid-run and persist across runs. Below the tracks is the one-time
+**rail pass** unlock ($3,000), which makes rail passes spawn on the streets.
 
 ## Running it locally
 
@@ -117,14 +152,20 @@ full URL on startup.
 
 ## How the map is built
 
-`NetworkGenerator` grows a road network outward from the player's spawn using a
-growing-tree walk, rather than stamping a grid. It guarantees full connectivity,
+The railway loop is laid out first, with a few crossing points picked on each
+straight side. `NetworkGenerator` treats the rest of the track as a wall and
+seeds every crossing as a short road stub straight through it. Then it grows a
+road network outward from the player's spawn using a growing-tree walk, rather
+than stamping a grid. It guarantees full connectivity,
 balanced growth across all four quadrants, intersections at least 3 tiles apart,
 and no dead ends except the spawn tile — so every road you can turn onto actually
-goes somewhere. `MapManager` then places the safehouse and three fuel stations on
+goes somewhere. Crossings the network never connected on both sides are pruned
+back to track. `MapManager` then places the safehouse, the station (beside a
+straight stretch of track, clear of crossings) and three fuel stations on
 reachable, well-spaced pads and auto-tiles the roads.
 
-Generation retries (up to 50 attempts) if a layout fails its reachability check.
+Generation retries (up to 50 attempts) if a layout fails its reachability check
+or keeps fewer than five crossings.
 
 The logic grid only knows *road* and *not road*. `cityLayout.js` decides what
 that looks like. Road cells pick one of 47 autotiles from their neighbours, and
@@ -164,6 +205,7 @@ scaled with nearest-neighbour: 2× for the world (a 32px art tile is the game's
 | `art_city.py` | the city tileset: streets with sidewalks, and lot pieces for each district |
 | `art_sprites.py` | vehicles, helicopter, pickups, props, effects, HUD icons, UI panels |
 | `art_menu.py` | title-screen parallax skyline, side-view chase cars, the logo |
+| `art_rail.py` | track tiles drawn from the loop's geometry, crossings, the train, the station |
 
 ## Layout
 
@@ -179,11 +221,12 @@ src/
   garage.js         upgrade pricing and derived-stat math
   storage.js        versioned localStorage save with sanitising loader
   pathfinding.js    BFS used by police AI
+  railway.js        the loop's geometry and the train's schedule and occupancy
   turnQueue.js      the buffered-turn queue
   generators/       NetworkGenerator — procedural road layout
-  managers/         Input, Map, Police, UI
+  managers/         Input, Map, Police, Rail, UI
   objects/          Car, PoliceCar, SwatVan, Helicopter, DiamondCar,
-                    Collectible, Bomb, Rocket, Roadblock
+                    Collectible, Bomb, Rocket, Roadblock, Train, LevelCrossing
   scenes/           Boot, Menu, Game, Pause, Garage, Instructions
   ui/               shared look: pixel text, 9-slice panels, button menus
   generated/        art.json manifest written by tools/generate_art.py
@@ -192,8 +235,8 @@ tools/              the pixel-art generator (Python)
 ```
 
 The design splits Phaser-dependent rendering from plain-JS game logic. Anything
-holding rules — `GameState`, `garage`, `storage`, `pathfinding`, `turnQueue`, gamepad polling, the
-collectible weight table, map reachability, city layout — imports no Phaser and
+holding rules — `GameState`, `garage`, `storage`, `pathfinding`, `turnQueue`, `railway`, gamepad
+polling, the collectible weight table, map reachability, city layout — imports no Phaser and
 is unit tested directly.
 
 ## Deployment

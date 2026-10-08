@@ -971,6 +971,49 @@
   "margin": 1,
   "spacing": 2
  },
+ "rail": {
+  "tiles": {
+   "DDDD": 0,
+   "DDDL": 1,
+   "DDLD": 2,
+   "DDLL": 3,
+   "DLDL": 4,
+   "DLLL": 5,
+   "DRDD": 6,
+   "DRDR": 7,
+   "LDLD": 8,
+   "LDLL": 9,
+   "LLLL": 10,
+   "LLLU": 11,
+   "LLUL": 12,
+   "LLUU": 13,
+   "LULU": 14,
+   "LUUU": 15,
+   "RDDD": 16,
+   "RDRD": 17,
+   "RRDD": 18,
+   "RRDR": 19,
+   "RRRD": 20,
+   "RRRR": 21,
+   "RURR": 22,
+   "RURU": 23,
+   "ULUL": 24,
+   "ULUU": 25,
+   "URRR": 26,
+   "URUR": 27,
+   "UURR": 28,
+   "UURU": 29,
+   "UUUR": 30,
+   "UUUU": 31
+  },
+  "crossing": {
+   "H": 32,
+   "V": 33
+  },
+  "tileSize": 64,
+  "margin": 1,
+  "spacing": 2
+ },
  "pickups": {
   "coin": 0,
   "repair": 6,
@@ -978,7 +1021,9 @@
   "rocket": 8,
   "bomb": 9,
   "life": 11,
-  "planted": 12
+  "planted": 12,
+  "railPass": 14,
+  "diamond": 15
  },
  "icons": {
   "coin": 0,
@@ -995,7 +1040,19 @@
   "arrow": 11,
   "gauge": 12,
   "wrench": 13,
-  "bolt": 14
+  "bolt": 14,
+  "ticket": 15
+ },
+ "train": {
+  "cars": [
+   "loco",
+   "bullion",
+   "bullionOpen",
+   "boxcar",
+   "flatcar",
+   "tankcar"
+  ],
+  "frameSize": 80
  },
  "logo": {
   "width": 736,
