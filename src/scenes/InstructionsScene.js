@@ -3,13 +3,14 @@ import { TILE_SIZE } from '../constants';
 import { COLLECTIBLE_TYPES, createCollectibleIcon } from '../objects/Collectible';
 import { label, panel, dim, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
+import { t } from '../i18n';
 
 // Static "how to play" page reached from the main menu.
 //
 // The pickup legend is drawn with createCollectibleIcon — the same factory the
 // road pickups use — so the icons taught here can never drift from the icons in
-// play. Text is kept to plain ASCII: the Press Start 2P webfont has no glyphs
-// for em dashes or arrows, which would render as blank boxes.
+// play. Text comes from i18n.js, which keeps it inside the glyphs Press Start
+// 2P actually has.
 export class InstructionsScene extends Phaser.Scene {
     constructor() {
         super({ key: 'InstructionsScene' });
@@ -31,32 +32,28 @@ export class InstructionsScene extends Phaser.Scene {
         dim(this, 0.55);
         panel(this, 40, 104, width - 80, height - 224);
 
-        label(this, centre, 56, 'HOW TO PLAY', { size: 40, color: UI_COLORS.gold }).setOrigin(0.5);
+        label(this, centre, 56, t('help.title'), { size: 40, color: UI_COLORS.gold }).setOrigin(0.5);
 
         // --- The goal -------------------------------------------------------
-        this.heading(centre, 146, 'THE JOB');
+        this.heading(centre, 146, t('help.job'));
 
-        const goal = [
-            'GRAB CASH OFF THE STREETS AND BANK IT AT THE SAFEHOUSE',
-            'CARRIED CASH IS LOST IF THE COPS BUST YOU - BANK IT OFTEN',
-            '3 LIVES. YOU LOSE ONE TO 3 RAMS OR AN EMPTY TANK',
-        ];
+        const goal = [t('help.goal1'), t('help.goal2'), t('help.goal3')];
         goal.forEach((line, i) => {
             this.body(centre, 186 + i * 30, line, UI_COLORS.white).setOrigin(0.5);
         });
 
         // --- Controls (left column) ----------------------------------------
-        this.heading(330, 300, 'CONTROLS');
+        this.heading(330, 300, t('help.controls'));
 
         // Keyboard / gamepad. A D-pad or stick steers too; that one needs no
         // keycap.
         const controls = [
-            ['ARROWS/WASD', 'STEER'],
-            ['F / A', 'BRAKE/REFUEL'],
-            ['SPACE / B', 'DROP BOMB'],
-            ['E / X', 'FIRE ROCKET'],
-            ['G / Y', 'GARAGE (BASE)'],
-            ['ESC / START', 'PAUSE'],
+            [t('help.keySteer'), t('help.steer')],
+            ['F / A', t('help.brake')],
+            [t('help.keyBomb'), t('help.bomb')],
+            ['E / X', t('help.rocket')],
+            ['G / Y', t('help.garage')],
+            ['ESC / START', t('help.pause')],
         ];
         controls.forEach(([key, action], i) => {
             const y = 346 + i * 44;
@@ -65,15 +62,15 @@ export class InstructionsScene extends Phaser.Scene {
         });
 
         // --- Pickups (right column) -----------------------------------------
-        this.heading(940, 300, 'PICKUPS');
+        this.heading(940, 300, t('help.pickups'));
 
         const pickups = [
-            [COLLECTIBLE_TYPES.MONEY, 'CASH', '+$100'],
-            [COLLECTIBLE_TYPES.REPAIR, 'REPAIR', '-1 DMG'],
-            [COLLECTIBLE_TYPES.NITRO, 'NITRO', '4S BOOST'],
-            [COLLECTIBLE_TYPES.ROCKET, 'ROCKET', '+1 AMMO'],
-            [COLLECTIBLE_TYPES.BOMB, 'BOMB', '+1 AMMO'],
-            [COLLECTIBLE_TYPES.LIFE, 'LIFE', '+1 LIFE'],
+            [COLLECTIBLE_TYPES.MONEY, t('help.cash'), t('help.cashEffect')],
+            [COLLECTIBLE_TYPES.REPAIR, t('help.repair'), t('help.repairEffect')],
+            [COLLECTIBLE_TYPES.NITRO, t('help.nitro'), t('help.nitroEffect')],
+            [COLLECTIBLE_TYPES.ROCKET, t('help.rocketName'), t('help.ammoEffect')],
+            [COLLECTIBLE_TYPES.BOMB, t('help.bombName'), t('help.ammoEffect')],
+            [COLLECTIBLE_TYPES.LIFE, t('help.life'), t('help.lifeEffect')],
         ];
         pickups.forEach(([type, name, effect], i) => {
             const y = 346 + i * 44;
@@ -85,18 +82,18 @@ export class InstructionsScene extends Phaser.Scene {
 
         // --- Things that are not obvious from playing ------------------------
         const notes = [
-            ['YOUR CAR DRIVES ITSELF - YOU ONLY CHOOSE THE TURNS', UI_COLORS.cyan],
-            ['TURNS QUEUE UP TO 3 AHEAD, SO LINE UP JUNCTIONS EARLY', UI_COLORS.white],
-            ['RAM THE DIAMOND CAR FOR $1000 - IT COSTS YOU 2 STARS', UI_COLORS.white],
+            [t('help.note1'), UI_COLORS.cyan],
+            [t('help.note2'), UI_COLORS.white],
+            [t('help.note3'), UI_COLORS.white],
         ];
         notes.forEach(([line, colour], i) => {
             this.body(centre, 626 + i * 30, line, colour).setOrigin(0.5);
         });
 
         // --- Wanted level ----------------------------------------------------
-        this.heading(centre, 740, 'HEAT');
-        this.body(centre, 776, 'EVERY PICKUP RAISES YOUR WANTED STARS', UI_COLORS.white).setOrigin(0.5);
-        this.body(centre, 806, '1-3 PATROLS   4 SWAT + ROADBLOCKS   5 HELICOPTER', UI_COLORS.red)
+        this.heading(centre, 740, t('help.heat'));
+        this.body(centre, 776, t('help.heat1'), UI_COLORS.white).setOrigin(0.5);
+        this.body(centre, 806, t('help.heat2'), UI_COLORS.red)
             .setOrigin(0.5);
 
         this.createBackButton(centre, height - 60);
@@ -131,7 +128,7 @@ export class InstructionsScene extends Phaser.Scene {
             this.scene.start(this.returnTo);
         };
 
-        createMenu(this, { x, y, width: 280, items: [{ label: 'BACK', action: goBack }] });
+        createMenu(this, { x, y, width: 280, items: [{ label: t('help.back'), action: goBack }] });
 
         this.input.keyboard.on('keydown-ESC', goBack);
         this.input.keyboard.on('keydown-ENTER', goBack);
