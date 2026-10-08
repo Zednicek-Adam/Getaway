@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import art from '../src/generated/art.json';
 import {
-    roadMask, cornerMask, roadTileIndex, findBlocks, districtMap, zoneBlocks, partitionLots, dressLots,
-    buildGroundLayer,
+    roadMask, cornerMask, roadTileIndex, findBlocks, roadDistance, districtMap, zoneBlocks, pickParks, zoneCity,
+    partitionLots, lotFrontage, dressLots, buildGroundLayer,
 } from '../src/cityLayout';
 import { MapManager } from '../src/managers/MapManager';
 
@@ -106,17 +106,124 @@ describe('blocks and districts', () => {
         expect(groups.some(g => g.zone === 'downtown')).toBe(false);
     });
 
-    it('dresses each lot with a piece of its district and footprint', () => {
+    it('has a single-cell piece in every district, so any lot can be dressed', () => {
+        const zones = new Set(art.city.pieces.map(p => p.zone));
+        for (const zone of zones) {
+            expect(art.city.pieces.some(p => p.zone === zone && p.w === 1 && p.h === 1 && !p.faces)).toBe(true);
+        }
+    });
+
+    it('dresses every cell of every lot with a piece of its district', () => {
         const lots = [{ x: 0, y: 0, w: 2, h: 2 }, { x: 2, y: 0, w: 2, h: 1 },
             { x: 4, y: 0, w: 1, h: 2 }, { x: 5, y: 0, w: 1, h: 1 }];
-        for (const zone of ['downtown', 'commercial', 'residential', 'industrial', 'park']) {
+        // A street along the top of the row of lots only
+        const isRoad = (x, y) => y === -1;
+        for (const zone of new Set(art.city.pieces.map(p => p.zone))) {
             for (let seed = 1; seed < 15; seed++) {
-                for (const lot of dressLots(lots, zone, seeded(seed))) {
+                const covered = new Set();
+                for (const lot of dressLots(lots, zone, seeded(seed), { isRoad })) {
                     expect(lot.piece.zone).toBe(zone);
                     expect(lot.piece.w).toBe(lot.w);
                     expect(lot.piece.h).toBe(lot.h);
                     expect(lot.piece.tiles).toHaveLength(lot.w * lot.h);
+                    for (let j = 0; j < lot.h; j++) {
+                        for (let i = 0; i < lot.w; i++) covered.add(`${lot.x + i},${lot.y + j}`);
+                    }
                 }
+                expect(covered.size).toBe(4 + 2 + 2 + 1);
+            }
+        }
+    });
+
+    it('turns houses to face their street and keeps gardens off the street', () => {
+        // A 3x3 block with streets on its left and bottom: the centre and
+        // top-right cells have no street of their own
+        const block = [];
+        for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) block.push({ x, y, w: 1, h: 1 });
+        const isRoad = (x, y) => x === -1 || y === 3;
+        for (let seed = 1; seed < 30; seed++) {
+            for (const lot of dressLots(block, 'residential', seeded(seed), { isRoad })) {
+                const frontage = lotFrontage(lot, isRoad);
+                if (lot.piece.faces) expect(frontage.has(lot.piece.faces)).toBe(true);
+                if (frontage.size === 0) expect(lot.piece.back).toBe(true);
+                else expect(lot.piece.back).toBeUndefined();
+            }
+        }
+    });
+
+    it('gives a block at most one of each landmark, splitting lots rather than repeating one', () => {
+        // A 6x6 park carved into nine 2x2 lots: only a pond and a fountain come that size
+        const lots = [];
+        for (let y = 0; y < 6; y += 2) for (let x = 0; x < 6; x += 2) lots.push({ x, y, w: 2, h: 2 });
+        for (let seed = 1; seed < 15; seed++) {
+            const kinds = dressLots(lots, 'park', seeded(seed)).map(lot => lot.piece.name.split('_')[0]);
+            for (const landmark of ['pond', 'fountain', 'playground']) {
+                expect(kinds.filter(k => k === landmark).length).toBeLessThanOrEqual(1);
+            }
+        }
+    });
+
+    it('measures distance to the nearest road, corners included', () => {
+        const isRoad = (x, y) => y === 0;
+        const isFree = (x, y) => x >= 0 && x < 3 && y >= 1 && y < 5;
+        const dist = roadDistance(3, 5, isRoad, isFree);
+        expect(dist.get('1,1')).toBe(1);
+        expect(dist.get('1,4')).toBe(4);
+
+        const inGrid = (x, y) => x >= 0 && y >= 0 && x < 3 && y < 3;
+        const corner = roadDistance(3, 3, (x, y) => x === 0 && y === 0, (x, y) => inGrid(x, y) && !(x === 0 && y === 0));
+        expect(corner.get('1,1')).toBe(1);
+        expect(corner.get('2,2')).toBe(2);
+    });
+});
+
+describe('zoning a whole map', () => {
+    // A ring road in the middle of a 16x16 map: an enclosed 4x4 block
+    // inside, and outskirts reaching five cells out to the map edge
+    const size = 16;
+    const ring = (v) => v >= 5 && v <= 10;
+    const isRoad = (x, y) => (x === 5 || x === 10) && ring(y) || (y === 5 || y === 10) && ring(x);
+    const isFree = (x, y) => x >= 0 && y >= 0 && x < size && y < size && !isRoad(x, y);
+
+    it('builds the outskirts only near a street and turns the rest to countryside', () => {
+        const dist = roadDistance(size, size, isRoad, isFree);
+        for (let seed = 1; seed < 20; seed++) {
+            for (const { zone, cells } of zoneCity(size, size, isRoad, isFree, seeded(seed))) {
+                for (const c of cells) {
+                    const inside = c.x > 5 && c.x < 10 && c.y > 5 && c.y < 10;
+                    const country = zone === 'forest' || zone === 'farm';
+                    if (inside) expect(country).toBe(false);
+                    if (!inside && dist.get(`${c.x},${c.y}`) > 3) expect(country).toBe(true);
+                }
+            }
+        }
+    });
+
+    it('keeps every free cell exactly once', () => {
+        const groups = zoneCity(size, size, isRoad, isFree, seeded(4));
+        const keys = groups.flatMap(g => g.cells.map(c => `${c.x},${c.y}`));
+        expect(new Set(keys).size).toBe(keys.length);
+        expect(keys).toHaveLength(size * size - 20);
+    });
+
+    it('makes parks out of whole enclosed blocks, spread apart', () => {
+        const manager = new MapManager(null, 50, 50);
+        manager.generate();
+        const free = (x, y) => x >= 0 && y >= 0 && x < 50 && y < 50 && !manager.isRoad(x, y);
+        const blocks = findBlocks(50, 50, free);
+        const parks = [...pickParks(blocks, districtMap(50, 50, seeded(2)), 50, 50, seeded(2))];
+        expect(parks.length).toBeGreaterThan(0);
+        const centres = parks.map(cells => ({
+            x: cells.reduce((s, c) => s + c.x, 0) / cells.length,
+            y: cells.reduce((s, c) => s + c.y, 0) / cells.length,
+        }));
+        for (const cells of parks) {
+            expect(blocks).toContain(cells);
+            expect(cells.some(c => c.x === 0 || c.y === 0 || c.x === 49 || c.y === 49)).toBe(false);
+        }
+        for (let i = 0; i < centres.length; i++) {
+            for (let j = i + 1; j < centres.length; j++) {
+                expect(Math.hypot(centres[i].x - centres[j].x, centres[i].y - centres[j].y)).toBeGreaterThanOrEqual(10);
             }
         }
     });

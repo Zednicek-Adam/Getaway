@@ -125,8 +125,11 @@ the streets carry their own sidewalks (lamps and hydrants included), so the
 buildings behind them pack wall to wall. Each block of non-road cells becomes a
 district: downtown towers in the middle, shops around them, then houses in
 fenced gardens, with an industrial quarter of warehouses and container yards on
-one side of town and parks scattered through the outskirts. Blocks are carved
-into 1×1 / 2×1 / 1×2 / 2×2 lots and dressed from that district's pieces. It is
+one side of town. A few whole blocks, spread across town, are parks. Buildings
+need a street, so on the outskirts the town only reaches a lot or two back from
+the road and the rest is woods and farmland. Blocks are carved into 1×1 / 2×1 /
+1×2 / 2×2 lots and dressed from that district's pieces: houses turn to face
+their street, and plots with no street of their own become back gardens. It is
 purely cosmetic and never feeds back into gameplay.
 
 ## Art

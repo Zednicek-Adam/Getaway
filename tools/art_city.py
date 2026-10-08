@@ -2,8 +2,11 @@
 
 Streets own their sidewalks (drawn on the road tile's edges that face a
 block), so lots can be packed wall to wall like a real city block. Every lot
-piece belongs to a district zone — downtown, commercial, residential,
-industrial or park — and src/cityLayout.js zones whole blocks at a time.
+piece belongs to a zone — downtown, commercial, residential, industrial,
+park, or the forest and farm countryside past the last street — and
+src/cityLayout.js zones whole blocks at a time. Each piece is a distinct
+design (no recoloured or re-rolled twins), and identical tiles are stored
+once in the tileset.
 """
 from pixelkit import Art, hexc, shade, noise_fill, rng_for
 
@@ -46,6 +49,8 @@ WATER_L = hexc('#7bb8ea')
 SAND = hexc('#dcc88f')
 POOL = hexc('#4fb6e0')
 POOL_L = hexc('#a8e4f6')
+DRIVE = hexc('#9a9a94')
+FLOWERS = [hexc('#f5d547'), hexc('#f2f2f2'), hexc('#f07ab0')]
 
 GLASS = hexc('#2c3f5e')
 GLASS_L = hexc('#6f9fcf')
@@ -55,7 +60,6 @@ DOOR = hexc('#3a2a24')
 
 DOWNTOWN_STYLES = [
     dict(name='blueglass', wall=hexc('#3d5f8f'), roof=hexc('#2f3a4c'), rim=hexc('#7189ab'), glassy=True),
-    dict(name='tealglass', wall=hexc('#2f6f78'), roof=hexc('#334350'), rim=hexc('#6aa0a6'), glassy=True),
     dict(name='concrete', wall=hexc('#a3abb5'), roof=hexc('#737a85'), rim=hexc('#c3c9d0')),
     dict(name='granite', wall=hexc('#5e5a66'), roof=hexc('#3f3d48'), rim=hexc('#8a8694')),
     dict(name='sandstone', wall=hexc('#c8b089'), roof=hexc('#7d6d58'), rim=hexc('#dcc9a3')),
@@ -64,8 +68,6 @@ COMMERCIAL_STYLES = [
     dict(name='brick', wall=hexc('#a4503f'), roof=hexc('#62646f'), rim=hexc('#8f929b')),
     dict(name='sand', wall=hexc('#cfa971'), roof=hexc('#8e7a61'), rim=hexc('#e2c797')),
     dict(name='rose', wall=hexc('#cf8f8b'), roof=hexc('#6f5f70'), rim=hexc('#e2b1ad')),
-    dict(name='olive', wall=hexc('#8a8a5a'), roof=hexc('#5d5a4e'), rim=hexc('#adad7c')),
-    dict(name='cream', wall=hexc('#d8cdb0'), roof=hexc('#6d6a63'), rim=hexc('#e8dfc6')),
     dict(name='teal', wall=hexc('#44858b'), roof=hexc('#4e5968'), rim=hexc('#72abb0')),
 ]
 AWNINGS = [(hexc('#d8433b'), hexc('#f2ece0')), (hexc('#2f7fc1'), hexc('#f2ece0')),
@@ -83,7 +85,7 @@ U, R, D, L = 1, 2, 4, 8
 C_UR, C_DR, C_DL, C_UL = 1, 2, 4, 8
 
 # Straight-road variants (index order matters: src/cityLayout.js weights them)
-STRAIGHT_VARIANTS = ('plain', 'manhole', 'oil', 'lamps', 'hydrant')
+STRAIGHT_VARIANTS = ('plain', 'manhole', 'lamps', 'hydrant')
 
 
 # --- Streets --------------------------------------------------------------------
@@ -190,12 +192,6 @@ def road_tile(mask, corners, variant):
         a.disc(cx, cy, 2.2, MANHOLE_L)
         a.hline(cx - 2, cx + 1, cy - 1, MANHOLE)
         a.hline(cx - 2, cx + 1, cy + 1, MANHOLE)
-    elif kind == 'oil':
-        cx, cy = (20, 9) if vertical else (9, 20)
-        a.ellipse(cx, cy, 3.5, 2.5, OIL)
-        for _ in range(8):
-            a.set(cx + rng.randint(-4, 4), cy + rng.randint(-3, 3), OIL)
-        a.set(cx - 1, cy - 1, ASPH_L)
 
     # Lane markings
     if vertical:
@@ -468,12 +464,14 @@ def _roof_clutter(a, rng, ix0, iy0, ix1, iy1, wall, roof, count):
             _vent(a, sx + 1, sy + 1)
 
 
-def city_building(tw, th, style, rng, tall):
+def city_building(tw, th, style, rng, tall, roof='clutter'):
     """A flat-roofed building filling its lot, 3/4 view (facade at the bottom).
 
     It leaves a 1px seam on the top/left and a 2px strip on the bottom/right
     for its own shadow, so neighbours read as separate buildings sharing a
-    block rather than floating boxes.
+    block rather than floating boxes. `roof` picks the rooftop feature:
+    clutter (AC units, skylights, vents), tank, solar, helipad or stepped
+    (a setback tower, 2x2 only).
     """
     w, h = tw * T, th * T
     a = Art(w, h)
@@ -492,25 +490,21 @@ def city_building(tw, th, style, rng, tall):
 
     ix0, iy0, ix1, iy1 = x0 + 3, ry0 + 3, x1 - 3, ry1 - 2
     iw, ih = ix1 - ix0, iy1 - iy0
-    roll = rng.random()
-    if tall and tw == 2 and th == 2 and roll < 0.35:
+    if roof == 'stepped':
         # Stepped skyscraper: a setback tower rising out of the podium roof
         sx0, sy0, sx1, sy1 = x0 + 10, ry0 + 5, x1 - 10, ry1 - 3
         sf = 6
         _cast_shadow(a, sx0, sy0, sx1, sy1, 2)
         _facade(a, rng, sx0, sx1, sy1 - sf + 1, sy1, shade(style['wall'], 1.06), style.get('glassy'), False)
         _flat_roof(a, sx0, sy0, sx1, sy1 - sf, shade(style['roof'], 1.1), style['rim'], rng)
-        if rng.random() < 0.5:
-            _helipad(a, (sx0 + sx1 + 1) / 2, (sy0 + sy1 - sf + 1) / 2)
-        else:
-            _ac_unit(a, sx0 + 3, sy0 + 3)
+        _ac_unit(a, sx0 + 3, sy0 + 3)
         _box_outline(a, sx0, sy0, sx1, sy1)
-    elif tall and tw * th >= 4 and roll < 0.55:
+    elif roof == 'helipad':
         _helipad(a, (x0 + x1 + 1) / 2, (ry0 + ry1 + 1) / 2)
-    elif tw * th >= 2 and roll > 0.82:
+    elif roof == 'solar':
         _solar(a, ix0, iy0, max(1, iw // 5), max(1, ih // 4))
     else:
-        if tw * th >= 2 and rng.random() < 0.5:
+        if roof == 'tank':
             _water_tank(a, ix1 - 3, iy0 + 3)
             ix1 -= 9
         _roof_clutter(a, rng, ix0, iy0, ix1, iy1, style['wall'], style['roof'], 1 + tw * th)
@@ -577,20 +571,22 @@ def parking_piece(tw, th, variant):
 
 
 # --- Residential -------------------------------------------------------------------
+#
+# A house faces its street: the gate, front path and driveway open onto that
+# side. The 3/4 view only ever shows a house's south wall, so a plot facing
+# up, left or right is told apart by where the house sits on it and where the
+# path and driveway run.
 
-def _fence(a, gate_x=None, style='picket', gap=None):
-    """Plot boundary. style: picket fence, hedge, or none (open lawn).
+FACINGS = ('D', 'U', 'L', 'R')
+HOUSE_LAYOUTS = ('lawn', 'driveway', 'tree')
 
-    gate_x leaves a 5px opening in the bottom edge; gap=(x0, x1) leaves a
-    wider one (a driveway).
-    """
+
+def _fence(a, style='picket', side='D', openings=()):
+    """Plot boundary: picket fence, hedge, or none (open lawn), left open at
+    `openings` (positions along `side`) for the gate and driveway."""
     if style == 'none':
         return
-    open_at = set()
-    if gate_x is not None:
-        open_at.update(range(gate_x - 2, gate_x + 3))
-    if gap is not None:
-        open_at.update(range(gap[0], gap[1] + 1))
+    open_at = set(openings)
 
     def mark(x, y, along):
         if style == 'picket':
@@ -599,12 +595,41 @@ def _fence(a, gate_x=None, style='picket', gap=None):
             a.put(x, y, LEAF_D if (x + y) % 3 else LEAF)
 
     for x in range(a.w):
-        mark(x, 0, x)
-        if x not in open_at:
+        if not (side == 'U' and x in open_at):
+            mark(x, 0, x)
+        if not (side == 'D' and x in open_at):
             mark(x, a.h - 1, x)
     for y in range(a.h):
-        mark(0, y, y)
-        mark(a.w - 1, y, y)
+        if not (side == 'L' and y in open_at):
+            mark(0, y, y)
+        if not (side == 'R' and y in open_at):
+            mark(a.w - 1, y, y)
+
+
+def _gate(x):
+    return range(x - 2, x + 3)
+
+
+def _path_v(a, x, y0, y1, wide=True):
+    for y in range(y0, y1 + 1):
+        a.put(x, y, DIRT)
+        if wide:
+            a.put(x + 1, y, DIRT_D)
+
+
+def _path_h(a, y, x0, x1):
+    for x in range(x0, x1 + 1):
+        a.put(x, y, DIRT)
+        a.put(x, y + 1, DIRT_D)
+
+
+def _flowers(a, rng, count, boxes=()):
+    """Flowers dotted around the lawn, clear of the buildings."""
+    for _ in range(count):
+        fx, fy = rng.randint(2, a.w - 3), rng.randint(2, a.h - 3)
+        if not any(bx0 - 1 <= fx <= bx1 + 3 and by0 - 1 <= fy <= by1 + 3 for bx0, by0, bx1, by1 in boxes):
+            if a.get(fx, fy) in (GRASS, GRASS_D, GRASS_L):
+                a.set(fx, fy, rng.choice(FLOWERS))
 
 
 def _house(a, rng, x0, y0, hw, roof_h, wall_h, walls=None, roofs=None, hip=None):
@@ -653,112 +678,10 @@ def _house(a, rng, x0, y0, hw, roof_h, wall_h, walls=None, roofs=None, hip=None)
     return (x0, y0, x1, wy1), door_x + 1
 
 
-def house_piece(tw, th, variant):
-    rng = rng_for('house', tw, th, variant)
-    w, h = tw * T, th * T
-    a = Art(w, h)
-    _grass(a, rng)
-    boxes = []
-    fence = ('picket', 'hedge', 'none')[variant % 3]
-    if tw == 1 and th == 1:
-        layout = (variant // 3) % 3
-        if layout == 1:
-            # narrow house to one side, driveway with the family car
-            flip = variant % 2 == 1
-            hx = 13 if flip else 2
-            box, door = _house(a, rng, hx, 3, 17, 10, 6)
-            boxes.append(box)
-            dx0 = 2 if flip else 19
-            a.rect(dx0, 12, 11, h - 13, hexc('#9a9a94'))
-            a.blit(civ_car_top(rng, facing_up=False), dx0, 13)
-            for y in range(box[3] + 1, h - 1):
-                a.put(door, y, DIRT)
-            _fence(a, gate_x=door, style=fence, gap=(dx0, dx0 + 10))
-            _bush(a, box[0] + 3, box[3] + 3)
-        elif layout == 2:
-            # house set back with a big shade tree out front
-            hw = rng.choice((18, 20))
-            hx = (w - hw) // 2 + rng.choice((-3, 3))
-            box, door = _house(a, rng, hx, 3, hw, 11, 5)
-            boxes.append(box)
-            for y in range(box[3] + 1, h - 1):
-                a.put(door, y, DIRT)
-                a.put(door + 1, y, DIRT_D)
-            _fence(a, gate_x=door, style=fence)
-            tree_x = 7 if door > w // 2 else w - 8
-            draw_tree(a, tree_x, h - 8, 5, rng)
-            boxes.append((tree_x - 6, h - 14, tree_x + 6, h - 2))
-        else:
-            hw = rng.choice((18, 20, 22))
-            hx = (w - hw) // 2 + rng.randint(-2, 2)
-            box, door = _house(a, rng, hx, 4, hw, 10, 6)
-            boxes.append(box)
-            for y in range(box[3] + 1, h - 1):
-                a.put(door, y, DIRT)
-                a.put(door + 1, y, DIRT_D)
-            _fence(a, gate_x=door, style=fence)
-            _bush(a, box[0] + 2, box[3] + 3)
-            _bush(a, box[2] - 1, box[3] + 3)
-            if rng.random() < 0.6:
-                side = 5 if hx > 7 else w - 6
-                draw_tree(a, side, h - 7, 4, rng)
-    elif tw == 2 and th == 1:
-        # wide house with an attached garage, pool out the side
-        box, door = _house(a, rng, 3, 4, 26, 10, 6)
-        boxes.append(box)
-        gx0, gy0, gx1, gy1 = box[2] + 1, 8, box[2] + 10, box[3]
-        _cast_shadow(a, gx0, gy0, gx1, gy1, 2)
-        a.rect(gx0, gy0, gx1 - gx0 + 1, gy1 - gy0 - 4, hexc('#8f949c'))
-        a.hline(gx0, gx1, gy0, hexc('#b8bdc4'))
-        a.rect(gx0, gy1 - 4, gx1 - gx0 + 1, 5, hexc('#d8d4c8'))
-        for y in range(gy1 - 3, gy1 + 1, 2):
-            a.hline(gx0 + 1, gx1 - 1, y, hexc('#b0aca0'))
-        _box_outline(a, gx0, gy0, gx1, gy1)
-        # driveway with the family car
-        a.rect(gx0, gy1 + 2, gx1 - gx0 + 1, h - gy1 - 3, hexc('#9a9a94'))
-        _pool(a, 44, 6, 15, 10)
-        for y in range(box[3] + 1, h - 1):
-            a.put(door, y, DIRT)
-        _fence(a, gate_x=door, style=fence, gap=(gx0, gx1))
-        draw_tree(a, w - 7, h - 8, 4, rng)
-    elif tw == 1 and th == 2:
-        # house at the front, long back garden with a pool and a shed
-        box, door = _house(a, rng, 5, 36, 22, 10, 6)
-        boxes.append(box)
-        _pool(a, 7, 6, 12, 14)
-        a.rect(22, 5, 7, 6, hexc('#8a6a4a'))
-        a.hline(22, 28, 5, hexc('#a8845c'))
-        _box_outline(a, 22, 5, 28, 10)
-        for y in range(box[3] + 1, h - 1):
-            a.put(door, y, DIRT)
-        _fence(a, gate_x=door, style=fence)
-        draw_tree(a, 24, 22, 5, rng)
-    else:
-        # small apartment block on a lawn
-        x0, y0, x1, y1 = 6, 5, w - 8, 40
-        _cast_shadow(a, x0, y0, x1, y1, 2)
-        wall = rng.choice((hexc('#d8cdb0'), hexc('#c9b8a6'), hexc('#b8c4cc')))
-        _facade(a, rng, x0, x1, y1 - 11 + 1, y1, wall, False, False, storey_h=4)
-        # balconies
-        for bx in range(x0 + 3, x1 - 3, 8):
-            for by in (y1 - 8, y1 - 4):
-                a.hline(bx, bx + 4, by, hexc('#f4f4f0'))
-        _flat_roof(a, x0, y0, x1, y1 - 11, hexc('#6d6a63'), hexc('#a8a498'), rng)
-        _ac_unit(a, x0 + 5, y0 + 4)
-        _ac_unit(a, x1 - 10, y0 + 4)
-        _box_outline(a, x0, y0, x1, y1)
-        boxes.append((x0, y0, x1, y1))
-        a.rect(w // 2 - 1, y1 + 1, 3, h - y1 - 2, DIRT)
-        for tx in (10, w - 12):
-            draw_tree(a, tx, 52, 5, rng)
-        _fence(a, gate_x=w // 2)
-    # flowers dotted around the lawn, clear of the buildings
-    for _ in range(tw * th * 4):
-        fx, fy = rng.randint(2, w - 3), rng.randint(2, h - 3)
-        if not any(bx0 - 1 <= fx <= bx1 + 3 and by0 - 1 <= fy <= by1 + 3 for bx0, by0, bx1, by1 in boxes):
-            if a.get(fx, fy) in (GRASS, GRASS_D, GRASS_L):
-                a.set(fx, fy, rng.choice([hexc('#f5d547'), hexc('#f2f2f2'), hexc('#f07ab0')]))
-    return a
+def _shed(a, x, y):
+    a.rect(x, y, 7, 6, hexc('#8a6a4a'))
+    a.hline(x, x + 6, y, hexc('#a8845c'))
+    _box_outline(a, x, y, x + 6, y + 5)
 
 
 def _pool(a, x, y, w, h):
@@ -769,29 +692,199 @@ def _pool(a, x, y, w, h):
         a.hline(x + 2 + i * 3, x + 4 + i * 3, y + 2 + (i % 2) * 3, POOL_L)
 
 
-def pocket_park_piece(variant):
-    rng = rng_for('pocketpark', variant)
+def _veg_patch(a, x0, y0, x1, y1):
+    for row in range(y0, y1, 3):
+        a.hline(x0, x1, row, DIRT_D)
+        a.hline(x0, x1, row + 1, DIRT)
+        for x in range(x0 + 1, x1, 3):
+            a.set(x, row, LEAF_L)
+
+
+def house_lot(facing, layout, variant):
+    """1x1 house plot facing its street. layout: lawn (bushes by the door),
+    driveway (narrow house beside the family car) or tree (a big shade tree)."""
+    rng = rng_for('house', facing, layout, variant)
     a = Art(T, T)
     _grass(a, rng)
-    if variant % 2 == 0:
-        # playground: sandpit, slide, swings
-        a.rect(5, 6, 18, 14, SAND)
-        a.rect(6, 8, 3, 9, hexc('#e8413f'))
-        a.hline(6, 8, 8, hexc('#ff8a80'))
-        a.hline(13, 21, 9, hexc('#5a5f6b'))
-        for sx in (14, 18):
-            a.vline(sx, 10, 13, hexc('#8a8f99'))
-            a.rect(sx - 1, 14, 3, 1, hexc('#2f7fc1'))
-        draw_tree(a, 26, 25, 4, rng)
-        a.rect(4, 25, 8, 2, hexc('#8a5a3a'))
+    fence = ('picket', 'hedge', 'none')[variant % 3]
+    openings = []
+    if facing in ('D', 'U'):
+        down = facing == 'D'
+        if layout == 'driveway':
+            flip = variant % 2 == 1
+            box, door = _house(a, rng, 13 if flip else 2, 3 if down else 8, 17, 10, 6)
+            dx0 = 2 if flip else 19
+            if down:
+                a.rect(dx0, 12, 11, T - 12, DRIVE)
+                a.blit(civ_car_top(rng, facing_up=False), dx0, 13)
+            else:
+                a.rect(dx0, 0, 11, 21, DRIVE)
+                a.blit(civ_car_top(rng, facing_up=True), dx0, 2)
+            openings += range(dx0, dx0 + 11)
+        else:
+            hw = rng.choice((18, 20)) if layout == 'tree' else rng.choice((18, 20, 22))
+            hx = (T - hw) // 2 + (rng.choice((-3, 3)) if layout == 'tree' else rng.randint(-2, 2))
+            roof_h, wall_h = (11, 5) if layout == 'tree' else (10, 6)
+            box, door = _house(a, rng, hx, (3 if layout == 'tree' else 4) if down else 6, hw, roof_h, wall_h)
+        # front path from the door, or past the roof when the house faces away from us
+        if down:
+            _path_v(a, door, box[3] + 1, T - 1, wide=layout != 'driveway')
+        else:
+            _path_v(a, door, 0, box[1] - 1, wide=layout != 'driveway')
+        openings += _gate(door)
+        _fence(a, fence, facing, openings)
+        far = 7 if door > T // 2 else T - 8  # the side of the plot away from the door
+        if layout == 'driveway':
+            _bush(a, box[0] + 3, box[3] + 3)
+        elif layout == 'tree':
+            if down:
+                draw_tree(a, far, T - 8, 5, rng)
+            else:
+                draw_tree(a, far, T - 6, 4, rng)
+        elif down:
+            _bush(a, box[0] + 2, box[3] + 3)
+            _bush(a, box[2] - 1, box[3] + 3)
+            if rng.random() < 0.6:
+                draw_tree(a, 5 if box[0] > 7 else T - 6, T - 7, 4, rng)
+        else:
+            # back garden behind the house
+            _veg_patch(a, box[0] + 2, 25, box[0] + 11, 29)
+            _bush(a, box[2] - 1, T - 5)
     else:
-        a.rect(0, 14, T, 3, DIRT)
-        _scatter_trees(a, rng, (0, 0, T, 14), 2, radii=(4, 5))
-        _scatter_trees(a, rng, (0, 17, T, T), 2, radii=(4, 5))
+        left = facing == 'L'
+        hw = 18
+        box, door = _house(a, rng, 5 if left else T - 5 - hw, 3, hw, 10, 6)
+        # path from the street to the house's flank at doorstep level
+        py = box[3] - 2
+        if left:
+            _path_h(a, py, 0, box[0] - 1)
+        else:
+            _path_h(a, py, box[2] + 1, T - 1)
+        openings += range(py - 1, py + 3)
+        if layout == 'driveway':
+            # drive along the foot of the plot, the car reversed in from the street
+            a.rect(0 if left else T - 21, 20, 21, 11, DRIVE)
+            a.blit(civ_car_top(rng).rotated(1 if left else 3), 1 if left else T - 19, 20)
+            openings += range(20, 31)
+        _fence(a, fence, facing, openings)
+        back = T - 7 if left else 6  # the corner away from the street
+        if layout == 'tree':
+            draw_tree(a, back, T - 7, 5, rng)
+        elif layout == 'lawn':
+            _bush(a, box[0] + 3, box[3] + 4)
+            _bush(a, box[2] - 2, box[3] + 4)
+            draw_tree(a, back + (1 if left else -1), T - 6, 4, rng)
+    _flowers(a, rng, 4, [box])
+    return a
+
+
+def tall_house_lot(facing):
+    """1x2: house at the street end, long back garden with a pool and a shed."""
+    rng = rng_for('house12', facing)
+    a = Art(T, 2 * T)
+    _grass(a, rng)
+    down = facing == 'D'
+    box, door = _house(a, rng, 5, 36 if down else 6, 22, 10, 6)
+    if down:
+        _path_v(a, door, box[3] + 1, a.h - 1, wide=False)
+    else:
+        _path_v(a, door, 0, box[1] - 1, wide=False)
+    _fence(a, 'picket' if down else 'hedge', facing, _gate(door))
+    gy = 0 if down else 34  # the garden's end of the plot
+    _pool(a, 7, 6 + gy, 12, 14)
+    _shed(a, 22, 5 + gy)
+    draw_tree(a, 24, 22 + gy, 5, rng)
+    _flowers(a, rng, 8, [box])
+    return a
+
+
+def wide_house_lot(facing):
+    """2x1: a wide house with its own drive and a pool."""
+    rng = rng_for('house21', facing)
+    a = Art(2 * T, T)
+    _grass(a, rng)
+    w, h = a.w, a.h
+    if facing == 'D':
+        box, door = _house(a, rng, 3, 4, 26, 10, 6)
+        gx0, gy0, gx1, gy1 = box[2] + 1, 8, box[2] + 10, box[3]
+        _cast_shadow(a, gx0, gy0, gx1, gy1, 2)
+        a.rect(gx0, gy0, gx1 - gx0 + 1, gy1 - gy0 - 4, hexc('#8f949c'))
+        a.hline(gx0, gx1, gy0, hexc('#b8bdc4'))
+        a.rect(gx0, gy1 - 4, gx1 - gx0 + 1, 5, hexc('#d8d4c8'))
+        for y in range(gy1 - 3, gy1 + 1, 2):
+            a.hline(gx0 + 1, gx1 - 1, y, hexc('#b0aca0'))
+        _box_outline(a, gx0, gy0, gx1, gy1)
+        # driveway in front of the garage
+        a.rect(gx0, gy1 + 2, gx1 - gx0 + 1, h - gy1 - 2, DRIVE)
+        _pool(a, 44, 6, 15, 10)
+        _path_v(a, door, box[3] + 1, h - 1, wide=False)
+        _fence(a, 'picket', facing, [*_gate(door), *range(gx0, gx1 + 1)])
+        draw_tree(a, w - 7, h - 8, 4, rng)
+    else:
+        # bungalow by the street with the car on a drive beside it, pool out back
+        box, door = _house(a, rng, 4, 6, 26, 10, 6)
+        _path_v(a, door, 0, box[1] - 1, wide=False)
+        a.rect(35, 0, 11, 24, DRIVE)
+        a.blit(civ_car_top(rng, facing_up=True), 35, 2)
+        _fence(a, 'hedge', facing, [*_gate(door), *range(35, 46)])
+        _pool(a, 50, 15, 10, 8)
+        draw_tree(a, 55, 7, 4, rng)
+        _bush(a, box[0] + 4, h - 5)
+        _bush(a, box[2] - 4, h - 5)
+    _flowers(a, rng, 8, [box])
+    return a
+
+
+def flats_lot():
+    """2x2: a small apartment block on a lawn."""
+    rng = rng_for('flats')
+    a = Art(2 * T, 2 * T)
+    _grass(a, rng)
+    w = a.w
+    x0, y0, x1, y1 = 6, 5, w - 8, 40
+    _cast_shadow(a, x0, y0, x1, y1, 2)
+    _facade(a, rng, x0, x1, y1 - 11 + 1, y1, hexc('#c9b8a6'), False, False, storey_h=4)
+    # balconies
+    for bx in range(x0 + 3, x1 - 3, 8):
+        for by in (y1 - 8, y1 - 4):
+            a.hline(bx, bx + 4, by, hexc('#f4f4f0'))
+    _flat_roof(a, x0, y0, x1, y1 - 11, hexc('#6d6a63'), hexc('#a8a498'), rng)
+    _ac_unit(a, x0 + 5, y0 + 4)
+    _ac_unit(a, x1 - 10, y0 + 4)
+    _box_outline(a, x0, y0, x1, y1)
+    a.rect(w // 2 - 1, y1 + 1, 3, a.h - y1 - 1, DIRT)
+    _fence(a, 'picket', 'D', _gate(w // 2))
+    for tx in (10, w - 12):
+        draw_tree(a, tx, 52, 5, rng)
+    _flowers(a, rng, 16, [(x0, y0, x1, y1)])
+    return a
+
+
+def garden_lot(variant):
+    """Back garden for a plot with no street of its own (deep inside a block)."""
+    rng = rng_for('garden', variant)
+    a = Art(T, T)
+    _grass(a, rng)
+    _fence(a, ('hedge', 'picket')[variant])
+    if variant == 0:
+        _veg_patch(a, 4, 5, 18, 20)
+        _shed(a, 22, 5)
+        draw_tree(a, 23, 23, 5, rng)
+        _bush(a, 7, 26)
+    else:
+        a.rect(4, 3, 15, 4, hexc('#c9c2b0'))
+        _pool(a, 5, 9, 13, 8)
+        draw_tree(a, 25, 8, 4, rng)
+        _bush(a, 24, 25)
+        _bush(a, 9, 25)
+    _flowers(a, rng, 6)
     return a
 
 
 # --- Industrial -------------------------------------------------------------------
+
+WAREHOUSE_ROOFS = (hexc('#a9b3bd'), hexc('#a0594a'), hexc('#6f8f78'), hexc('#c9c7bd'))
+
 
 def _concrete_yard(a, rng):
     _ground(a, rng, hexc('#8f8e88'), hexc('#84837d'))
@@ -802,7 +895,9 @@ def warehouse_piece(tw, th, variant):
     w, h = tw * T, th * T
     a = Art(w, h)
     _concrete_yard(a, rng)
-    roof = rng.choice((hexc('#a9b3bd'), hexc('#a0594a'), hexc('#6f8f78'), hexc('#c9c7bd')))
+    # roof colour by shape and variant, so no two warehouses come out alike
+    shape = {(2, 1): 0, (1, 2): 1, (2, 2): 2}[(tw, th)]
+    roof = WAREHOUSE_ROOFS[(shape + variant * 2) % len(WAREHOUSE_ROOFS)]
     wall = hexc('#b8b3a6')
     x0, y0, x1, y1 = 2, 2, w - 4, h - 8
     facade_h = 6
@@ -933,13 +1028,30 @@ def workshop_piece(variant):
 
 # --- Parks ----------------------------------------------------------------------
 
-def park_piece(tw, th, variant):
-    """Grass runs to every edge so neighbouring park lots merge into one park."""
-    rng = rng_for('park', tw, th, variant)
+def _wooded(a, rng, w, h, trees):
+    """Scattered trees and a flower bed or two. No paths: they'd dead-end at
+    the lot edge wherever park lots join up into one bigger park."""
+    for _ in range(w * h // 200):
+        fx, fy = rng.randint(2, w - 3), rng.randint(2, h - 3)
+        a.set(fx, fy, rng.choice(FLOWERS))
+    avoid = []
+    if rng.random() < 0.6:
+        bx, by = rng.randint(4, w - 12), rng.randint(4, h - 8)
+        a.ellipse(bx + 4, by + 2, 4.5, 2.5, hexc('#6b4e36'))
+        for k in range(6):
+            a.set(bx + 1 + k, by + 1 + (k % 2), rng.choice([hexc('#f07ab0'), hexc('#f5d547'), hexc('#e8413f')]))
+        avoid.append((bx - 1, by - 1, bx + 9, by + 5))
+    _scatter_trees(a, rng, (0, 0, w, h), trees, avoid=avoid)
+
+
+def park_piece(tw, th, kind):
+    """Grass runs to every edge so neighbouring park lots merge into one park.
+    kind: trees, playground (1x1), pond or fountain (2x2)."""
+    rng = rng_for('park', tw, th, kind)
     w, h = tw * T, th * T
     a = Art(w, h)
     _grass(a, rng)
-    if tw == 2 and th == 2 and variant == 0:
+    if kind == 'pond':
         cx, cy = w / 2, h / 2 + 1
         a.ellipse(cx, cy, 19, 14, SAND)
         a.ellipse(cx, cy, 17, 12, WATER_D)
@@ -951,32 +1063,110 @@ def park_piece(tw, th, variant):
             a.set(int(px), int(py) - 1, hexc('#f2a2c2'))
         for (tx, ty, tr) in [(8, 9, 5), (w - 9, 10, 6), (9, h - 9, 5), (w - 8, h - 8, 4)]:
             draw_tree(a, tx, ty, tr, rng)
-    elif tw == 2 and th == 2 and variant == 1:
-        a.rect(w // 2 - 2, 0, 4, h, DIRT)
-        a.rect(0, h // 2 - 2, w, 4, DIRT)
+    elif kind == 'fountain':
+        # a round paved square with benches, ringed by trees
         cx, cy = w / 2, h / 2
+        a.disc(cx, cy, 14, DIRT_D)
+        a.disc(cx, cy, 13, DIRT)
         a.disc(cx, cy, 8, hexc('#8f949c'))
         a.disc(cx, cy, 7, hexc('#b8bdc4'))
         a.disc(cx, cy, 5.5, WATER)
         a.disc(cx - 1, cy - 1, 2, WATER_L)
         a.set(int(cx), int(cy), hexc('#ffffff'))
-        for (tx, ty) in [(12, 12), (w - 12, 12), (12, h - 12), (w - 12, h - 12)]:
+        for bx, by in ((cx - 3, cy - 12), (cx - 3, cy + 10)):
+            a.rect(int(bx), int(by), 6, 2, hexc('#8a5a3a'))
+            a.hline(int(bx), int(bx) + 5, int(by), hexc('#b27a52'))
+        for (tx, ty) in [(9, 9), (w - 10, 9), (9, h - 10), (w - 10, h - 10)]:
             draw_tree(a, tx, ty, 6, rng)
+    elif kind == 'playground':
+        # sandpit, slide, swings
+        a.rect(5, 6, 18, 14, SAND)
+        a.rect(6, 8, 3, 9, hexc('#e8413f'))
+        a.hline(6, 8, 8, hexc('#ff8a80'))
+        a.hline(13, 21, 9, hexc('#5a5f6b'))
+        for sx in (14, 18):
+            a.vline(sx, 10, 13, hexc('#8a8f99'))
+            a.rect(sx - 1, 14, 3, 1, hexc('#2f7fc1'))
+        draw_tree(a, 26, 25, 4, rng)
+        a.rect(4, 25, 8, 2, hexc('#8a5a3a'))
     else:
-        # Scattered trees and flower beds; no paths, since they'd dead-end at
-        # the lot edge wherever park lots join up into one bigger park
-        for _ in range(tw * th * 5):
-            fx, fy = rng.randint(2, w - 3), rng.randint(2, h - 3)
-            a.set(fx, fy, rng.choice([hexc('#f5d547'), hexc('#f2f2f2'), hexc('#f07ab0')]))
-        if rng.random() < 0.5:
-            bx, by = rng.randint(4, w - 12), rng.randint(4, h - 8)
-            a.ellipse(bx + 4, by + 2, 4.5, 2.5, hexc('#6b4e36'))
-            for k in range(6):
-                a.set(bx + 1 + k, by + 1 + (k % 2), rng.choice([hexc('#f07ab0'), hexc('#f5d547'), hexc('#e8413f')]))
-            avoid = [(bx - 1, by - 1, bx + 9, by + 5)]
-        else:
-            avoid = []
-        _scatter_trees(a, rng, (0, 0, w, h), tw * th * 2 + 1, avoid=avoid)
+        _wooded(a, rng, w, h, tw * th * 2 + 1)
+    return a
+
+
+# --- Countryside -------------------------------------------------------------------
+# Past the last street the city gives way to woods and farmland. Like park
+# lots, these run to every edge so neighbouring lots read as one landscape.
+
+def forest_piece(variant):
+    """Dense woodland; variant 2 has a clearing. Trees stay inside the tile so
+    no canopy gets cut off where the neighbouring lot isn't forest."""
+    rng = rng_for('forest', variant)
+    a = Art(T, T)
+    noise_fill(a, 0, 0, T, T, [(GRASS_D, 60), (TUFT, 25), (GRASS, 15)], rng)
+    spots = [(x, y) for y in (7, 16, 25) for x in (7, 16, 25)]
+    if variant == 2:
+        spots = [s for s in spots if s != (16, 16)]
+        a.ellipse(16, 17, 5, 4, GRASS_L)
+        for _ in range(4):
+            a.set(rng.randint(12, 20), rng.randint(14, 20), rng.choice(FLOWERS))
+    trees = []
+    for x, y in spots:
+        if variant == 1 and rng.random() < 0.25:
+            continue
+        r = rng.choice((4, 5, 5))
+        tx = min(max(x + rng.randint(-2, 2), r + 1), T - r - 2)
+        ty = min(max(y + rng.randint(-2, 2), r + 1), T - r - 2)
+        trees.append((tx, ty, r))
+    for tx, ty, r in sorted(trees, key=lambda t: t[1]):
+        draw_tree(a, tx, ty, r, rng)
+    return a
+
+
+def meadow_piece(variant):
+    """Open grass: wildflowers and a lone tree, or round hay bales."""
+    rng = rng_for('meadow', variant)
+    a = Art(T, T)
+    _grass(a, rng)
+    if variant == 0:
+        for _ in range(14):
+            a.set(rng.randint(1, T - 2), rng.randint(1, T - 2), rng.choice(FLOWERS))
+        draw_tree(a, 20, 12, 5, rng)
+    else:
+        for bx, by in ((8, 9), (21, 13), (12, 23)):
+            a.disc(bx + 1.5, by + 1.5, 3.5, SHADOW)
+            a.disc(bx, by, 3.5, hexc('#a8863e'))
+            a.disc(bx, by, 2.6, hexc('#d8b860'))
+            a.disc(bx - 0.5, by - 0.5, 1.2, hexc('#ecd58a'))
+    return a
+
+
+FIELD_CROPS = {
+    'wheat': (hexc('#d8b85a'), hexc('#b8983e')),
+    'greens': (hexc('#7a5a3a'), hexc('#5aa043')),
+    'ploughed': (hexc('#8a6440'), hexc('#6e4e30')),
+}
+
+
+def field_piece(tw, th, crop):
+    """A crop field inside a grass margin, so neighbouring fields read as
+    separate plots."""
+    rng = rng_for('field', tw, th, crop)
+    w, h = tw * T, th * T
+    a = Art(w, h)
+    _grass(a, rng)
+    base, row = FIELD_CROPS[crop]
+    x0, y0, x1, y1 = 3, 3, w - 4, h - 4
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            if crop == 'greens':
+                c = row if (y - y0) % 4 == 1 and (x + y) % 3 else base
+            else:
+                c = row if (y - y0) % 3 == 0 else base
+            if rng.random() < 0.06:
+                c = shade(c, 1.1 if rng.random() < 0.5 else 0.9)
+            a.put(x, y, c)
+    a.hline(x0, x1, y1 + 1, shade(base, 0.7))
     return a
 
 
@@ -989,92 +1179,123 @@ def ground_piece():
 
 # --- Catalogue -------------------------------------------------------------------
 
+# Rooftop feature per footprint (1x1, 2x1, 1x2, 2x2), spread so no two pieces
+# of the same footprint read alike
+DOWNTOWN_ROOFS = {
+    'blueglass': ('clutter', 'tank', 'clutter', 'stepped'),
+    'concrete': ('clutter', 'solar', 'tank', 'helipad'),
+    'granite': ('clutter', 'clutter', 'solar', 'solar'),
+    'sandstone': ('clutter', 'tank', 'clutter', 'stepped'),
+}
+COMMERCIAL_ROOFS = {
+    'brick': ('clutter', 'tank', 'clutter', 'tank'),
+    'sand': ('clutter', 'clutter'),
+    'rose': ('clutter', 'clutter', 'tank', 'solar'),
+    'teal': ('clutter', 'solar'),
+}
+FOOTPRINTS = ((1, 1), (2, 1), (1, 2), (2, 2))
+
+
 def city_pieces():
-    """[(name, zone, tw, th, Art)] — every lot piece, grouped by district zone."""
+    """[{name, zone, art, faces?, back?}] — every lot piece, by district zone.
+
+    faces: the side ('U', 'R', 'D', 'L') a piece must have a street on.
+    back: the piece is only for lots with no street at all.
+    """
     pieces = []
 
-    def add(name, zone, tw, th, art):
-        pieces.append((name, zone, tw, th, art))
+    def add(name, zone, art, **extra):
+        pieces.append({'name': name, 'zone': zone, 'art': art, **extra})
 
     # Downtown: towers wall to wall, the odd plaza
-    for i, style in enumerate(DOWNTOWN_STYLES):
-        for v in range(2):
-            add(f'tower_1x1_{style["name"]}_{v}', 'downtown', 1, 1,
-                city_building(1, 1, style, rng_for('tower11', i, v), True))
-        add(f'tower_2x1_{style["name"]}', 'downtown', 2, 1, city_building(2, 1, style, rng_for('tower21', i), True))
-        add(f'tower_1x2_{style["name"]}', 'downtown', 1, 2, city_building(1, 2, style, rng_for('tower12', i), True))
-        add(f'tower_2x2_{style["name"]}', 'downtown', 2, 2, city_building(2, 2, style, rng_for('tower22', i), True))
+    for style in DOWNTOWN_STYLES:
+        for (tw, th), roof in zip(FOOTPRINTS, DOWNTOWN_ROOFS[style['name']]):
+            add(f'tower_{tw}x{th}_{style["name"]}', 'downtown',
+                city_building(tw, th, style, rng_for('tower', tw, th, style['name']), True, roof))
     for v in range(2):
-        add(f'plaza_{v}', 'downtown', 1, 1, plaza_piece(v))
+        add(f'plaza_{v}', 'downtown', plaza_piece(v))
 
     # Commercial: low shops with awnings, car parks
-    for i, style in enumerate(COMMERCIAL_STYLES):
-        add(f'shop_1x1_{style["name"]}', 'commercial', 1, 1, city_building(1, 1, style, rng_for('shop11', i), False))
-        add(f'shop_2x1_{style["name"]}', 'commercial', 2, 1, city_building(2, 1, style, rng_for('shop21', i), False))
-        if i % 2 == 0:
-            add(f'shop_1x2_{style["name"]}', 'commercial', 1, 2, city_building(1, 2, style, rng_for('shop12', i), False))
-            add(f'shop_2x2_{style["name"]}', 'commercial', 2, 2, city_building(2, 2, style, rng_for('shop22', i), False))
-    for v in range(3):
-        add(f'parking_2x1_{v}', 'commercial', 2, 1, parking_piece(2, 1, v))
+    for style in COMMERCIAL_STYLES:
+        for (tw, th), roof in zip(FOOTPRINTS, COMMERCIAL_ROOFS[style['name']]):
+            add(f'shop_{tw}x{th}_{style["name"]}', 'commercial',
+                city_building(tw, th, style, rng_for('shop', tw, th, style['name']), False, roof))
     for v in range(2):
-        add(f'parking_2x2_{v}', 'commercial', 2, 2, parking_piece(2, 2, v))
+        add(f'parking_2x1_{v}', 'commercial', parking_piece(2, 1, v))
+    add('parking_2x2', 'commercial', parking_piece(2, 2, 0))
 
-    # Residential: houses in fenced gardens, a few flats, pocket parks
-    for v in range(18):
-        add(f'house_1x1_{v}', 'residential', 1, 1, house_piece(1, 1, v))
-    for v in range(3):
-        add(f'house_2x1_{v}', 'residential', 2, 1, house_piece(2, 1, v))
-        add(f'house_1x2_{v}', 'residential', 1, 2, house_piece(1, 2, v))
+    # Residential: houses facing their street, back gardens, a few flats
+    for facing in FACINGS:
+        for i, layout in enumerate(HOUSE_LAYOUTS):
+            add(f'house_1x1_{facing}_{layout}', 'residential', house_lot(facing, layout, FACINGS.index(facing) + i),
+                faces=facing)
+    for facing in ('D', 'U'):
+        add(f'house_2x1_{facing}', 'residential', wide_house_lot(facing), faces=facing)
+        add(f'house_1x2_{facing}', 'residential', tall_house_lot(facing), faces=facing)
+    add('flats_2x2', 'residential', flats_lot())
     for v in range(2):
-        add(f'flats_2x2_{v}', 'residential', 2, 2, house_piece(2, 2, v))
-        add(f'pocketpark_{v}', 'residential', 1, 1, pocket_park_piece(v))
+        add(f'garden_{v}', 'residential', garden_lot(v), back=True)
 
     # Industrial: warehouses, container yards, tank farms, workshops
-    for v in range(3):
-        add(f'warehouse_2x1_{v}', 'industrial', 2, 1, warehouse_piece(2, 1, v))
-        add(f'warehouse_1x2_{v}', 'industrial', 1, 2, warehouse_piece(1, 2, v))
-        add(f'warehouse_2x2_{v}', 'industrial', 2, 2, warehouse_piece(2, 2, v))
-        add(f'workshop_{v}', 'industrial', 1, 1, workshop_piece(v))
-        add(f'yard_1x1_{v}', 'industrial', 1, 1, yard_piece(1, 1, v))
     for v in range(2):
-        add(f'yard_2x1_{v}', 'industrial', 2, 1, yard_piece(2, 1, v))
-        add(f'tanks_{v}', 'industrial', 2, 2, tanks_piece(v))
+        for tw, th in FOOTPRINTS[1:]:
+            add(f'warehouse_{tw}x{th}_{v}', 'industrial', warehouse_piece(tw, th, v))
+        add(f'workshop_{v}', 'industrial', workshop_piece(v))
+        add(f'yard_1x1_{v}', 'industrial', yard_piece(1, 1, v))
+        add(f'yard_2x1_{v}', 'industrial', yard_piece(2, 1, v))
+        add(f'tanks_{v}', 'industrial', tanks_piece(v))
 
-    # Parks
-    for v in range(4):
-        add(f'park_1x1_{v}', 'park', 1, 1, park_piece(1, 1, v))
-    for v in range(2):
-        add(f'park_2x1_{v}', 'park', 2, 1, park_piece(2, 1, v))
-        add(f'park_1x2_{v}', 'park', 1, 2, park_piece(1, 2, v))
+    # Parks fill whole blocks
+    add('park_1x1_trees', 'park', park_piece(1, 1, 'trees'))
+    add('playground', 'park', park_piece(1, 1, 'playground'))
+    add('park_2x1_trees', 'park', park_piece(2, 1, 'trees'))
+    add('park_1x2_trees', 'park', park_piece(1, 2, 'trees'))
+    add('pond', 'park', park_piece(2, 2, 'pond'))
+    add('fountain', 'park', park_piece(2, 2, 'fountain'))
+
+    # Countryside past the last street
     for v in range(3):
-        add(f'park_2x2_{v}', 'park', 2, 2, park_piece(2, 2, v))
+        add(f'forest_{v}', 'forest', forest_piece(v))
+    for v in range(2):
+        add(f'meadow_{v}', 'farm', meadow_piece(v))
+    add('field_2x2_wheat', 'farm', field_piece(2, 2, 'wheat'))
+    add('field_2x2_greens', 'farm', field_piece(2, 2, 'greens'))
+    add('field_2x1_ploughed', 'farm', field_piece(2, 1, 'ploughed'))
     return pieces
 
 
 def build_city_tiles():
-    """Returns (tiles: [Art 32x32], manifest dict)."""
+    """Returns (tiles: [Art 32x32], manifest dict).
+
+    Identical tiles are stored once, however many pieces use them.
+    """
     tiles = []
+    index = {}
+
+    def add_tile(tile):
+        key = tile.im.tobytes()
+        if key not in index:
+            index[key] = len(tiles)
+            tiles.append(tile)
+        return index[key]
+
     roads = {}
     for mask, corners in road_combos():
         straight = mask in (U | D, L | R)
         variants = len(STRAIGHT_VARIANTS) if straight else 1
-        idx = []
-        for v in range(variants):
-            idx.append(len(tiles))
-            tiles.append(road_tile(mask, corners, v))
-        roads[f'{mask},{corners}'] = idx
+        roads[f'{mask},{corners}'] = [add_tile(road_tile(mask, corners, v)) for v in range(variants)]
 
     pieces = []
-    for name, zone, tw, th, art in city_pieces():
+    for p in city_pieces():
+        art = p.pop('art')
+        tw, th = art.w // T, art.h // T
         ids = []
         for ty in range(th):
             for tx in range(tw):
                 tile = Art(T, T)
                 tile.blit(art.im.crop((tx * T, ty * T, tx * T + T, ty * T + T)), 0, 0)
-                ids.append(len(tiles))
-                tiles.append(tile)
-        pieces.append({'name': name, 'zone': zone, 'w': tw, 'h': th, 'tiles': ids})
+                ids.append(add_tile(tile))
+        pieces.append({**p, 'w': tw, 'h': th, 'tiles': ids})
 
-    ground = len(tiles)
-    tiles.append(ground_piece())
+    ground = add_tile(ground_piece())
     return tiles, {'roads': roads, 'pieces': pieces, 'ground': ground}
