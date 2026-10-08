@@ -1,4 +1,5 @@
 import { ICON } from '../art';
+import { bindPad } from '../gamepad';
 
 // Shared look for every screen: pixel text, 9-slice panels, icons and the
 // button list used by the menus. Font sizes stay on multiples of 8 so Press
@@ -57,8 +58,9 @@ export function dim(scene, alpha = 0.72) {
 }
 
 // Vertical list of pixel buttons with a gold selection state and bouncing
-// chevrons. Handles hover, click and UP/DOWN (+W/S); ENTER/SPACE/ESC are left
-// to the owning scene so it can apply its own key-repeat guards.
+// chevrons. Handles hover, click and UP/DOWN (+W/S, D-pad, stick); confirm
+// and back keys are left to the owning scene so it can apply its own
+// key-repeat guards.
 export function createMenu(scene, { x, y, items, width = 400, height = 56, spacing = 72, size = 24, container }) {
     const buttons = items.map((item, i) => {
         const by = y + i * spacing;
@@ -108,6 +110,7 @@ export function createMenu(scene, { x, y, items, width = 400, height = 56, spaci
     scene.input.keyboard.on('keydown-W', up);
     scene.input.keyboard.on('keydown-DOWN', down);
     scene.input.keyboard.on('keydown-S', down);
+    bindPad(scene, { up, down });
 
     menu.select(0);
     return menu;

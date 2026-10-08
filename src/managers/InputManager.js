@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DIRECTIONS } from '../constants';
+import { bindPad } from '../gamepad';
 
 export class InputManager {
     constructor(scene) {
@@ -28,6 +29,22 @@ export class InputManager {
         this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.rocketKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.stopKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+
+        // Gamepad: D-pad or left stick steers. Rocket and bomb sit on both the
+        // face buttons and the triggers, so either grip works.
+        const fireRocket = () => { this.rocketPressed = true; };
+        const dropBomb = () => { this.bombPressed = true; };
+        bindPad(this.scene, {
+            up: () => this.pressQueue.push(DIRECTIONS.UP),
+            down: () => this.pressQueue.push(DIRECTIONS.DOWN),
+            left: () => this.pressQueue.push(DIRECTIONS.LEFT),
+            right: () => this.pressQueue.push(DIRECTIONS.RIGHT),
+            a: () => { this.stopToggled = true; },
+            x: fireRocket,
+            rt: fireRocket,
+            b: dropBomb,
+            lt: dropBomb,
+        });
 
         // Swipe Handling
         this.scene.input.on('pointerdown', this.onPointerDown, this);
@@ -101,21 +118,21 @@ export class InputManager {
         return inputs;
     }
 
-    // True once per SPACE press (WP5 wires bomb dropping)
+    // True once per SPACE (or pad B/LT) press (WP5 wires bomb dropping)
     consumeBombPress() {
         if (!this.bombPressed) return false;
         this.bombPressed = false;
         return true;
     }
 
-    // True once per E press — fires a rocket along the player's facing
+    // True once per E (or pad X/RT) press — fires a rocket along the player's facing
     consumeRocketPress() {
         if (!this.rocketPressed) return false;
         this.rocketPressed = false;
         return true;
     }
 
-    // True once per F press — toggles the player's brake (stop/refuel)
+    // True once per F (or pad A) press — toggles the player's brake (stop/refuel)
     consumeStopToggle() {
         if (!this.stopToggled) return false;
         this.stopToggled = false;

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { label, panel, dim, UI_COLORS, createMenu } from '../ui/ui';
+import { bindPad, hasGamepad } from '../gamepad';
 
 export class PauseScene extends Phaser.Scene {
     constructor() {
@@ -58,7 +59,7 @@ export class PauseScene extends Phaser.Scene {
             ],
         });
 
-        label(this, width / 2, top + ph - 36, 'ESC TO RESUME', { color: UI_COLORS.dim }).setOrigin(0.5);
+        label(this, width / 2, top + ph - 36, hasGamepad() ? 'START TO RESUME' : 'ESC TO RESUME', { color: UI_COLORS.dim }).setOrigin(0.5);
 
         // A held key repeats, and the repeat lands on whichever scene was just
         // switched to — without this, holding ENTER on INSTRUCTIONS would
@@ -75,5 +76,9 @@ export class PauseScene extends Phaser.Scene {
 
         // Escape to resume
         this.input.keyboard.on('keydown-ESC', guard(resumeAction));
+
+        // Pad presses never repeat, so they skip the guard. START toggles the
+        // pause the same way ESC does; B backs out of it too.
+        bindPad(this, { a: () => menu.activate(), b: resumeAction, start: resumeAction });
     }
 }

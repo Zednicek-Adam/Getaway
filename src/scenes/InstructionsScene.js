@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { TILE_SIZE } from '../constants';
 import { COLLECTIBLE_TYPES, createCollectibleIcon } from '../objects/Collectible';
 import { label, panel, dim, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
+import { bindPad } from '../gamepad';
 
 // Static "how to play" page reached from the main menu.
 //
@@ -47,13 +48,15 @@ export class InstructionsScene extends Phaser.Scene {
         // --- Controls (left column) ----------------------------------------
         this.heading(330, 300, 'CONTROLS');
 
+        // Keyboard / gamepad. A D-pad or stick steers too; that one needs no
+        // keycap.
         const controls = [
             ['ARROWS/WASD', 'STEER'],
-            ['F', 'BRAKE/REFUEL'],
-            ['SPACE', 'DROP BOMB'],
-            ['E', 'FIRE ROCKET'],
-            ['G', 'GARAGE (BASE)'],
-            ['ESC', 'PAUSE'],
+            ['F / A', 'BRAKE/REFUEL'],
+            ['SPACE / B', 'DROP BOMB'],
+            ['E / X', 'FIRE ROCKET'],
+            ['G / Y', 'GARAGE (BASE)'],
+            ['ESC / START', 'PAUSE'],
         ];
         controls.forEach(([key, action], i) => {
             const y = 346 + i * 44;
@@ -133,5 +136,6 @@ export class InstructionsScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-ESC', goBack);
         this.input.keyboard.on('keydown-ENTER', goBack);
         this.input.keyboard.on('keydown-SPACE', goBack);
+        bindPad(this, { a: goBack, b: goBack, start: goBack });
     }
 }
