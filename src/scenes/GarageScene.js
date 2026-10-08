@@ -5,6 +5,7 @@ import { writeSave } from '../storage';
 import { label, panel, icon, dim, money, UI_COLORS } from '../ui/ui';
 import { bindPad, hasGamepad } from '../gamepad';
 import { sparkBurst } from '../fx';
+import { t } from '../i18n';
 
 // Icon per upgrade track (icons.png)
 const TRACK_ICONS = {
@@ -41,7 +42,7 @@ export class GarageScene extends Phaser.Scene {
         panel(this, left, top, pw, ph);
 
         // Title flanked by wrenches
-        label(this, width / 2, top + 58, 'GARAGE', { size: 48, color: UI_COLORS.gold }).setOrigin(0.5);
+        label(this, width / 2, top + 58, t('garage.title'), { size: 48, color: UI_COLORS.gold }).setOrigin(0.5);
         icon(this, width / 2 - 200, top + 58, 'wrench').setScale(2);
         icon(this, width / 2 + 200, top + 58, 'wrench').setScale(2).setFlipX(true);
 
@@ -61,7 +62,7 @@ export class GarageScene extends Phaser.Scene {
             const idle = panel(this, rowLeft, y - rowH / 2, rowW, rowH);
             const lit = panel(this, rowLeft, y - rowH / 2, rowW, rowH, 'gold').setVisible(false);
             icon(this, rowLeft + 52, y, TRACK_ICONS[key]).setScale(2);
-            const name = label(this, rowLeft + 100, y, def.label, { size: 24 }).setOrigin(0, 0.5);
+            const name = label(this, rowLeft + 100, y, t(`garage.${key}`), { size: 24 }).setOrigin(0, 0.5);
 
             // Level pips — one per purchasable level
             const pips = [];
@@ -85,7 +86,7 @@ export class GarageScene extends Phaser.Scene {
             return { key, def, y, idle, lit, name, pips, value, price, priceX: price.x };
         });
 
-        const hint = hasGamepad() ? 'A BUY    B CLOSE' : 'ENTER BUY    ESC CLOSE';
+        const hint = t(hasGamepad() ? 'garage.hintPad' : 'garage.hintKeys');
         label(this, width / 2, top + ph - 40, hint, { color: UI_COLORS.dim }).setOrigin(0.5);
 
         this.select(0);
@@ -152,7 +153,7 @@ export class GarageScene extends Phaser.Scene {
 
     // Fully re-derive every row's texts/pips/colors + the bank readout.
     refreshRows() {
-        this.bankReadout.setText(`BANK ${money(this.save.banked)}`);
+        this.bankReadout.setText(t('garage.bank', { amount: money(this.save.banked) }));
 
         this.rows.forEach((row) => {
             const level = this.save.upgrades[row.key] || 0;
@@ -177,7 +178,7 @@ export class GarageScene extends Phaser.Scene {
             // Price text + color
             const check = canPurchase(this.save, row.key);
             if (check.reason === 'maxed') {
-                row.price.setText('MAX').setColor(UI_COLORS.green);
+                row.price.setText(t('garage.max')).setColor(UI_COLORS.green);
             } else if (check.ok) {
                 row.price.setText(money(check.price)).setColor(UI_COLORS.gold);
             } else {

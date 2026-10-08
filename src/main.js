@@ -6,6 +6,8 @@ import { PauseScene } from './scenes/PauseScene';
 import { GarageScene } from './scenes/GarageScene';
 import { InstructionsScene } from './scenes/InstructionsScene';
 import { TILE_SIZE, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './constants';
+import { getBrowserStorage } from './storage';
+import { initLanguage, getLanguage } from './i18n';
 
 const config = {
   type: Phaser.AUTO,
@@ -32,6 +34,10 @@ const config = {
   },
   scene: [BootScene, MenuScene, GameScene, PauseScene, GarageScene, InstructionsScene],
 };
+
+// Every scene reads the language through t(), so it has to be settled first
+initLanguage(getBrowserStorage(), navigator.language);
+document.documentElement.lang = getLanguage();
 
 // Wait for the font to load before creating the game
 window.addEventListener('load', () => {
