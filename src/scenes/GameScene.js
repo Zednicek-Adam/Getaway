@@ -4,13 +4,15 @@ import { MapManager } from '../managers/MapManager';
 import { Car } from '../objects/Car';
 import { InputManager } from '../managers/InputManager';
 import { UIManager } from '../managers/UIManager';
-import { COLLECTIBLE_TYPES } from '../objects/Collectible';
+import { Collectible, COLLECTIBLE_TYPES } from '../objects/Collectible';
 import { PoliceManager } from '../managers/PoliceManager';
+import { RailManager } from '../managers/RailManager';
 import { Bomb } from '../objects/Bomb';
 import { Rocket } from '../objects/Rocket';
 import { DiamondCar } from '../objects/DiamondCar';
 import { CONFIG } from '../config';
 import { GameState } from '../GameState';
+import { collectibleWeights } from '../garage';
 import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
 import { explosion, sparkBurst, smokePuff, floatText, CarTrail } from '../fx';
@@ -25,6 +27,10 @@ const PICKUP_FEEDBACK = {
     [COLLECTIBLE_TYPES.LIFE]: { text: '+1 LIFE', color: UI_COLORS.red, tint: 0xff6070 },
     [COLLECTIBLE_TYPES.NITRO]: { text: 'NITRO!', color: UI_COLORS.cyan, tint: 0x5fe0ff },
     [COLLECTIBLE_TYPES.ROCKET]: { text: '+1 ROCKET', color: UI_COLORS.orange, tint: 0xff9a3c },
+    [COLLECTIBLE_TYPES.RAIL_PASS]: { text: 'RAIL PASS', color: UI_COLORS.purple, tint: 0xb98af0 },
+    [COLLECTIBLE_TYPES.DIAMOND]: {
+        text: `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, color: UI_COLORS.cyan, tint: 0x9ff6ff,
+    },
 };
 
 export class GameScene extends Phaser.Scene {
@@ -47,18 +53,34 @@ export class GameScene extends Phaser.Scene {
         // Rendering (landmarks are separate objects — the tilemap is static after render)
         this.mapManager.render();
         this.mapManager.renderLandmarks();
+        // Rail passes join the pickup table once bought (read live, so a
+        // mid-run garage unlock takes effect on the next spawn)
+        this.mapManager.collectibleWeights = () => collectibleWeights(this.save);
+
+        // The train and the crossings
+        this.railManager = new RailManager(this, this.mapManager);
 
         // Input
         this.inputManager = new InputManager(this);
 
         // UI
         this.uiManager = new UIManager(this);
+        const rail = this.mapManager.rail;
+        this.uiManager.initLoopMap(rail.line, rail.crossings, rail.station);
 
         // Car Spawn - Start at center (Generation Seed) to guarantee Road
         const spawnPoint = this.mapManager.playerSpawnPoint || { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
 
-        // avoidsBlocked:false — only the player can drive into a roadblock (and crash)
-        this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager, { avoidsBlocked: false });
+        // avoidsBlocked:false — only the player can drive into a roadblock (and
+        // crash) or run a lowered crossing barrier. The rail hooks let a rail
+        // pass take the car onto the track (see railPassable).
+        this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager, {
+            avoidsBlocked: false,
+            passable: (x, y, car) => this.railPassable(x, y, car),
+            trackFollow: (car) => this.railManager.trackDirection(car),
+            railPath: (t, car) => this.railManager.railPose(car, t),
+            diagonalFrames: [4, 5, 6, 7],
+        });
         // Force player to face UP (towards the dead end) as requested
         this.playerCar.direction = DIRECTIONS.UP;
         this.playerCar.turnQueue.clear(); // Clear buffered turns so car stays still
@@ -138,6 +160,7 @@ export class GameScene extends Phaser.Scene {
         this.playerCar.moveConfig.duration = this.state.moveDuration * nitroFactor * heliFactor;
 
         this.playerCar.update(time, delta);
+        this.updateRailRiding();
         this.carTrail.update(delta, {
             nitro: this.state.isNitroActive(),
             damage: this.state.damage,
@@ -170,6 +193,11 @@ export class GameScene extends Phaser.Scene {
             this.diamondCar.update(time, delta);
         }
 
+        // (a2) The train: barriers, station stops, and anything in its way
+        this.onTrainEvents(this.railManager.update(delta));
+        this.checkTrainHits();
+        if (this.gameOver) return;
+
         // (b0) Garage hint — first time on the base pad each run (even carrying $0)
         if (!this.garageHintShown &&
             this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) {
@@ -196,6 +224,9 @@ export class GameScene extends Phaser.Scene {
             this.mapManager.getFuelStationAt(this.playerCar.gridX, this.playerCar.gridY)) {
             this.state.addFuel(CONFIG.FUEL.REFUEL_PER_SEC * (delta / 1000));
         }
+
+        // (c2) Bullion heist — parked on the platform while the vault is open
+        this.updateHeist(delta);
 
         // (d) Diamond delivery car — ramming it steals the diamond
         // (not guarded by invulnerability: that only covers the police catch)
@@ -248,6 +279,13 @@ export class GameScene extends Phaser.Scene {
             damage: this.state.damage,
             maxDamage: this.state.maxDamage,
             nitroActive: this.state.isNitroActive(),
+            railPasses: this.state.railPasses,
+            onRails: this.state.onRails,
+            rail: {
+                train: this.railManager.carPositions(),
+                player: { x: this.playerCar.visual.x / TILE_SIZE, y: this.playerCar.visual.y / TILE_SIZE },
+                bullion: this.railManager.run.bullion,
+            },
             queue: this.playerCar.turnQueue.toArray(),
             stars: this.state.stars,
             chaseCountdown: this.state.chaseCountdown,
@@ -314,6 +352,14 @@ export class GameScene extends Phaser.Scene {
             const advanced = r.update(delta) === 'advanced';
             if (!advanced) continue;
 
+            // (0) The train soaks it up
+            if (this.railManager.isTrainAt(r.gridX, r.gridY)) {
+                this.explodeAt(r.gridX, r.gridY);
+                r.destroy();
+                this.rockets.splice(i, 1);
+                continue;
+            }
+
             // (1) Off-road (first off-road step) or out of range → harmless fizzle
             if (!this.mapManager.isRoad(r.gridX, r.gridY) ||
                 r.tilesTraveled > CONFIG.ROCKET.RANGE_TILES) {
@@ -375,11 +421,107 @@ export class GameScene extends Phaser.Scene {
 
         this.diamondCar.destroy();
         this.diamondCar = null;
+        this.scheduleDiamondRespawn();
+    }
 
+    scheduleDiamondRespawn() {
         // Safe across restarts: scene shutdown clears pending clock events
         this.time.delayedCall(CONFIG.DIAMOND_CAR.RESPAWN_MS, () => {
             if (!this.gameOver) this.spawnDiamondCar();
         });
+    }
+
+    // Where the player's car may drive. Roads as usual (unless a standing
+    // train is in the way); plain track only along the loop; and from a
+    // crossing onto the track only with a rail pass (or while already riding).
+    railPassable(x, y, car) {
+        const map = this.mapManager;
+        if (this.railManager.isStoppedTrainAt(x, y)) return false;
+        const alongLoop = this.railManager.areLoopNeighbours(car.gridX, car.gridY, x, y);
+        if (map.isRail(car.gridX, car.gridY) && !map.isRoad(car.gridX, car.gridY)) return alongLoop;
+        if (map.isRoad(x, y)) return true;
+        return map.isCrossing(car.gridX, car.gridY) && alongLoop && this.state.canBoardRails();
+    }
+
+    // The frame a move starts: onto plain track spends the pass, onto a road
+    // that isn't a crossing ends the ride
+    updateRailRiding() {
+        const car = this.playerCar;
+        if (!car.isMoving) return;
+        const map = this.mapManager;
+        const toTrack = map.isRail(car.targetX, car.targetY);
+        if (toTrack && !map.isRoad(car.targetX, car.targetY) && !this.state.onRails) {
+            this.state.boardRails();
+            this.uiManager.showToast('ON THE RAILS');
+        } else if (!toTrack && this.state.onRails) {
+            this.state.leaveRails();
+        }
+    }
+
+    onTrainEvents(events) {
+        if (events.includes('bullionLap')) {
+            this.uiManager.showToast('BULLION TRAIN INBOUND');
+        }
+        if (events.includes('arrived') && this.railManager.vaultOpen) {
+            this.uiManager.showToast('VAULT OPEN AT THE STATION');
+            const { x, y } = this.railManager.train.carPosition(1);
+            sparkBurst(this, x, y, { count: 10, tint: 0xffd040 });
+        }
+    }
+
+    // A moving train wrecks whatever is on the track in front of it (or a car
+    // driving into it). Armor and invulnerability don't help against a train.
+    checkTrainHits() {
+        const rail = this.railManager;
+        if (!rail.run.moving) return;
+        const hit = car => rail.isTrainAt(car.gridX, car.gridY) ||
+            (car.isMoving && rail.isTrainAt(car.targetX, car.targetY));
+
+        for (const unit of [...this.policeManager.units]) {
+            if (!hit(unit)) continue;
+            explosion(this, unit.visual.x, unit.visual.y);
+            this.policeManager.destroyUnit(unit);
+        }
+
+        if (this.diamondCar && hit(this.diamondCar)) {
+            this.wreckDiamondCar();
+        }
+
+        if (hit(this.playerCar)) {
+            explosion(this, this.playerCar.visual.x, this.playerCar.visual.y);
+            this.cameras.main.shake(300, 0.012);
+            this.uiManager.showToast('HIT BY THE TRAIN');
+            this.state.onTrainHit();
+            this.handleCaught();
+        }
+    }
+
+    // The train totals the diamond truck: the diamond is left lying on the road
+    wreckDiamondCar() {
+        const { gridX: x, gridY: y, visual } = this.diamondCar;
+        explosion(this, visual.x, visual.y);
+        this.diamondCar.destroy();
+        this.diamondCar = null;
+        if (this.mapManager.isRoad(x, y) && !this.mapManager.getCollectibleAt(x, y)) {
+            this.mapManager.collectibles.push(new Collectible(this, COLLECTIBLE_TYPES.DIAMOND, x, y));
+        }
+        this.scheduleDiamondRespawn();
+    }
+
+    // Each full second parked on the platform beside the open vault pays out
+    updateHeist(delta) {
+        const car = this.playerCar;
+        const onPlatform = this.mapManager.isStationPad(car.gridX, car.gridY) && !car.isMoving;
+        if (!onPlatform || !this.railManager.vaultOpen) {
+            this.state.resetHeist();
+            return;
+        }
+        const payouts = this.state.heistTick(delta);
+        if (payouts === 0) return;
+        this.policeManager.onChaseEvent();
+        const { x, y } = car.visual;
+        floatText(this, x, y, `+${money(CONFIG.TRAIN.HEIST_PER_SEC * payouts)}`, UI_COLORS.gold);
+        sparkBurst(this, x, y, { count: 6, radius: TILE_SIZE * 0.7, tint: 0xffd040 });
     }
 
     // Same tile, or the two cars swapping tiles mid-move (tunneling)
@@ -520,6 +662,15 @@ export class GameScene extends Phaser.Scene {
         } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
             // Inventory full — leave the rocket on the road for later
             if (!this.state.pickupRocket()) return;
+        } else if (item.type === COLLECTIBLE_TYPES.RAIL_PASS) {
+            // Already holding one — leave it for after the ride
+            if (!this.state.pickupRailPass()) return;
+            this.uiManager.showToast('TURN AT A CROSSING TO RIDE');
+        } else if (item.type === COLLECTIBLE_TYPES.DIAMOND) {
+            // Left behind by a diamond truck the train wrecked
+            this.state.pickupDiamond();
+            this.policeManager.onChaseEvent();
+            this.uiManager.showToast(`DIAMOND! +${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`);
         }
 
         const feedback = PICKUP_FEEDBACK[item.type];
@@ -529,6 +680,9 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.mapManager.removeCollectible(item);
-        this.mapManager.spawnRandomCollectibles(1);
+        // A dropped diamond isn't part of the spawn pool, so nothing replaces it
+        if (item.type !== COLLECTIBLE_TYPES.DIAMOND) {
+            this.mapManager.spawnRandomCollectibles(1);
+        }
     }
 }

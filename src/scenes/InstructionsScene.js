@@ -74,9 +74,10 @@ export class InstructionsScene extends Phaser.Scene {
             [COLLECTIBLE_TYPES.ROCKET, 'ROCKET', '+1 AMMO'],
             [COLLECTIBLE_TYPES.BOMB, 'BOMB', '+1 AMMO'],
             [COLLECTIBLE_TYPES.LIFE, 'LIFE', '+1 LIFE'],
+            [COLLECTIBLE_TYPES.RAIL_PASS, 'RAIL PASS', 'RIDE RAILS'],
         ];
         pickups.forEach(([type, name, effect], i) => {
-            const y = 346 + i * 44;
+            const y = 346 + i * 40;
             const pickup = createCollectibleIcon(this, type, TILE_SIZE);
             pickup.setPosition(770, y);
             this.body(806, y, name, UI_COLORS.white);
@@ -88,15 +89,17 @@ export class InstructionsScene extends Phaser.Scene {
             ['YOUR CAR DRIVES ITSELF - YOU ONLY CHOOSE THE TURNS', UI_COLORS.cyan],
             ['TURNS QUEUE UP TO 3 AHEAD, SO LINE UP JUNCTIONS EARLY', UI_COLORS.white],
             ['RAM THE DIAMOND CAR FOR $1000 - IT COSTS YOU 2 STARS', UI_COLORS.white],
+            ['COPS STOP AT LOWERED BARRIERS - YOU CAN BEAT THE TRAIN', UI_COLORS.white],
+            ['RAIL PASS (GARAGE UNLOCK): TURN AT A CROSSING TO RIDE', UI_COLORS.purple],
         ];
         notes.forEach(([line, colour], i) => {
-            this.body(centre, 626 + i * 30, line, colour).setOrigin(0.5);
+            this.body(centre, 616 + i * 26, line, colour).setOrigin(0.5);
         });
 
         // --- Wanted level ----------------------------------------------------
-        this.heading(centre, 740, 'HEAT');
-        this.body(centre, 776, 'EVERY PICKUP RAISES YOUR WANTED STARS', UI_COLORS.white).setOrigin(0.5);
-        this.body(centre, 806, '1-3 PATROLS   4 SWAT + ROADBLOCKS   5 HELICOPTER', UI_COLORS.red)
+        this.heading(centre, 758, 'HEAT');
+        this.body(centre, 792, 'EVERY PICKUP RAISES YOUR WANTED STARS', UI_COLORS.white).setOrigin(0.5);
+        this.body(centre, 820, '1-3 PATROLS   4 SWAT + ROADBLOCKS   5 HELICOPTER', UI_COLORS.red)
             .setOrigin(0.5);
 
         this.createBackButton(centre, height - 60);

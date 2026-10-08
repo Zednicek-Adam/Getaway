@@ -12,9 +12,14 @@ import { TILE_TYPES } from '../constants';
  *  - Good map coverage (no large empty areas)
  */
 export class NetworkGenerator {
-    constructor(width, height) {
+    // Optional railway: `barrier` holds the "x,y" keys roads may never use
+    // (track), and each crossing {x, y, axis} is seeded as a short road stub
+    // straight through the track, axis 'V' for a road running up-down.
+    constructor(width, height, { barrier = null, crossings = [] } = {}) {
         this.width = width;
         this.height = height;
+        this.barrier = barrier;
+        this.crossings = crossings;
 
         // Direction vectors: 0=Up, 1=Right, 2=Down, 3=Left
         this.dx = [0, 1, 0, -1];
@@ -69,6 +74,10 @@ export class NetworkGenerator {
         this._growArm(tjX, tjY, 1, 5 + Math.floor(Math.random() * 3)); // Right
         this._growArm(tjX, tjY, 3, 5 + Math.floor(Math.random() * 3)); // Left
 
+        // Level crossings: a road stub through the track, both ends growable,
+        // so the network reaches across the loop through them and nowhere else
+        this._seedCrossings();
+
         // Main growth loop — multiple passes with different strategies
         this._growNetwork();
 
@@ -106,7 +115,16 @@ export class NetworkGenerator {
 
     _inBounds(x, y) {
         return x >= this.MARGIN && x < this.width - this.MARGIN &&
-            y >= this.MARGIN && y < this.height - this.MARGIN;
+            y >= this.MARGIN && y < this.height - this.MARGIN &&
+            !(this.barrier && this.barrier.has(`${x},${y}`));
+    }
+
+    _seedCrossings() {
+        for (const { x, y, axis } of this.crossings) {
+            const [dx, dy] = axis === 'V' ? [0, 1] : [1, 0];
+            for (let k = -2; k <= 2; k++) this._setRoad(x + dx * k, y + dy * k);
+            this.frontier.push({ x: x - dx * 2, y: y - dy * 2 }, { x: x + dx * 2, y: y + dy * 2 });
+        }
     }
 
     _isRoad(x, y) {

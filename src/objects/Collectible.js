@@ -10,6 +10,7 @@ export const COLLECTIBLE_TYPES = {
     NITRO: 'nitro',
     ROCKET: 'rocket',
     LIFE: 'life',
+    RAIL_PASS: 'railPass',
 };
 
 // Pure weighted picker: walks the weight entries accumulating a cumulative
@@ -33,6 +34,9 @@ const PICKUP_ART = {
     [COLLECTIBLE_TYPES.ROCKET]: { frame: PICKUP_FRAMES.rocket },
     [COLLECTIBLE_TYPES.BOMB]: { frame: PICKUP_FRAMES.bomb, anim: 'bomb-fuse' },
     [COLLECTIBLE_TYPES.LIFE]: { frame: PICKUP_FRAMES.life },
+    [COLLECTIBLE_TYPES.RAIL_PASS]: { frame: PICKUP_FRAMES.railPass },
+    // Only ever dropped by a diamond truck the train wrecks
+    [COLLECTIBLE_TYPES.DIAMOND]: { frame: PICKUP_FRAMES.diamond },
 };
 
 // Builds a collectible's sprite centred on (0, 0), unpositioned.

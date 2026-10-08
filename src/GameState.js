@@ -24,6 +24,9 @@ export class GameState {
         this.chaseCountdown = 0;
         this.starDecayTimer = 0;
         this.invulnRemaining = 0;
+        this.railPasses = 0;
+        this.onRails = false;   // riding the track on a spent rail pass
+        this.heistTimer = 0;    // ms accumulated towards the next heist payout
         this.gameOver = false;
         this.gameOverReason = null;
     }
@@ -63,6 +66,59 @@ export class GameState {
         if (this.rockets <= 0) return false;
         this.rockets--;
         return true;
+    }
+
+    // False (leave the pickup) while already holding the most allowed.
+    pickupRailPass() {
+        if (this.railPasses >= CONFIG.RAIL_PASS.MAX_CARRY) return false;
+        this.railPasses++;
+        return true;
+    }
+
+    canBoardRails() {
+        return this.onRails || this.railPasses > 0;
+    }
+
+    // Turning off a crossing onto the track spends the pass for the whole ride
+    boardRails() {
+        if (this.onRails) return true;
+        if (this.railPasses <= 0) return false;
+        this.railPasses--;
+        this.onRails = true;
+        return true;
+    }
+
+    // Back on the road: getting on again takes another pass
+    leaveRails() {
+        this.onRails = false;
+    }
+
+    // Parked on the platform while the vault is open: every full second pays
+    // out and adds heat. Returns how many payouts landed this tick.
+    heistTick(delta) {
+        this.heistTimer += delta;
+        let payouts = 0;
+        while (this.heistTimer >= 1000) {
+            this.heistTimer -= 1000;
+            this.carried += CONFIG.TRAIN.HEIST_PER_SEC;
+            this.heat += CONFIG.TRAIN.HEIST_HEAT_PER_SEC;
+            payouts++;
+        }
+        if (payouts > 0) {
+            this.recomputeStars();
+            this.refreshChase();
+        }
+        return payouts;
+    }
+
+    resetHeist() {
+        this.heistTimer = 0;
+    }
+
+    // A train costs a life outright, armor or not
+    onTrainHit() {
+        this.onCaught();
+        if (this.gameOver) this.gameOverReason = 'HIT BY A TRAIN!';
     }
 
     // Repair one point of damage; false (leave the pickup) when undamaged.
@@ -123,6 +179,8 @@ export class GameState {
         this.chaseCountdown = 0;
         this.starDecayTimer = 0;
         this.nitroRemaining = 0;
+        this.onRails = false;
+        this.heistTimer = 0;
         this.invulnRemaining = CONFIG.PLAYER.INVULN_MS;
         if (this.lives <= 0) {
             this.gameOver = true;

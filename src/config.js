@@ -103,7 +103,33 @@ export const CONFIG = {
         SLOW_FACTOR: 1.25,     // player move-duration multiplier while overhead
     },
 
+    TRAIN: {
+        LOOP_INSET: 9,            // tiles from the map edge to the loop
+        CHAMFER: 5,               // diagonal steps cut off each corner (the loop reads as an octagon)
+        CORNER_MARGIN: 2,         // straight tiles kept clear of crossings next to a corner
+        CROSSINGS_PER_SIDE: [2, 3],
+        CROSSING_MIN_SPACING: 6,  // tiles between crossings on the same side
+        MIN_CROSSINGS: 5,         // fewer surviving generation means a re-roll
+        MS_PER_TILE: 150,
+        WAGONS: [4, 5],           // behind the locomotive and the bullion car
+        WARNING_MS: 3000,         // lights + barriers before the locomotive reaches a crossing
+        STATION_DWELL_MS: 3000,
+        BULLION_EVERY: 3,         // every Nth lap stops with the vault open
+        BULLION_DWELL_MS: 8000,
+        HEIST_PER_SEC: 250,       // carried $ per second parked on the platform pad
+        HEIST_HEAT_PER_SEC: 1,
+    },
+
+    RAIL_PASS: {
+        SPAWN_WEIGHT: 0.04,       // added to COLLECTIBLES.WEIGHTS once unlocked
+        MAX_CARRY: 1,
+    },
+
     GARAGE: {
+        // One-time purchases, separate from the leveled tracks below
+        UNLOCKS: {
+            railPass: { label: 'RAIL PASS', price: 3000 },
+        },
         MAX_LEVEL: 3,
         PRICES: [500, 1500, 4000],   // cost of level 1 / 2 / 3, uniform across tracks
         TRACKS: {

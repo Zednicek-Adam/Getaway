@@ -18,6 +18,7 @@ from PIL import Image
 
 import art_city
 import art_menu
+import art_rail
 import art_sprites as spr
 from pixelkit import Art, hexc, sheet
 
@@ -70,8 +71,21 @@ def main():
     city.update(save_tileset(tiles, 'city.png'))
     manifest['city'] = city
 
+    # Railway: track tiles keyed by the loop's local move signature, plus the
+    # rails-over-road overlay for crossings (src/railway.js, MapManager.render)
+    sigs = art_rail.all_signatures()
+    rail_tiles = [art_rail.track_tile(sig) for sig in sigs]
+    rail = {'tiles': {sig: i for i, sig in enumerate(sigs)}}
+    rail['crossing'] = {'H': len(rail_tiles), 'V': len(rail_tiles) + 1}
+    rail_tiles += [art_rail.crossing_tile('H'), art_rail.crossing_tile('V')]
+    rail.update(save_tileset(rail_tiles, 'rail.png', cols=8))
+    manifest['rail'] = rail
+
     # Vehicles: frames ordered LEFT, UP, RIGHT, DOWN (police/SWAT: 3 light rows)
-    save_sheet(spr.direction_frames(spr.player_car()), 'car_player.png')
+    # Player: LEFT, UP, RIGHT, DOWN, then the diagonals UR, DR, DL, UL for
+    # riding the rails round the loop's corners
+    player = spr.player_car()
+    save_sheet(spr.direction_frames(player) + art_rail.eight_ways(player)[1::2], 'car_player.png')
     save_sheet([f for s in range(3) for f in spr.direction_frames(spr.police_car(s))], 'car_police.png', cols=4)
     save_sheet([f for s in range(3) for f in spr.direction_frames(spr.swat_van(s))], 'van_swat.png', cols=4)
     save_sheet(spr.direction_frames(spr.diamond_truck()), 'truck_diamond.png')
@@ -83,9 +97,15 @@ def main():
 
     # Pickups + HUD icons
     frames, idx = spr.pickup_frames()
+    idx['railPass'] = len(frames)
+    frames.append(art_rail.rail_pass_token())
+    idx['diamond'] = len(frames)
+    frames.append(art_rail.diamond_pickup())
     save_sheet(frames, 'pickups.png')
     manifest['pickups'] = idx
     frames, idx = spr.icon_frames()
+    idx['ticket'] = len(frames)
+    frames.append(art_rail.ticket_icon())
     save_sheet(frames, 'icons.png')
     manifest['icons'] = idx
 
@@ -107,6 +127,13 @@ def main():
     save(spr.fuel_station(), 'fuelstation.png')
     save(spr.pad(hexc('#ffc933'), spr.BIG_DOLLAR), 'pad_base.png')
     save(spr.pad(hexc('#3fdf6a'), spr.BIG_DROP), 'pad_fuel.png')
+
+    # Railway: train cars (8 headings each), crossing barriers, the station
+    save_sheet(art_rail.train_frames(), 'train.png', cols=8)
+    manifest['train'] = {'cars': list(art_rail.TRAIN_CARS), 'frameSize': art_rail.FRAME * WORLD}
+    save_sheet(art_rail.crossing_frames(), 'crossing.png')
+    save(art_rail.station(), 'station.png')
+    save(art_rail.station_pad(), 'pad_station.png')
 
     # UI
     save(spr.panel(hexc('#454b63'), hexc('#6a7190'), hexc('#2a2e3f')), 'panel.png')

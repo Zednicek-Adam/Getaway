@@ -1,5 +1,5 @@
 import { CONFIG } from '../config';
-import { DIRECTIONS } from '../constants';
+import { DIRECTIONS, MAP_WIDTH, MAP_HEIGHT } from '../constants';
 import { ICON } from '../art';
 import { label, panel, icon, money, UI_COLORS, dim, createMenu } from '../ui/ui';
 import { hasGamepad } from '../gamepad';
@@ -67,11 +67,15 @@ export class UIManager {
         this.fix(panel(scene, 16, 228, 344, 56));
         this.fix(icon(scene, 44, 256, 'bomb'));
         this.bombText = this.fix(label(scene, 66, 248, 'x0'));
-        this.fix(icon(scene, 142, 256, 'rocket'));
-        this.rocketText = this.fix(label(scene, 164, 248, 'x0', { color: UI_COLORS.orange }));
-        this.nitroIcon = this.fix(icon(scene, 240, 256, 'bolt'));
-        this.nitroText = this.fix(label(scene, 262, 248, 'NOS', { color: UI_COLORS.cyan }));
+        this.fix(icon(scene, 128, 256, 'rocket'));
+        this.rocketText = this.fix(label(scene, 150, 248, 'x0', { color: UI_COLORS.orange }));
+        this.nitroIcon = this.fix(icon(scene, 212, 256, 'bolt'));
+        this.nitroText = this.fix(label(scene, 234, 248, 'NOS', { color: UI_COLORS.cyan }));
         this.renderNitro(false);
+        // Rail pass: lit while held, blinking while it's being ridden
+        this.ticketIcon = this.fix(icon(scene, 318, 256, 'ticket'));
+        this.ticketTween = null;
+        this.renderTicket(0, false);
 
         // --- Wanted level (top-right) -----------------------------------------
         const wantedW = 5 * 40 + 36;
@@ -118,7 +122,8 @@ export class UIManager {
 
     // Pure renderer: called every frame with a HUD snapshot
     // { banked, carried, lives, fuel, fuelMax, bombs, rockets, damage, maxDamage,
-    //   nitroActive, queue, stars, chaseCountdown, chaseCountdownMax }
+    //   nitroActive, railPasses, onRails, rail, queue, stars, chaseCountdown,
+    //   chaseCountdownMax }
     update(hud) {
         if (this.changed('banked', hud.banked)) {
             this.bankText.setText(money(hud.banked));
@@ -159,6 +164,12 @@ export class UIManager {
             this.renderNitro(hud.nitroActive);
         }
 
+        if (this.changed('ticket', `${hud.railPasses}/${hud.onRails}`)) {
+            this.renderTicket(hud.railPasses, hud.onRails);
+        }
+
+        if (hud.rail) this.renderLoopMap(hud.rail);
+
         const queue = hud.queue || [];
         if (this.changed('queue', queue.join(','))) {
             this.renderQueue(queue);
@@ -193,6 +204,69 @@ export class UIManager {
                 targets, alpha: 0.35, duration: 180, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
             });
         }
+    }
+
+    renderTicket(passes, onRails) {
+        if (this.ticketTween) {
+            this.ticketTween.stop();
+            this.ticketTween = null;
+        }
+        this.ticketIcon.setAlpha(passes > 0 || onRails ? 1 : 0.2);
+        if (onRails) {
+            this.ticketTween = this.scene.tweens.add({
+                targets: this.ticketIcon, alpha: 0.3, duration: 220, yoyo: true, repeat: -1,
+            });
+        }
+    }
+
+    // Railway map (top-right, under the wanted panel): the loop, its
+    // crossings and station drawn once, the train and the player each frame
+    initLoopMap(line, crossings, station) {
+        const { width } = this.scene.scale;
+        const size = 148;
+        const x0 = width - 16 - size;
+        const y0 = 120;
+        this.fix(panel(this.scene, x0, y0, size, size));
+        const inner = size - 20;
+        const scale = inner / Math.max(MAP_WIDTH, MAP_HEIGHT);
+        this.loopMap = { x: x0 + 10, y: y0 + 10, scale };
+        const at = (p) => ({ x: this.loopMap.x + p.x * scale, y: this.loopMap.y + p.y * scale });
+
+        const g = this.fix(this.scene.add.graphics());
+        const pts = line.mids.map(at);
+        for (const [w, colour] of [[5, 0x0a0b11], [3, 0x8a8f99]]) {
+            g.lineStyle(w, colour);
+            g.beginPath();
+            g.moveTo(pts[0].x, pts[0].y);
+            pts.forEach(p => g.lineTo(p.x, p.y));
+            g.closePath();
+            g.strokePath();
+        }
+        for (const i of crossings) {
+            const c = at({ x: line.cells[i].x + 0.5, y: line.cells[i].y + 0.5 });
+            g.fillStyle(0xffc933).fillRect(Math.round(c.x) - 2, Math.round(c.y) - 2, 4, 4);
+        }
+        if (station) {
+            const c = at({ x: station.pad.x + 0.5, y: station.pad.y + 0.5 });
+            g.fillStyle(0x0a0b11).fillRect(Math.round(c.x) - 4, Math.round(c.y) - 4, 8, 8);
+            g.fillStyle(0xb98af0).fillRect(Math.round(c.x) - 3, Math.round(c.y) - 3, 6, 6);
+        }
+        this.loopDots = this.fix(this.scene.add.graphics());
+    }
+
+    // { train: [{x, y}], player: {x, y}, bullion } in tile units
+    renderLoopMap(rail) {
+        if (!this.loopMap) return;
+        const { x, y, scale } = this.loopMap;
+        const g = this.loopDots.clear();
+        rail.train.forEach((p, k) => {
+            const colour = k === 0 ? 0x6fe08a : k === 1 && rail.bullion ? 0xffc933 : 0x2f7a4f;
+            g.fillStyle(colour).fillRect(Math.round(x + p.x * scale) - 2, Math.round(y + p.y * scale) - 2, 4, 4);
+        });
+        const px = Math.round(x + rail.player.x * scale);
+        const py = Math.round(y + rail.player.y * scale);
+        g.fillStyle(0x0a0b11).fillRect(px - 4, py - 4, 8, 8);
+        g.fillStyle(0xff4d5a).fillRect(px - 3, py - 3, 6, 6);
     }
 
     renderStars(stars) {
