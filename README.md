@@ -43,14 +43,21 @@ default) or by running the tank dry. Either way, carried money is gone.
 
 ## Controls
 
-| Key | Action |
-| --- | ------ |
-| Arrows / WASD | Steer (queues up to 3 turns ahead) |
-| `F` | Brake — hold position, and refuel when parked on a station pad |
-| `Space` | Drop a bomb (10s fuse, destroys police) |
-| `E` | Fire a rocket along your facing, up to 8 tiles |
-| `G` | Open the garage (only while parked on the safehouse pad) |
-| `Esc` | Pause |
+| Key | Gamepad | Action |
+| --- | ------- | ------ |
+| Arrows / WASD | D-pad / left stick | Steer (queues up to 3 turns ahead) |
+| `F` | A | Brake — hold position, and refuel when parked on a station pad |
+| `Space` | B / LT | Drop a bomb (10s fuse, destroys police) |
+| `E` | X / RT | Fire a rocket along your facing, up to 8 tiles |
+| `G` | Y | Open the garage (only while parked on the safehouse pad) |
+| `Esc` | Start | Pause |
+
+Gamepad buttons follow the Xbox layout; on a PlayStation pad A is Cross, B
+Circle, X Square and Y Triangle. The pad also drives every menu: D-pad or stick
+to move, A to pick, B to back out. Any controller the browser exposes through
+the standard Gamepad API works, and the browser only reveals it after a button
+press, so press one first if it doesn't respond. On-screen prompts switch to pad
+buttons once a controller is connected.
 
 Touch devices can swipe to steer. An INSTRUCTIONS page shows this same summary
 in-game, reachable from both the main menu and the pause menu; opening it from
@@ -167,6 +174,7 @@ src/
   art.js            asset keys, frame indices and shared animations
   cityLayout.js     cosmetic city dressing: road autotiles, districts, lots
   fx.js             one-shot effects (explosions, smoke, sparks, popups)
+  gamepad.js        Gamepad API polling, edge detection and per-scene bindings
   GameState.js      pure run state — money, lives, fuel, stars, damage
   garage.js         upgrade pricing and derived-stat math
   storage.js        versioned localStorage save with sanitising loader
@@ -184,7 +192,7 @@ tools/              the pixel-art generator (Python)
 ```
 
 The design splits Phaser-dependent rendering from plain-JS game logic. Anything
-holding rules — `GameState`, `garage`, `storage`, `pathfinding`, `turnQueue`, the
+holding rules — `GameState`, `garage`, `storage`, `pathfinding`, `turnQueue`, gamepad polling, the
 collectible weight table, map reachability, city layout — imports no Phaser and
 is unit tested directly.
 

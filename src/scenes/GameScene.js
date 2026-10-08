@@ -15,6 +15,7 @@ import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
 import { explosion, sparkBurst, smokePuff, floatText, CarTrail } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
+import { bindPad, hasGamepad } from '../gamepad';
 
 // Pickup feedback: popup text + spark tint per collectible type
 const PICKUP_FEEDBACK = {
@@ -84,19 +85,23 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.startFollow( this.playerCar.visual, false, 0.15, 0.15);
 
         // Pause menu logic
-        this.input.keyboard.on('keydown-ESC', () => {
+        const pause = () => {
             if (this.gameOver) return;
             this.scene.pause('GameScene');
             this.scene.launch('PauseScene');
-        });
+        };
+        this.input.keyboard.on('keydown-ESC', pause);
 
         // Garage — only on the base pad, scene-level so pausing disables it
-        this.input.keyboard.on('keydown-G', () => {
+        const openGarage = () => {
             if (this.gameOver) return;
             if (!this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) return;
             this.scene.pause('GameScene');
             this.scene.launch('GarageScene', { gameState: this.state, save: this.save, storage: this.storage });
-        });
+        };
+        this.input.keyboard.on('keydown-G', openGarage);
+
+        bindPad(this, { start: pause, y: openGarage });
 
         // One-shot per-run garage hint (fires the first time on the base pad)
         this.garageHintShown = false;
@@ -169,7 +174,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.garageHintShown &&
             this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) {
             this.garageHintShown = true;
-            this.uiManager.showToast('PRESS G FOR GARAGE');
+            this.uiManager.showToast(hasGamepad() ? 'PRESS Y FOR GARAGE' : 'PRESS G FOR GARAGE');
         }
 
         // (b) Deposit — ordered before the catch check so a catch on the base
@@ -481,6 +486,15 @@ export class GameScene extends Phaser.Scene {
         this.input.keyboard.once('keydown-ENTER', () => {
             this.scene.restart();
         });
+        // Or A / START on a gamepad. Bound only now, so a button held through
+        // the crash has to be pressed again to restart.
+        let restarting = false;
+        const restart = () => {
+            if (restarting) return;
+            restarting = true;
+            this.scene.restart();
+        };
+        bindPad(this, { a: restart, start: restart });
     }
 
     checkCollectibles() {

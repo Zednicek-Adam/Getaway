@@ -3,6 +3,7 @@ import { CONFIG } from '../config';
 import { canPurchase, purchase } from '../garage';
 import { writeSave } from '../storage';
 import { label, panel, icon, dim, money, UI_COLORS } from '../ui/ui';
+import { bindPad, hasGamepad } from '../gamepad';
 import { sparkBurst } from '../fx';
 
 // Icon per upgrade track (icons.png)
@@ -84,20 +85,20 @@ export class GarageScene extends Phaser.Scene {
             return { key, def, y, idle, lit, name, pips, value, price, priceX: price.x };
         });
 
-        label(this, width / 2, top + ph - 40, 'ENTER BUY    ESC CLOSE', { color: UI_COLORS.dim }).setOrigin(0.5);
+        const hint = hasGamepad() ? 'A BUY    B CLOSE' : 'ENTER BUY    ESC CLOSE';
+        label(this, width / 2, top + ph - 40, hint, { color: UI_COLORS.dim }).setOrigin(0.5);
 
         this.select(0);
         this.refreshRows();
 
         // Keyboard
-        this.input.keyboard.on('keydown-UP', () => {
-            this.select((this.selectedIndex - 1 + this.rows.length) % this.rows.length);
-        });
-        this.input.keyboard.on('keydown-DOWN', () => {
-            this.select((this.selectedIndex + 1) % this.rows.length);
-        });
-        this.input.keyboard.on('keydown-ENTER', () => this.attemptPurchase());
-        this.input.keyboard.on('keydown-SPACE', () => this.attemptPurchase());
+        const up = () => this.select((this.selectedIndex - 1 + this.rows.length) % this.rows.length);
+        const down = () => this.select((this.selectedIndex + 1) % this.rows.length);
+        const buy = () => this.attemptPurchase();
+        this.input.keyboard.on('keydown-UP', up);
+        this.input.keyboard.on('keydown-DOWN', down);
+        this.input.keyboard.on('keydown-ENTER', buy);
+        this.input.keyboard.on('keydown-SPACE', buy);
 
         const close = () => {
             this.scene.resume('GameScene');
@@ -105,6 +106,9 @@ export class GarageScene extends Phaser.Scene {
         };
         this.input.keyboard.on('keydown-ESC', close);
         this.input.keyboard.on('keydown-G', close);
+
+        // Gamepad — Y opened the garage, so Y closes it too, like G
+        bindPad(this, { up, down, a: buy, b: close, y: close, start: close });
     }
 
     select(index) {

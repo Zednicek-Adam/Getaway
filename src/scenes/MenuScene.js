@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { loadSave, getBrowserStorage } from '../storage';
 import { label, panel, icon, money, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
+import { bindPad } from '../gamepad';
 
 // Parallax speeds in texture pixels per millisecond
 const SCROLL = { far: 0.012, near: 0.035, street: 0.3 };
@@ -95,6 +96,8 @@ export class MenuScene extends Phaser.Scene {
 
         this.input.keyboard.on('keydown-ENTER', activate);
         this.input.keyboard.on('keydown-SPACE', activate);
+        // Pad presses never repeat, so they skip the guard
+        bindPad(this, { a: () => this.menu.activate(), start: () => this.menu.activate() });
     }
 
     // The getaway car tearing along the street with a patrol car on its tail
