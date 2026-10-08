@@ -106,12 +106,13 @@ export const CONFIG = {
     GARAGE: {
         MAX_LEVEL: 3,
         PRICES: [500, 1500, 4000],   // cost of level 1 / 2 / 3, uniform across tracks
+        // Display names live in i18n.js under garage.<track key>
         TRACKS: {
-            engine:     { label: 'ENGINE',    values: [300, 270, 245, 225] }, // ms/tile, index = level
-            fuelTank:   { label: 'FUEL TANK', values: [100, 130, 160, 200] },
-            armor:      { label: 'ARMOR',     values: [3, 4, 5, 6] },
-            bombBay:    { label: 'BOMB BAY',  values: [3, 4, 5, 6] },
-            rocketRack: { label: 'ROCKETS',   values: [2, 3, 4, 5] },
+            engine:     { values: [300, 270, 245, 225] }, // ms/tile, index = level
+            fuelTank:   { values: [100, 130, 160, 200] },
+            armor:      { values: [3, 4, 5, 6] },
+            bombBay:    { values: [3, 4, 5, 6] },
+            rocketRack: { values: [2, 3, 4, 5] },
         },
     },
 };

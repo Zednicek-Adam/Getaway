@@ -15,7 +15,8 @@ export class Car {
             [DIRECTIONS.RIGHT]: 2,
             [DIRECTIONS.DOWN]: 3,
         };
-        this.displaySize = options.displaySize ?? (TILE_SIZE * 0.6);
+        // Vehicle sheets are drawn on a full-tile 64px frame (car + drop shadow)
+        this.displaySize = options.displaySize ?? TILE_SIZE;
         // AI cars route around roadblocks (getValidMoves excludes blocked tiles);
         // the player is constructed with false so only they can crash into one.
         this.avoidsBlocked = options.avoidsBlocked ?? true;
@@ -262,5 +263,10 @@ export class Car {
     render() {
         // Ensure sizing is consistent with tile scale
         this.visual.setDisplaySize(this.displaySize, this.displaySize);
+    }
+
+    // Subclasses with extra display objects (siren glow, sparkles) extend this
+    destroy() {
+        this.visual.destroy();
     }
 }

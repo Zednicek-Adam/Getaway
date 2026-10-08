@@ -164,12 +164,12 @@ export class PoliceManager {
         if (index > -1) {
             this.units.splice(index, 1);
         }
-        unit.visual.destroy();
+        unit.destroy();
     }
 
     despawnAll() {
         for (const unit of this.units) {
-            unit.visual.destroy();
+            unit.destroy();
         }
         this.units = [];
         this.pendingRespawns = [];

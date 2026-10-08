@@ -1,8 +1,9 @@
 import { TILE_SIZE } from '../constants';
 import { CONFIG } from '../config';
+import { PICKUP_FRAMES } from '../art';
 
-// A bomb laid on a road tile. Blinks faster as the fuse runs down; the scene
-// detonates it when a police unit enters the tile (or harmlessly on expiry).
+// A bomb laid on a road tile. Its LED blinks faster as the fuse runs down; the
+// scene detonates it when a police unit enters the tile (or harmlessly on expiry).
 export class Bomb {
     constructor(scene, gridX, gridY) {
         this.scene = scene;
@@ -16,12 +17,15 @@ export class Bomb {
         const cx = gridX * TILE_SIZE + TILE_SIZE / 2;
         const cy = gridY * TILE_SIZE + TILE_SIZE / 2;
 
-        // Depth 0.5/0.6: above roads and collectibles (0), below cars (1)
-        this.body = scene.add.circle(cx, cy, TILE_SIZE * 0.2, 0x000000)
-            .setStrokeStyle(2, 0x444444)
-            .setDepth(0.5);
-        this.dot = scene.add.circle(cx, cy - TILE_SIZE * 0.12, TILE_SIZE * 0.06, 0xFF2222)
-            .setDepth(0.6);
+        // Depth 0.5/0.6: above roads and collectibles, below cars (1)
+        this.shadow = scene.add.image(cx, cy + 12, 'shadow').setDepth(0.45);
+        this.body = scene.add.sprite(cx, cy, 'pickups', PICKUP_FRAMES.planted).setDepth(0.5);
+        this.dot = scene.add.image(cx, cy + 4, 'glow')
+            .setBlendMode('ADD').setTint(0xff2233).setScale(0.9).setAlpha(0.8).setDepth(0.6);
+
+        // Drop onto the road with a little bounce
+        this.body.setScale(1.6).setAlpha(0);
+        scene.tweens.add({ targets: this.body, scale: 1, alpha: 1, duration: 220, ease: 'Bounce.easeOut' });
     }
 
     // Drains the fuse and drives the blink; returns true once the fuse expired
@@ -37,6 +41,7 @@ export class Bomb {
             this.blinkTimer = 0;
             this.dotOn = !this.dotOn;
             this.dot.setVisible(this.dotOn);
+            this.body.setFrame(PICKUP_FRAMES.planted + (this.dotOn ? 0 : 1));
         }
 
         return this.fuseRemaining <= 0;
@@ -45,5 +50,6 @@ export class Bomb {
     destroy() {
         this.body.destroy();
         this.dot.destroy();
+        this.shadow.destroy();
     }
 }

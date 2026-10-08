@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, COLORS, MAP_WIDTH, MAP_HEIGHT, DIRECTIONS } from '../constants';
+import { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, DIRECTIONS } from '../constants';
 import { MapManager } from '../managers/MapManager';
 import { Car } from '../objects/Car';
 import { InputManager } from '../managers/InputManager';
@@ -13,20 +13,27 @@ import { CONFIG } from '../config';
 import { GameState } from '../GameState';
 import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
+import { explosion, sparkBurst, smokePuff, floatText, CarTrail } from '../fx';
+import { money, UI_COLORS } from '../ui/ui';
+import { bindPad, hasGamepad } from '../gamepad';
+import { t } from '../i18n';
+
+// Pickup feedback: popup text + spark tint per collectible type. Text is a
+// function so it reads the language at pickup time, not at import.
+const PICKUP_FEEDBACK = {
+    [COLLECTIBLE_TYPES.MONEY]: { text: () => `+${money(CONFIG.ECONOMY.MONEY_VALUE)}`, color: UI_COLORS.gold, tint: 0xffd040 },
+    [COLLECTIBLE_TYPES.BOMB]: { text: () => t('pickup.bomb'), color: UI_COLORS.white, tint: 0xffffff },
+    [COLLECTIBLE_TYPES.REPAIR]: { text: () => t('pickup.repair'), color: UI_COLORS.green, tint: 0x6fe08a },
+    [COLLECTIBLE_TYPES.LIFE]: { text: () => t('pickup.life'), color: UI_COLORS.red, tint: 0xff6070 },
+    [COLLECTIBLE_TYPES.NITRO]: { text: () => t('pickup.nitro'), color: UI_COLORS.cyan, tint: 0x5fe0ff },
+    [COLLECTIBLE_TYPES.ROCKET]: { text: () => t('pickup.rocket'), color: UI_COLORS.orange, tint: 0xff9a3c },
+};
 
 export class GameScene extends Phaser.Scene {
 
 
     constructor() {
         super({ key: 'GameScene' });
-    }
-
-    preload() {
-        this.load.image('tiles', 'Tilemap.png');
-
-        // Car sprites
-        this.load.spritesheet('playerCar', 'char.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('policeCar', 'policeblue.png', { frameWidth: 32, frameHeight: 32 });
     }
 
     create() {
@@ -59,6 +66,7 @@ export class GameScene extends Phaser.Scene {
         this.playerCar.turnQueue.clear(); // Clear buffered turns so car stays still
         this.playerCar.waitingForInput = true; // Don't auto-move until player presses a key
         this.playerCar.updatePosition(0);
+        this.carTrail = new CarTrail(this, this.playerCar);
 
         // Police fleet — 0 units at 0 stars; the manager reconciles the
         // count/speed/AI to the star table every frame
@@ -79,19 +87,23 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.startFollow( this.playerCar.visual, false, 0.15, 0.15);
 
         // Pause menu logic
-        this.input.keyboard.on('keydown-ESC', () => {
+        const pause = () => {
             if (this.gameOver) return;
             this.scene.pause('GameScene');
             this.scene.launch('PauseScene');
-        });
+        };
+        this.input.keyboard.on('keydown-ESC', pause);
 
         // Garage — only on the base pad, scene-level so pausing disables it
-        this.input.keyboard.on('keydown-G', () => {
+        const openGarage = () => {
             if (this.gameOver) return;
             if (!this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) return;
             this.scene.pause('GameScene');
             this.scene.launch('GarageScene', { gameState: this.state, save: this.save, storage: this.storage });
-        });
+        };
+        this.input.keyboard.on('keydown-G', openGarage);
+
+        bindPad(this, { start: pause, y: openGarage });
 
         // One-shot per-run garage hint (fires the first time on the base pad)
         this.garageHintShown = false;
@@ -128,6 +140,11 @@ export class GameScene extends Phaser.Scene {
         this.playerCar.moveConfig.duration = this.state.moveDuration * nitroFactor * heliFactor;
 
         this.playerCar.update(time, delta);
+        this.carTrail.update(delta, {
+            nitro: this.state.isNitroActive(),
+            damage: this.state.damage,
+            maxDamage: this.state.maxDamage,
+        });
 
         // Roadblock crash — checked the frame the player starts moving into a
         // blocked tile. The bounce (performUturn, which also clears the queue)
@@ -159,7 +176,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.garageHintShown &&
             this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) {
             this.garageHintShown = true;
-            this.uiManager.showToast('PRESS G FOR GARAGE');
+            this.uiManager.showToast(t(hasGamepad() ? 'toast.garagePad' : 'toast.garageKeys'));
         }
 
         // (b) Deposit — ordered before the catch check so a catch on the base
@@ -168,7 +185,9 @@ export class GameScene extends Phaser.Scene {
             const amount = this.state.deposit();
             this.save.banked = this.state.banked;
             writeSave(this.storage, this.save);
-            this.uiManager.showToast(`+$${amount} BANKED`);
+            this.uiManager.showToast(t('toast.banked', { amount: money(amount) }));
+            floatText(this, this.playerCar.visual.x, this.playerCar.visual.y, `+${money(amount)}`, UI_COLORS.gold);
+            sparkBurst(this, this.playerCar.visual.x, this.playerCar.visual.y, { count: 12, tint: 0xffd040 });
             // deposit() zeroed the countdown — stars decay via tick() and the
             // manager thins the fleet as they drop
             this.pulseBaseMarker();
@@ -300,7 +319,8 @@ export class GameScene extends Phaser.Scene {
             // (1) Off-road (first off-road step) or out of range → harmless fizzle
             if (!this.mapManager.isRoad(r.gridX, r.gridY) ||
                 r.tilesTraveled > CONFIG.ROCKET.RANGE_TILES) {
-                this.sparkleBurst(r.visualX, r.visualY);
+                sparkBurst(this, r.visualX, r.visualY, { count: 5, radius: TILE_SIZE * 0.6, tint: 0xffb060 });
+                smokePuff(this, r.visualX, r.visualY, { scale: 1.4, depth: 2 });
                 r.destroy();
                 this.rockets.splice(i, 1);
                 continue;
@@ -331,27 +351,12 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    // Expanding orange/white flash + a small camera shake
+    // Fireball, debris, scorch mark + a small camera shake
     explodeAt(gridX, gridY) {
         const cx = gridX * TILE_SIZE + TILE_SIZE / 2;
         const cy = gridY * TILE_SIZE + TILE_SIZE / 2;
-
-        const outer = this.add.circle(cx, cy, TILE_SIZE * 0.25, 0xFF8800, 0.9).setDepth(50);
-        const inner = this.add.circle(cx, cy, TILE_SIZE * 0.12, 0xFFFFFF, 0.9).setDepth(51);
-
-        this.tweens.add({
-            targets: [outer, inner],
-            scale: 4,
-            alpha: 0,
-            duration: 300,
-            ease: 'Cubic.easeOut',
-            onComplete: () => {
-                outer.destroy();
-                inner.destroy();
-            },
-        });
-
-        this.cameras.main.shake(150, 0.005);
+        explosion(this, cx, cy);
+        this.cameras.main.shake(180, 0.006);
     }
 
     spawnDiamondCar() {
@@ -365,35 +370,18 @@ export class GameScene extends Phaser.Scene {
     collectDiamondCar() {
         this.state.pickupDiamond(); // +$1000 carried, +2 stars, chase refresh
         this.policeManager.onChaseEvent();
-        this.uiManager.showToast(`DIAMOND! +$${CONFIG.ECONOMY.DIAMOND_VALUE}`);
-        this.sparkleBurst(this.diamondCar.visual.x, this.diamondCar.visual.y);
+        this.uiManager.showToast(t('toast.diamond', { amount: money(CONFIG.ECONOMY.DIAMOND_VALUE) }));
+        sparkBurst(this, this.diamondCar.visual.x, this.diamondCar.visual.y, { count: 12, tint: 0x9ff6ff });
+        floatText(this, this.diamondCar.visual.x, this.diamondCar.visual.y,
+            `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, UI_COLORS.cyan);
 
-        this.diamondCar.visual.destroy();
+        this.diamondCar.destroy();
         this.diamondCar = null;
 
         // Safe across restarts: scene shutdown clears pending clock events
         this.time.delayedCall(CONFIG.DIAMOND_CAR.RESPAWN_MS, () => {
             if (!this.gameOver) this.spawnDiamondCar();
         });
-    }
-
-    // A few white sparks flying outward
-    sparkleBurst(x, y) {
-        const count = 6;
-        for (let i = 0; i < count; i++) {
-            const angle = (Math.PI * 2 * i) / count;
-            const spark = this.add.circle(x, y, 4, 0xFFFFFF).setDepth(50);
-
-            this.tweens.add({
-                targets: spark,
-                x: x + Math.cos(angle) * TILE_SIZE,
-                y: y + Math.sin(angle) * TILE_SIZE,
-                alpha: 0,
-                duration: 400,
-                ease: 'Cubic.easeOut',
-                onComplete: () => spark.destroy(),
-            });
-        }
     }
 
     // Same tile, or the two cars swapping tiles mid-move (tunneling)
@@ -409,9 +397,15 @@ export class GameScene extends Phaser.Scene {
     // touch state, so onCaught fires exactly once per catch (no double life loss).
     handleCaught() {
         this.cameras.main.flash(300, 255, 0, 0);
+        // Wreck puff where the car was taken down
+        const { x, y } = this.playerCar.visual;
+        sparkBurst(this, x, y, { count: 8, tint: 0xff6040 });
+        for (let i = 0; i < 3; i++) {
+            smokePuff(this, x + (i - 1) * 12, y, { drift: 26, scale: 1.5, depth: 2, tint: 0x606068 });
+        }
 
         if (this.state.gameOver) {
-            this.handleGameOver(this.state.gameOverReason || "BUSTED!");
+            this.handleGameOver(this.state.gameOverReason || 'busted');
             return;
         }
 
@@ -494,6 +488,15 @@ export class GameScene extends Phaser.Scene {
         this.input.keyboard.once('keydown-ENTER', () => {
             this.scene.restart();
         });
+        // Or A / START on a gamepad. Bound only now, so a button held through
+        // the crash has to be pressed again to restart.
+        let restarting = false;
+        const restart = () => {
+            if (restarting) return;
+            restarting = true;
+            this.scene.restart();
+        };
+        bindPad(this, { a: restart, start: restart });
     }
 
     checkCollectibles() {
@@ -512,13 +515,19 @@ export class GameScene extends Phaser.Scene {
         } else if (item.type === COLLECTIBLE_TYPES.LIFE) {
             // At max lives — leave the extra life on the road
             if (!this.state.addLife()) return;
-            this.uiManager.showToast('+1 LIFE');
+            this.uiManager.showToast(t('toast.life'));
         } else if (item.type === COLLECTIBLE_TYPES.NITRO) {
             this.state.pickupNitro(); // Refresh-to-full speed boost
-            this.uiManager.showToast('NITRO!');
+            this.uiManager.showToast(t('toast.nitro'));
         } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
             // Inventory full — leave the rocket on the road for later
             if (!this.state.pickupRocket()) return;
+        }
+
+        const feedback = PICKUP_FEEDBACK[item.type];
+        if (feedback) {
+            sparkBurst(this, item.visual.x, item.visual.y, { count: 6, radius: TILE_SIZE * 0.7, tint: feedback.tint });
+            floatText(this, item.visual.x, item.visual.y, feedback.text(), feedback.color);
         }
 
         this.mapManager.removeCollectible(item);

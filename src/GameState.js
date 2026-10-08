@@ -126,7 +126,7 @@ export class GameState {
         this.invulnRemaining = CONFIG.PLAYER.INVULN_MS;
         if (this.lives <= 0) {
             this.gameOver = true;
-            this.gameOverReason = 'BUSTED!';
+            this.gameOverReason = 'busted';
         }
     }
 
@@ -189,7 +189,7 @@ export class GameState {
     onOutOfFuel() {
         this.onCaught();          // lose carried, a life, stars/heat reset, invuln, maybe gameOver
         this.fuel = this.maxFuel; // full tank on respawn; prevents immediate re-trigger
-        if (this.gameOver) this.gameOverReason = 'OUT OF FUEL!';
+        if (this.gameOver) this.gameOverReason = 'outOfFuel';
     }
 
     addStars(count) {

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Getaway</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +16,7 @@
         margin: 0;
         padding: 0;
         height: 100%;
-        background-color: #000;
+        background-color: #0b0c14;
         /* Keeps a scrollbar from appearing, resizing the parent, and making
            the FIT calculation oscillate. */
         overflow: hidden;
@@ -24,6 +24,10 @@
       #app {
         width: 100%;
         height: 100%;
+      }
+      /* Keep the pixel art crisp when the canvas is scaled to the window */
+      canvas {
+        image-rendering: pixelated;
       }
       /* Load font so canvas can use it immediately */
       #font-loader {
