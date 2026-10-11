@@ -164,13 +164,71 @@ def crossing_tile(axis):
     return a if axis == 'H' else a.rotated(1)
 
 
-def barrier_frame(axis, down, lamp):
-    """Both gate arms for one crossing cell, each post carrying a crossbuck
-    sign and a lantern. lamp: which lantern is lit."""
+def trestle_tile(axis):
+    """Track carried over the river on a timber trestle: sleepers on two
+    stringers, open water showing between them, the bents standing in the
+    stream below. Drawn over the river tile. axis 'H': track left-right."""
     a = Art(T, T)
-    red, white = hexc('#c0392b'), hexc('#efe6cf')
-    lit, dark = hexc('#ffb040'), hexc('#5a2e14')
-    # Two posts on opposite boardwalks; the arms swing across the street
+    mid = T / 2
+    wood, wood_d, wood_dd = hexc('#7a5434'), hexc('#5a3a22'), hexc('#3a2414')
+    # the bents: posts and cross-braces down into the water, then their shadow
+    for px in (5, 21):
+        for x in (px, px + 4):
+            a.vline(x, int(mid + TIE), int(mid + TIE) + 6, wood_d)
+        a.line(px, int(mid + TIE) + 1, px + 4, int(mid + TIE) + 5, wood_dd)
+        a.hline(px - 1, px + 5, int(mid + TIE) + 6, with_alpha(hexc('#1e3a50'), 150))
+    for x in range(T):
+        for y in range(int(mid + TIE) + 1, int(mid + TIE) + 3):
+            if not a.filled(x, y):
+                a.set(x, y, with_alpha(hexc('#1e3a50'), 110))
+    period = T / round(T / 4.5)
+    for y in range(T):
+        for x in range(T):
+            side = y + 0.5 - mid
+            d = abs(side)
+            if d > TIE:
+                continue
+            on_sleeper = ((x + 0.5 + period / 2) % period) < 1.9
+            c = None
+            if 2.5 <= d <= 4.0:
+                c = wood if side < 0 else wood_d  # the stringers
+            if on_sleeper:
+                c = SLEEPER_L if ((x + 0.5 + period / 2) % period) < 0.9 else SLEEPER
+            if RAIL_IN <= d < RAIL_OUT:
+                c = RAIL if d < RAIL_IN + 1 else RAIL_D
+            if c:
+                a.set(x, y, c)
+    return a if axis == 'H' else a.rotated(1)
+
+
+def _watchman(a, x, y, flag):
+    """The crossing keeper (5 x 10, feet at y) waving his red flag; flag 0
+    or 1 is the swing of the wave."""
+    coat, hat, skin = hexc('#2e3a5a'), hexc('#1e1a18'), hexc('#e0b08a')
+    a.rect(x + 1, y - 5, 3, 4, coat)
+    a.vline(x + 1, y - 1, y, hexc('#3a2a20'))
+    a.vline(x + 3, y - 1, y, hexc('#3a2a20'))
+    a.rect(x + 1, y - 7, 3, 2, skin)
+    a.hline(x, x + 4, y - 8, hat)
+    a.rect(x + 1, y - 9, 3, 1, hat)
+    # the arm up and the flag on its stick
+    ax = x + 4 if flag == 0 else x
+    a.put(ax, y - 6, coat)
+    a.put(ax, y - 7, skin)
+    sx = ax + (1 if flag == 0 else -1)
+    a.line(ax, y - 8, sx + (1 if flag == 0 else -1), y - 11, hexc('#8a6440'))
+    fx = sx + (1 if flag == 0 else -3)
+    a.rect(fx, y - 12, 3, 2, hexc('#d83a2a'))
+    a.put(fx, y - 12, hexc('#f05a46'))
+
+
+def barrier_frame(axis, down, flag):
+    """One crossing in the days before signal lamps: a crossbuck on a post
+    each side, hand-worked gate arms, and, while the gates are down, the
+    crossing keeper out with his red flag."""
+    a = Art(T, T)
+    red, white = hexc('#b8342a'), hexc('#efe6cf')
+    # Two posts on opposite corners; the arms swing across the road
     # towards each other, one on each side of the track
     for post_x, arm_y, sign in ((2, 3, 1), (T - 4, T - 5, -1)):
         # crossbuck: an X of white boards over the post
@@ -182,23 +240,25 @@ def barrier_frame(axis, down, lamp):
         if down:
             for k in range(3, 24):
                 ax = post_x + 1 + sign * k
-                c = red if (k // 3) % 2 else white
+                c = red if (k // 4) % 2 else white
                 a.set(ax, arm_y, c)
                 a.set(ax, arm_y + 1, shade(c, 0.78))
         else:
-            a.set(post_x + 1 + sign * 2, arm_y, red)
-            a.set(post_x + 1 + sign * 3, arm_y, white)
-        a.set(post_x + 1 - sign * 2, arm_y + 1, lit if (down and lamp == (0 if sign > 0 else 1)) else dark)
+            # raised: the arm stands up beside its post
+            for k in range(1, 6):
+                a.set(post_x + 1 + sign * 2, arm_y - k, red if k % 2 else white)
+    if down:
+        _watchman(a, 3, T - 3, flag)
     a.outline(OUTLINE)
     a.drop_shadow(1, 1, SHADOW)
     return a if axis == 'H' else a.rotated(1)
 
 
 def crossing_frames():
-    """[H up, H lamp A, H lamp B, V up, V lamp A, V lamp B]."""
-    return [barrier_frame(axis, down, lamp)
+    """[H up, H flag A, H flag B, V up, V flag A, V flag B]."""
+    return [barrier_frame(axis, down, flag)
             for axis in ('H', 'V')
-            for down, lamp in ((False, 0), (True, 0), (True, 1))]
+            for down, flag in ((False, 0), (True, 0), (True, 1))]
 
 
 # --- The train ------------------------------------------------------------------------

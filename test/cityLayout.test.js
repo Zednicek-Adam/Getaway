@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import art from '../src/generated/art.json';
 import {
-    roadMask, cornerMask, roadTileIndex, findBlocks, roadDistance, districtMap, zoneBlocks, pickParks, zoneCity,
-    partitionLots, lotFrontage, dressLots, buildGroundLayer,
+    roadMask, cornerMask, roadTileIndex, findBlocks, townDistrict, zoneTown, partitionLots, lotFrontage, dressLots,
+    dressTown,
 } from '../src/cityLayout';
-import { MapManager } from '../src/managers/MapManager';
 
 // Small deterministic PRNG so layouts are reproducible in tests
 function seeded(seed) {
@@ -79,33 +78,6 @@ describe('blocks and districts', () => {
         }
     });
 
-    it('puts downtown in the middle of the map', () => {
-        const centre = [{ x: 25, y: 25 }, { x: 26, y: 25 }];
-        const edge = [{ x: 2, y: 2 }, { x: 3, y: 2 }];
-        let downtownCentre = 0, downtownEdge = 0;
-        for (let seed = 1; seed <= 40; seed++) {
-            const [[c], [e]] = zoneBlocks([centre, edge], districtMap(50, 50, seeded(seed)));
-            if (c.zone === 'downtown') downtownCentre++;
-            if (e.zone === 'downtown') downtownEdge++;
-        }
-        expect(downtownCentre).toBeGreaterThan(30);
-        expect(downtownEdge).toBe(0);
-    });
-
-    it('zones a sprawling block cell by cell, keeping every cell', () => {
-        // The whole border ring of a 50x50 map: centred on the middle, but
-        // it must not all turn into downtown
-        const ring = [];
-        for (let y = 0; y < 50; y++) {
-            for (let x = 0; x < 50; x++) {
-                if (x < 3 || y < 3 || x > 46 || y > 46) ring.push({ x, y });
-            }
-        }
-        const [groups] = zoneBlocks([ring], districtMap(50, 50, seeded(5)));
-        expect(groups.reduce((n, g) => n + g.cells.length, 0)).toBe(ring.length);
-        expect(groups.some(g => g.zone === 'downtown')).toBe(false);
-    });
-
     it('has a single-cell piece in every district, so any lot can be dressed', () => {
         const zones = new Set(art.city.pieces.map(p => p.zone));
         for (const zone of zones) {
@@ -152,104 +124,64 @@ describe('blocks and districts', () => {
     });
 
     it('gives a block at most one of each landmark, splitting lots rather than repeating one', () => {
-        // A 6x6 common carved into nine 2x2 lots: only the watering hole and Boot Hill come that size
+        // A 6x6 common carved into nine 2x2 lots: only the watering hole comes that size
         const lots = [];
         for (let y = 0; y < 6; y += 2) for (let x = 0; x < 6; x += 2) lots.push({ x, y, w: 2, h: 2 });
         for (let seed = 1; seed < 15; seed++) {
             const kinds = dressLots(lots, 'park', seeded(seed)).map(lot => lot.piece.name.split('_')[0]);
-            for (const landmark of ['wateringhole', 'boothill', 'bandstand']) {
-                expect(kinds.filter(k => k === landmark).length).toBeLessThanOrEqual(1);
-            }
+            expect(kinds.filter(k => k === 'wateringhole').length).toBeLessThanOrEqual(1);
         }
     });
 
-    it('measures distance to the nearest road, corners included', () => {
-        const isRoad = (x, y) => y === 0;
-        const isFree = (x, y) => x >= 0 && x < 3 && y >= 1 && y < 5;
-        const dist = roadDistance(3, 5, isRoad, isFree);
-        expect(dist.get('1,1')).toBe(1);
-        expect(dist.get('1,4')).toBe(4);
-
-        const inGrid = (x, y) => x >= 0 && y >= 0 && x < 3 && y < 3;
-        const corner = roadDistance(3, 3, (x, y) => x === 0 && y === 0, (x, y) => inGrid(x, y) && !(x === 0 && y === 0));
-        expect(corner.get('1,1')).toBe(1);
-        expect(corner.get('2,2')).toBe(2);
+    it('builds a town only one bank and one jail, however many blocks it has', () => {
+        const lots = [];
+        for (let x = 0; x < 40; x++) lots.push({ x, y: 0, w: 1, h: 1 });
+        const shared = { isRoad: (x, y) => y === 1, uses: new Map(), businesses: new Set() };
+        const names = [];
+        for (let block = 0; block < 3; block++) {
+            names.push(...dressLots(lots, 'downtown', seeded(block + 1), shared).map(l => l.piece.name));
+        }
+        expect(names.filter(n => n.endsWith('_bank')).length).toBeLessThanOrEqual(1);
+        expect(names.filter(n => n.endsWith('_jail')).length).toBeLessThanOrEqual(1);
     });
 });
 
-describe('zoning a whole map', () => {
-    // A ring road in the middle of a 16x16 map: an enclosed 4x4 block
-    // inside, and outskirts reaching five cells out to the map edge
-    const size = 16;
-    const ring = (v) => v >= 5 && v <= 10;
-    const isRoad = (x, y) => (x === 5 || x === 10) && ring(y) || (y === 5 || y === 10) && ring(x);
-    const isFree = (x, y) => x >= 0 && y >= 0 && x < size && y < size && !isRoad(x, y);
+// A small town: Front Street along the bottom (y 12), Main Street (y 9), a
+// top street (y 5) with a row of lots north of it, cross streets at x 4 and 9
+const TOWN = { x0: 0, x1: 13, yN: 3, y0: 5, fy: 12, rows: [12, 9, 5], cols: [4, 9], north: [], main: 9 };
+const townRoad = (x, y) => (TOWN.rows.includes(y) && x >= TOWN.x0 && x <= TOWN.x1) ||
+    (TOWN.cols.includes(x) && y >= TOWN.y0 && y <= TOWN.fy);
 
-    it('builds the outskirts only near a street and turns the rest to countryside', () => {
-        const dist = roadDistance(size, size, isRoad, isFree);
-        for (let seed = 1; seed < 20; seed++) {
-            for (const { zone, cells } of zoneCity(size, size, isRoad, isFree, seeded(seed))) {
-                for (const c of cells) {
-                    const inside = c.x > 5 && c.x < 10 && c.y > 5 && c.y < 10;
-                    const country = zone === 'desert' || zone === 'ranch';
-                    if (inside) expect(country).toBe(false);
-                    if (!inside && dist.get(`${c.x},${c.y}`) > 3) expect(country).toBe(true);
-                }
-            }
-        }
+describe('the town', () => {
+    it('puts the false fronts between Front Street and Main Street, stock pens at the ends', () => {
+        expect(townDistrict([{ x: 6, y: 10 }, { x: 7, y: 11 }], TOWN)).toBe('downtown');
+        expect(townDistrict([{ x: 0, y: 10 }, { x: 1, y: 11 }], TOWN)).toBe('industrial');
+        expect(townDistrict([{ x: 6, y: 7 }], TOWN)).toBe('downtown');
+        expect(townDistrict([{ x: 13, y: 7 }], TOWN)).toBe('commercial');
+        expect(townDistrict([{ x: 6, y: 3 }, { x: 6, y: 4 }], TOWN)).toBe('residential');
     });
 
-    it('keeps every free cell exactly once', () => {
-        const groups = zoneCity(size, size, isRoad, isFree, seeded(4));
+    it('zones every free town cell exactly once', () => {
+        const free = (x, y) => !townRoad(x, y);
+        const groups = zoneTown(TOWN, free, seeded(2));
         const keys = groups.flatMap(g => g.cells.map(c => `${c.x},${c.y}`));
         expect(new Set(keys).size).toBe(keys.length);
-        expect(keys).toHaveLength(size * size - 20);
+        let expected = 0;
+        for (let y = TOWN.yN; y <= TOWN.fy; y++) for (let x = TOWN.x0; x <= TOWN.x1; x++) if (free(x, y)) expected++;
+        expect(keys).toHaveLength(expected);
     });
 
-    it('makes parks out of whole enclosed blocks, spread apart', () => {
-        const manager = new MapManager(null, 50, 50);
-        manager.generate();
-        const free = (x, y) => x >= 0 && y >= 0 && x < 50 && y < 50 && !manager.isRoad(x, y);
-        const blocks = findBlocks(50, 50, free);
-        const parks = [...pickParks(blocks, districtMap(50, 50, seeded(2)), 50, 50, seeded(2))];
-        expect(parks.length).toBeGreaterThan(0);
-        const centres = parks.map(cells => ({
-            x: cells.reduce((s, c) => s + c.x, 0) / cells.length,
-            y: cells.reduce((s, c) => s + c.y, 0) / cells.length,
-        }));
-        for (const cells of parks) {
-            expect(blocks).toContain(cells);
-            expect(cells.some(c => c.x === 0 || c.y === 0 || c.x === 49 || c.y === 49)).toBe(false);
-        }
-        for (let i = 0; i < centres.length; i++) {
-            for (let j = i + 1; j < centres.length; j++) {
-                expect(Math.hypot(centres[i].x - centres[j].x, centres[i].y - centres[j].y)).toBeGreaterThanOrEqual(10);
+    it('dresses every town cell with a street, a lot piece or bare ground for a landmark', () => {
+        const valid = new Set([art.city.ground, ...Object.values(art.city.roads).flat(),
+            ...art.city.pieces.flatMap(p => p.tiles)]);
+        for (let seed = 1; seed < 10; seed++) {
+            const data = Array.from({ length: 13 }, () => new Array(14).fill(-1));
+            const reserved = new Set(['6,4']);
+            dressTown(data, TOWN, townRoad, (x, y) => !townRoad(x, y) && !reserved.has(`${x},${y}`), seeded(seed));
+            for (let y = TOWN.yN; y <= TOWN.fy; y++) {
+                for (let x = TOWN.x0; x <= TOWN.x1; x++) expect(valid.has(data[y][x])).toBe(true);
             }
-        }
-    });
-});
-
-describe('buildGroundLayer on a generated map', () => {
-    it('fills every cell with a valid tileset index', () => {
-        const manager = new MapManager(null, 50, 50);
-        manager.generate();
-        const reserved = new Set([manager.base.building, ...manager.fuelStations.map(s => s.building)]
-            .map(b => `${b.x},${b.y}`));
-        const data = buildGroundLayer(50, 50, (x, y) => manager.isRoad(x, y), reserved, seeded(3));
-
-        const maxIndex = art.city.ground;
-        expect(data).toHaveLength(50);
-        for (let y = 0; y < 50; y++) {
-            expect(data[y]).toHaveLength(50);
-            for (let x = 0; x < 50; x++) {
-                expect(Number.isInteger(data[y][x])).toBe(true);
-                expect(data[y][x]).toBeGreaterThanOrEqual(0);
-                expect(data[y][x]).toBeLessThanOrEqual(maxIndex);
-            }
-        }
-        for (const key of reserved) {
-            const [x, y] = key.split(',').map(Number);
-            expect(data[y][x]).toBe(art.city.ground);
+            expect(data[4][6]).toBe(art.city.ground);
         }
     });
 });

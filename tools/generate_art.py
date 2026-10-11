@@ -17,6 +17,7 @@ from pathlib import Path
 from PIL import Image
 
 import art_city
+import art_land
 import art_menu
 import art_rail
 import art_sprites as spr
@@ -61,6 +62,32 @@ def save_tileset(tiles, name, cols=16):
     return {'tileSize': size, 'margin': 1, 'spacing': 2}
 
 
+def save_atlas(frames, name, scale=WORLD, width=512, pad=2):
+    """Shelf-packs named Art frames into name.png plus a Phaser JSON-hash
+    atlas, name.json (positions in exported pixels)."""
+    placed = {}
+    x = y = row = 0
+    for key, art in sorted(frames.items(), key=lambda kv: (-kv[1].h, kv[0])):
+        if x + art.w > width:
+            x, y, row = 0, y + row + pad, 0
+        placed[key] = (x, y, art)
+        x += art.w + pad
+        row = max(row, art.h)
+    sheet_art = Art(width, y + row)
+    for key, (fx, fy, art) in placed.items():
+        sheet_art.blit(art, fx, fy)
+    w, h = save(sheet_art, f'{name}.png', scale)
+    atlas = {'frames': {}, 'meta': {'image': f'{name}.png', 'size': {'w': w, 'h': h}, 'scale': 1}}
+    for key, (fx, fy, art) in placed.items():
+        fw, fh = art.w * scale, art.h * scale
+        atlas['frames'][key] = {
+            'frame': {'x': fx * scale, 'y': fy * scale, 'w': fw, 'h': fh},
+            'rotated': False, 'trimmed': False,
+            'spriteSourceSize': {'x': 0, 'y': 0, 'w': fw, 'h': fh}, 'sourceSize': {'w': fw, 'h': fh},
+        }
+    (OUT / f'{name}.json').write_text(json.dumps(atlas, indent=1) + '\n', encoding='utf-8')
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
@@ -69,10 +96,21 @@ def main():
         old.unlink()
     manifest = {}
 
-    # Town
+    # Town and the open range round it share one tileset: the ground layer
+    # (streets, lots, terrain, river) and the overlay (trails, bridges, scrub,
+    # homesteads) both draw from it
     tiles, city = art_city.build_city_tiles()
+    city['land'] = art_land.build_land_tiles(tiles)
     city.update(save_tileset(tiles, 'city.png'))
     manifest['city'] = city
+
+    # Mountains and mesas: sprites over the footprints the map keeps clear
+    frames = art_land.scenery_frames()
+    save_atlas(frames, 'scenery')
+    manifest['scenery'] = {}
+    for name in frames:
+        kind, size, _ = name.split('_')
+        manifest['scenery'].setdefault(kind, {}).setdefault(size, []).append(name)
 
     # Railroad: track tiles keyed by the loop's local move signature, plus the
     # planks-over-street overlay for crossings (src/railway.js, MapManager.render)
@@ -81,6 +119,9 @@ def main():
     rail = {'tiles': {sig: i for i, sig in enumerate(sigs)}}
     rail['crossing'] = {'H': len(rail_tiles), 'V': len(rail_tiles) + 1}
     rail_tiles += [art_rail.crossing_tile('H'), art_rail.crossing_tile('V')]
+    # timber trestles where the track crosses the river
+    rail['trestle'] = {'H': len(rail_tiles), 'V': len(rail_tiles) + 1}
+    rail_tiles += [art_rail.trestle_tile('H'), art_rail.trestle_tile('V')]
     rail.update(save_tileset(rail_tiles, 'rail.png', cols=8))
     manifest['rail'] = rail
 

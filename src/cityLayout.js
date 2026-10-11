@@ -1,66 +1,64 @@
 import art from './generated/art.json';
 
-// Pure layout for the rendered town — no Phaser, so it is unit-testable.
+// Pure layout for the town — no Phaser, so it is unit-testable.
 //
 // The logic grid only knows "road" and "not road". This module decides what
-// the not-road cells *look* like, roughly the way a frontier town grows:
-//  - districts ring the centre: Main Street's false fronts (downtown), then
-//    the trades (commercial), then homesteads (residential), with an
-//    industrial side of town (freight, lumber, stockyards) picked per map;
-//  - a few whole blocks, spread across town, are kept as commons (parks);
-//  - buildings need a street, so on the outskirts anything deeper than a lot
-//    or two from the nearest road is open country (desert and ranch land);
+// the town's not-road cells *look* like, the way a railroad cow town was laid
+// out (src/generators/FrontierGenerator.js surveys the streets):
+//  - the blocks between Front Street, along the tracks, and Main Street are
+//    false fronts (downtown), with stock pens and freight sheds at either end
+//    by the railroad (industrial);
+//  - the next blocks up are more false fronts in the middle and the trades
+//    (commercial) towards the edges, then homesteads (residential) up the
+//    hill, with one block kept as the town common (park);
 //  - houses face their street, and plots with no street of their own are
 //    back gardens.
 // Each district's land is carved into lots dressed with pieces from its set
 // in the generated tileset (tools/generate_art.py). Street cells get the
-// autotile matching their neighbours, boardwalks included. None of this
-// feeds back into gameplay.
+// autotile matching their neighbours, boardwalks included. Everything past
+// the edge of town is src/landLayout.js. None of this feeds back into gameplay.
 
 const U = 1, R = 2, D = 4, L = 8;
 const C_UR = 1, C_DR = 2, C_DL = 4, C_UL = 8;
 
 // Odds of each lot shape per district: Main Street and the freight barns
-// come big, homesteads mostly one plot at a time, ranch land in whole fields
+// come big, homesteads mostly one plot at a time
 const SHAPE_WEIGHTS = {
     downtown: { '2x2': 0.35, '2x1': 0.25, '1x2': 0.2, '1x1': 0.2 },
     commercial: { '2x2': 0.12, '2x1': 0.33, '1x2': 0.2, '1x1': 0.35 },
     residential: { '2x2': 0.04, '2x1': 0.1, '1x2': 0.14, '1x1': 0.72 },
     industrial: { '2x2': 0.4, '2x1': 0.3, '1x2': 0.15, '1x1': 0.15 },
     park: { '2x2': 0.3, '2x1': 0.15, '1x2': 0.15, '1x1': 0.4 },
-    desert: { '1x1': 1 },
-    ranch: { '2x2': 0.5, '2x1': 0.25, '1x1': 0.25 },
 };
 
 // Rarer piece kinds within a district (kind = piece name before the first "_")
 const KIND_WEIGHTS = {
     wagons: 0.3, plaza: 0.35, boarding: 0.5, towers: 0.25, stockyard: 0.25, lumber: 0.45, bandstand: 0.4,
-    wateringhole: 0.6, boothill: 0.6,
+    wateringhole: 0.6, church: 0.8, jail: 0.7,
 };
 
 // A lot with streets on several sides prefers to face down: the 3/4 view
 // shows the front of a house that faces down
 const FACING_WEIGHTS = { D: 3, U: 1.5, L: 1, R: 1 };
 
-// Each earlier use of a piece in the same district halves its odds, so a
-// neighbourhood spreads over its whole set instead of repeating favourites
-const REPEAT_DECAY = 0.5;
+// Each earlier use of a piece anywhere in town cuts its odds, so the town
+// spreads over its whole set instead of repeating favourites
+const REPEAT_DECAY = 0.35;
 
-// Landmark kinds that appear at most once per block (per district, where a
-// sprawling block spans several)
-const ONCE_PER_BLOCK = new Set(['plaza', 'towers', 'stockyard', 'bandstand', 'wateringhole', 'boothill']);
+// Landmark kinds that appear at most once per block
+const ONCE_PER_BLOCK = new Set(['plaza', 'towers', 'stockyard', 'bandstand', 'wateringhole']);
+
+// Businesses a town has only one of (a piece's business is the last part of
+// its name: front_2x1_bank -> bank). Saloons, stores and smithies repeat.
+const ONCE_PER_TOWN = new Set(['bank', 'jail', 'sheriff', 'opera', 'gazette', 'post', 'assay', 'undertaker',
+    'barber', 'guns', 'drugs', 'cafe', 'bakery', 'laundry', 'saddler', 'church', 'school', 'hotel', 'doctor',
+    'dentist', 'land', 'stage', 'baths', 'tailor', 'mercantile', 'store', 'drygoods']);
 
 // Straight-street variants: plain, mud puddle, hitching rails, barrels
 const STRAIGHT_WEIGHTS = [54, 8, 22, 16];
 
-// How far (cells from the nearest road) each district reaches into the
-// outskirts before open country takes over: a row of homesteads, workshops
-// with a yard behind, a deeper spread of freight and stock pens
-const BUILT_DEPTH = { downtown: 3, commercial: 2, residential: 1, industrial: 2 };
-
-// Parks are whole blocks of PARK_MIN..PARK_MAX cells, about PARK_SHARE of the
-// land inside the road network, at least PARK_SPACING cells apart
-const PARK_MIN = 4, PARK_MAX = 48, PARK_SHARE = 0.08, PARK_SPACING = 10;
+// The town common: one block up the hill of about this many cells
+const COMMON_SIZE = [4, 16];
 
 // 4-bit neighbour mask: which sides connect to road
 export function roadMask(isRoad, x, y) {
@@ -82,8 +80,8 @@ export function cornerMask(isRoad, x, y) {
 }
 
 // Stable per-cell hash so variant choice doesn't shimmer between renders
-function cellHash(x, y) {
-    let h = (x * 374761393 + y * 668265263) >>> 0;
+export function cellHash(x, y, salt = 0) {
+    let h = (x * 374761393 + y * 668265263 + salt * 2246822519) >>> 0;
     h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
     return (h ^ (h >>> 16)) >>> 0;
 }
@@ -99,7 +97,7 @@ export function roadTileIndex(isRoad, x, y, roads = art.city.roads) {
     return variants[0];
 }
 
-function weightedPick(entries, rand) {
+export function weightedPick(entries, rand) {
     const total = entries.reduce((s, [, w]) => s + w, 0);
     let roll = rand() * total;
     for (const [value, w] of entries) {
@@ -110,7 +108,6 @@ function weightedPick(entries, rand) {
 }
 
 const key = (c) => `${c.x},${c.y}`;
-const NEIGHBOURS_8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
 // Connected groups (4-neighbour) of free cells — the city blocks
 export function findBlocks(width, height, isFree) {
@@ -139,162 +136,50 @@ export function findBlocks(width, height, isFree) {
     return blocks;
 }
 
-// Distance in cells from each free cell to the nearest road ("x,y" -> n).
-// A cell touching a road, even only at a corner, is 1; free land no road
-// reaches at all is left out.
-export function roadDistance(width, height, isRoad, isFree) {
-    const dist = new Map();
-    let frontier = [];
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            if (isFree(x, y) && NEIGHBOURS_8.some(([dx, dy]) => isRoad(x + dx, y + dy))) {
-                dist.set(`${x},${y}`, 1);
-                frontier.push({ x, y });
-            }
-        }
-    }
-    for (let d = 2; frontier.length > 0; d++) {
-        const next = [];
-        for (const c of frontier) {
-            for (const [dx, dy] of NEIGHBOURS_8) {
-                const n = { x: c.x + dx, y: c.y + dy };
-                if (isFree(n.x, n.y) && !dist.has(key(n))) {
-                    dist.set(key(n), d);
-                    next.push(n);
-                }
-            }
-        }
-        frontier = next;
-    }
-    return dist;
+// The district of one town block (a list of cells). Bands are the strips
+// between consecutive streets, counted up from Front Street; the row of lots
+// north of the top street is homesteads.
+export function townDistrict(cells, town) {
+    const minX = Math.min(...cells.map(c => c.x));
+    const maxX = Math.max(...cells.map(c => c.x));
+    const y = cells.reduce((s, c) => s + c.y, 0) / cells.length;
+    const edge = minX <= town.x0 || maxX >= town.x1;
+    if (y < town.y0) return 'residential';            // the row north of the top street
+    const band = town.rows.findIndex(r => r < y) - 1; // rows run from Front Street up
+    if (band === 0) return edge ? 'industrial' : 'downtown';
+    if (band === 1) return edge ? 'commercial' : 'downtown';
+    if (band === 2) return edge ? 'residential' : 'commercial';
+    return 'residential';
 }
 
-// Districts come from a coarse map: downtown in the middle, shops ringing
-// it, and further out houses, except on one side of town (picked per map)
-// which is industrial. The random part of the choice is shared by every cell
-// in the same CHUNK x CHUNK patch, so neighbourhoods come out coherent.
-const CHUNK = 6;
-const COMPACT_BLOCK = 40; // cells; bigger blocks are zoned cell by cell
-
-function chunkRoll(x, y, seed, salt) {
-    return cellHash(Math.floor(x / CHUNK) * 7919 + salt, Math.floor(y / CHUNK) * 104729 + seed) / 4294967296;
-}
-
-export function districtAt(x, y, map) {
-    const d = Math.hypot(x + 0.5 - map.cx, y + 0.5 - map.cy) / map.radius;
-    const angle = Math.atan2(y + 0.5 - map.cy, x + 0.5 - map.cx);
-    const off = Math.abs(Math.atan2(Math.sin(angle - map.industrialAngle), Math.cos(angle - map.industrialAngle)));
-    const roll = chunkRoll(x, y, map.seed, 1);
-
-    if (d < 0.36) return roll < 0.88 ? 'downtown' : 'commercial';
-    if (d < 0.58) return roll < 0.6 ? 'commercial' : 'residential';
-    if (off < 0.9) return roll < 0.8 ? 'industrial' : 'commercial';
-    return roll < 0.78 ? 'residential' : 'commercial';
-}
-
-// Past the last street: stretches of desert between the ranches
-export function countrysideAt(x, y, map) {
-    return chunkRoll(x, y, map.seed, 3) < 0.45 ? 'desert' : 'ranch';
-}
-
-export function districtMap(width, height, rand = Math.random) {
-    return {
-        cx: width / 2,
-        cy: height / 2,
-        radius: Math.min(width, height) / 2,
-        industrialAngle: rand() * Math.PI * 2,
-        seed: Math.floor(rand() * 1e6),
-    };
-}
-
-function centroid(cells) {
-    return {
-        x: cells.reduce((s, c) => s + c.x, 0) / cells.length,
-        y: cells.reduce((s, c) => s + c.y, 0) / cells.length,
-    };
-}
-
-function touchesEdge(cells, width, height) {
-    return cells.some(c => c.x === 0 || c.y === 0 || c.x === width - 1 || c.y === height - 1);
-}
-
-function groupBy(cells, zoneOf) {
-    const groups = new Map();
-    for (const c of cells) {
-        const zone = zoneOf(c);
-        if (!groups.has(zone)) groups.set(zone, []);
-        groups.get(zone).push(c);
-    }
-    return [...groups].map(([zone, groupCells]) => ({ zone, cells: groupCells }));
-}
-
-// Split each block into [{ zone, cells }] groups. A compact block is one
-// district (judged at its centre); a sprawling one — the road network isn't
-// a closed grid, so the outskirts can be one huge block — takes its district
-// cell by cell.
-export function zoneBlocks(blocks, map) {
-    return blocks.map((cells) => {
-        if (cells.length <= COMPACT_BLOCK) {
-            const c = centroid(cells);
-            return [{ zone: districtAt(c.x, c.y, map), cells }];
-        }
-        return groupBy(cells, c => districtAt(c.x, c.y, map));
-    });
-}
-
-// A few whole blocks become parks: mid-sized, enclosed by streets, spread
-// out across town and never in the industrial quarter. Returns the chosen
-// blocks (the same arrays as in `blocks`).
-export function pickParks(blocks, map, width, height, rand = Math.random) {
-    const enclosed = blocks.filter(cells => !touchesEdge(cells, width, height));
-    let budget = PARK_SHARE * enclosed.reduce((n, cells) => n + cells.length, 0);
-    const candidates = enclosed.filter(cells => cells.length >= PARK_MIN && cells.length <= PARK_MAX);
-    for (let i = candidates.length - 1; i > 0; i--) {
-        const j = Math.floor(rand() * (i + 1));
-        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-    }
-    const parks = new Set();
-    const centres = [];
-    for (const cells of candidates) {
-        if (budget <= 0) break;
-        const c = centroid(cells);
-        if (districtAt(c.x, c.y, map) === 'industrial') continue;
-        if (centres.some(p => Math.hypot(p.x - c.x, p.y - c.y) < PARK_SPACING)) continue;
-        parks.add(cells);
-        centres.push(c);
-        budget -= cells.length;
-    }
-    return parks;
-}
-
-// All the free land as [{ zone, cells }] groups: commons, districts, and the
-// open country beyond the town's reach on the outskirts
-export function zoneCity(width, height, isRoad, isFree, rand = Math.random) {
-    const map = districtMap(width, height, rand);
-    const dist = roadDistance(width, height, isRoad, isFree);
-    const blocks = findBlocks(width, height, isFree);
-    const parks = pickParks(blocks, map, width, height, rand);
-    const zoned = zoneBlocks(blocks, map);
-
+// The town's free land as [{ zone, cells }]: one group per block, plus the
+// common, a mid-sized block up the hill away from the edges of town
+export function zoneTown(town, isFree, rand = Math.random) {
+    const width = town.x1 + 1;
+    const height = town.fy + 1;
+    const inTown = (x, y) => x >= town.x0 && x <= town.x1 && y >= town.yN && y <= town.fy && isFree(x, y);
+    // A block whose cross street was left out spans more than one band:
+    // each band of it takes its own district
     const groups = [];
-    blocks.forEach((cells, i) => {
-        if (parks.has(cells)) {
-            groups.push({ zone: 'park', cells });
-            return;
+    for (const block of findBlocks(width, height, inTown)) {
+        const minX = Math.min(...block.map(c => c.x));
+        const maxX = Math.max(...block.map(c => c.x));
+        const byBand = new Map();
+        for (const c of block) {
+            const band = c.y < town.y0 ? -1 : town.rows.findIndex(r => r < c.y);
+            if (!byBand.has(band)) byBand.set(band, []);
+            byBand.get(band).push(c);
         }
-        // Only the outskirts reach beyond the streets; a block the roads
-        // enclose is built up all the way through
-        const outskirts = touchesEdge(cells, width, height);
-        for (const group of zoned[i]) {
-            if (!outskirts) {
-                groups.push(group);
-                continue;
-            }
-            const depth = BUILT_DEPTH[group.zone];
-            groups.push(...groupBy(group.cells, c =>
-                (dist.get(key(c)) ?? Infinity) <= depth ? group.zone : countrysideAt(c.x, c.y, map)));
+        for (const cells of byBand.values()) {
+            // the edge test looks at the whole block: a band of a block on
+            // the edge of town is on the edge too
+            const span = [{ x: minX, y: cells[0].y }, { x: maxX, y: cells[0].y }];
+            groups.push({ zone: townDistrict([...cells, ...span], town), cells });
         }
-    });
+    }
+    const common = groups.filter(g => g.zone === 'residential' && g.cells.length >= COMMON_SIZE[0] &&
+        g.cells.length <= COMMON_SIZE[1] && g.cells.every(c => c.x > town.x0 && c.x < town.x1 && c.y >= town.y0));
+    if (common.length > 0) common[Math.floor(rand() * common.length)].zone = 'park';
     return groups;
 }
 
@@ -354,10 +239,16 @@ function suits(piece, frontage) {
 // Choose a tileset piece for each lot: its district, its footprint, and
 // facing its street. A lot no piece suits (or only a landmark the block
 // already has) is split into single cells.
-export function dressLots(lots, zone, rand = Math.random, { isRoad = () => false, pieces = art.city.pieces } = {}) {
+export function dressLots(lots, zone, rand = Math.random,
+    { isRoad = () => false, pieces = art.city.pieces, uses = new Map(), businesses = new Set() } = {}) {
+    // uses (piece name -> times placed) and businesses (one-per-town kinds
+    // already built) may be shared between calls, so they span the whole town
     const zonePieces = pieces.filter(p => p.zone === zone);
     const kind = p => p.name.split('_')[0];
-    const uses = new Map(); // piece name -> times placed
+    const business = (p) => {
+        const parts = p.name.split('_');
+        return parts.length > 2 && /^\d+x\d+$/.test(parts[1]) ? parts.slice(2).join('_') : kind(p);
+    };
     const kindsUsed = new Set();
     const dressed = [];
     const queue = [...lots];
@@ -365,7 +256,8 @@ export function dressLots(lots, zone, rand = Math.random, { isRoad = () => false
         const lot = queue.shift();
         const frontage = lotFrontage(lot, isRoad);
         const sized = zonePieces.filter(p => p.w === lot.w && p.h === lot.h);
-        const spent = p => ONCE_PER_BLOCK.has(kind(p)) && kindsUsed.has(kind(p));
+        const spent = p => (ONCE_PER_BLOCK.has(kind(p)) && kindsUsed.has(kind(p))) ||
+            (ONCE_PER_TOWN.has(business(p)) && businesses.has(business(p)));
         let options = sized.filter(p => suits(p, frontage) && !spent(p));
         if (options.length === 0 && lot.w * lot.h > 1) {
             const cells = [];
@@ -381,30 +273,26 @@ export function dressLots(lots, zone, rand = Math.random, { isRoad = () => false
         rand);
         uses.set(piece.name, (uses.get(piece.name) ?? 0) + 1);
         kindsUsed.add(kind(piece));
+        if (ONCE_PER_TOWN.has(business(piece))) businesses.add(business(piece));
         dressed.push({ ...lot, zone, piece });
     }
     return dressed;
 }
 
-// Full ground layer: a [y][x] array of tileset indices.
-// `reserved` is a Set of "x,y" cells that get plain ground (landmarks draw
-// their own building sprite on top).
-export function buildGroundLayer(width, height, isRoad, reserved = new Set(), rand = Math.random) {
-    const data = [];
-    for (let y = 0; y < height; y++) data.push(new Array(width).fill(art.city.ground));
-
-    const inBounds = (x, y) => x >= 0 && x < width && y >= 0 && y < height;
-    const isFree = (x, y) => inBounds(x, y) && !isRoad(x, y) && !reserved.has(`${x},${y}`);
-
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            if (isRoad(x, y)) data[y][x] = roadTileIndex(isRoad, x, y);
+// Dress the town into `data` (a [y][x] array of tileset indices): streets
+// autotiled, every block carved into lots and dressed by its district.
+// `isFree` says which town cells are open lots (not road, not reserved for a
+// landmark, which gets plain ground).
+export function dressTown(data, town, isRoad, isFree, rand = Math.random) {
+    for (let y = town.yN; y <= town.fy; y++) {
+        for (let x = town.x0; x <= town.x1; x++) {
+            data[y][x] = isRoad(x, y) ? roadTileIndex(isRoad, x, y) : art.city.ground;
         }
     }
-
-    for (const { zone, cells } of zoneCity(width, height, isRoad, isFree, rand)) {
+    const shared = { isRoad, uses: new Map(), businesses: new Set() };
+    for (const { zone, cells } of zoneTown(town, isFree, rand)) {
         const lots = partitionLots(cells, SHAPE_WEIGHTS[zone], rand);
-        for (const lot of dressLots(lots, zone, rand, { isRoad })) {
+        for (const lot of dressLots(lots, zone, rand, shared)) {
             lot.piece.tiles.forEach((tile, k) => {
                 data[lot.y + Math.floor(k / lot.w)][lot.x + (k % lot.w)] = tile;
             });

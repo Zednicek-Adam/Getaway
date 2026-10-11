@@ -60,9 +60,17 @@ const IMAGES = {
     logo: 'logo.png',
 };
 
+// Packed sprites with named frames: [image, frame data]
+const ATLASES = {
+    scenery: ['scenery.png', 'scenery.json'],
+};
+
 export function loadArt(scene) {
     for (const [key, file] of Object.entries(IMAGES)) {
         scene.load.image(key, BASE + file);
+    }
+    for (const [key, [image, data]] of Object.entries(ATLASES)) {
+        scene.load.atlas(key, BASE + image, BASE + data);
     }
     for (const [key, [file, frameWidth, frameHeight]] of Object.entries(SHEETS)) {
         scene.load.spritesheet(key, BASE + file, { frameWidth, frameHeight });
@@ -88,7 +96,7 @@ export function createAnims(scene) {
     add('tumble', 'tumbleweed', 0, 3, 10);
     add('barricade-v', 'barricade', 0, 1, 4);
     add('barricade-h', 'barricade', 2, 3, 4);
-    // Crossing lanterns alternate while the gates are down (frame 0/3 = arms up)
+    // The crossing keeper waves his flag while the gates are down (frame 0/3 = arms up)
     add('crossing-h', 'crossing', 1, 2, 3);
     add('crossing-v', 'crossing', 4, 5, 3);
     const gallop = manifest.menuRiders.frames;

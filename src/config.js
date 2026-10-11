@@ -119,7 +119,7 @@ export const CONFIG = {
         MIN_CROSSINGS: 5,         // fewer surviving generation means a re-roll
         MS_PER_TILE: 150,
         WAGONS: [4, 5],           // behind the locomotive and the bullion car
-        WARNING_MS: 3000,         // lights + barriers before the locomotive reaches a crossing
+        WARNING_MS: 3000,         // gates down and the keeper out with his flag before the locomotive arrives
         STATION_DWELL_MS: 3000,
         BULLION_EVERY: 3,         // every Nth lap stops with the vault open
         BULLION_DWELL_MS: 8000,

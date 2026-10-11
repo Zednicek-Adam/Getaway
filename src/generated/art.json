@@ -151,32 +151,13 @@
   },
   "pieces": [
    {
-    "name": "front_1x1_saloon",
-    "zone": "downtown",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     53
-    ]
-   },
-   {
     "name": "front_2x1_saloon",
     "zone": "downtown",
     "w": 2,
     "h": 1,
     "tiles": [
-     54,
-     55
-    ]
-   },
-   {
-    "name": "front_1x2_saloon",
-    "zone": "downtown",
-    "w": 1,
-    "h": 2,
-    "tiles": [
-     56,
-     57
+     53,
+     54
     ]
    },
    {
@@ -185,80 +166,19 @@
     "w": 2,
     "h": 2,
     "tiles": [
-     58,
-     59,
-     60,
-     61
+     55,
+     56,
+     57,
+     58
     ]
    },
    {
-    "name": "front_1x1_bank",
+    "name": "front_1x1_saloon",
     "zone": "downtown",
     "w": 1,
     "h": 1,
     "tiles": [
-     62
-    ]
-   },
-   {
-    "name": "front_2x1_bank",
-    "zone": "downtown",
-    "w": 2,
-    "h": 1,
-    "tiles": [
-     63,
-     64
-    ]
-   },
-   {
-    "name": "front_1x2_bank",
-    "zone": "downtown",
-    "w": 1,
-    "h": 2,
-    "tiles": [
-     65,
-     66
-    ]
-   },
-   {
-    "name": "front_2x2_bank",
-    "zone": "downtown",
-    "w": 2,
-    "h": 2,
-    "tiles": [
-     67,
-     68,
-     69,
-     70
-    ]
-   },
-   {
-    "name": "front_1x1_hotel",
-    "zone": "downtown",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     71
-    ]
-   },
-   {
-    "name": "front_2x1_hotel",
-    "zone": "downtown",
-    "w": 2,
-    "h": 1,
-    "tiles": [
-     72,
-     73
-    ]
-   },
-   {
-    "name": "front_1x2_hotel",
-    "zone": "downtown",
-    "w": 1,
-    "h": 2,
-    "tiles": [
-     74,
-     75
+     59
     ]
    },
    {
@@ -267,14 +187,102 @@
     "w": 2,
     "h": 2,
     "tiles": [
+     60,
+     61,
+     62,
+     63
+    ]
+   },
+   {
+    "name": "front_1x2_hotel",
+    "zone": "downtown",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     64,
+     65
+    ]
+   },
+   {
+    "name": "front_1x1_bank",
+    "zone": "downtown",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     66
+    ]
+   },
+   {
+    "name": "front_2x1_bank",
+    "zone": "downtown",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     67,
+     68
+    ]
+   },
+   {
+    "name": "front_2x1_store",
+    "zone": "downtown",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     69,
+     70
+    ]
+   },
+   {
+    "name": "front_2x2_drygoods",
+    "zone": "downtown",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     71,
+     72,
+     73,
+     74
+    ]
+   },
+   {
+    "name": "front_1x1_jail",
+    "zone": "downtown",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     75
+    ]
+   },
+   {
+    "name": "front_1x2_sheriff",
+    "zone": "downtown",
+    "w": 1,
+    "h": 2,
+    "tiles": [
      76,
-     77,
-     78,
+     77
+    ]
+   },
+   {
+    "name": "front_1x1_barber",
+    "zone": "downtown",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     78
+    ]
+   },
+   {
+    "name": "front_1x1_assay",
+    "zone": "downtown",
+    "w": 1,
+    "h": 1,
+    "tiles": [
      79
     ]
    },
    {
-    "name": "front_1x1_mercantile",
+    "name": "front_1x1_guns",
     "zone": "downtown",
     "w": 1,
     "h": 1,
@@ -283,17 +291,25 @@
     ]
    },
    {
-    "name": "front_2x1_mercantile",
+    "name": "front_1x1_post",
     "zone": "downtown",
-    "w": 2,
+    "w": 1,
     "h": 1,
     "tiles": [
-     81,
+     81
+    ]
+   },
+   {
+    "name": "front_1x1_undertaker",
+    "zone": "downtown",
+    "w": 1,
+    "h": 1,
+    "tiles": [
      82
     ]
    },
    {
-    "name": "front_1x2_mercantile",
+    "name": "front_1x2_gazette",
     "zone": "downtown",
     "w": 1,
     "h": 2,
@@ -303,7 +319,7 @@
     ]
    },
    {
-    "name": "front_2x2_mercantile",
+    "name": "front_2x2_opera",
     "zone": "downtown",
     "w": 2,
     "h": 2,
@@ -315,12 +331,31 @@
     ]
    },
    {
+    "name": "front_2x1_cafe",
+    "zone": "downtown",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     89,
+     90
+    ]
+   },
+   {
+    "name": "front_1x1_drugs",
+    "zone": "downtown",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     91
+    ]
+   },
+   {
     "name": "plaza_0",
     "zone": "downtown",
     "w": 1,
     "h": 1,
     "tiles": [
-     89
+     92
     ]
    },
    {
@@ -329,7 +364,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     90
+     93
     ]
    },
    {
@@ -338,7 +373,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     91
+     94
     ]
    },
    {
@@ -347,39 +382,8 @@
     "w": 2,
     "h": 1,
     "tiles": [
-     92,
-     93
-    ]
-   },
-   {
-    "name": "trade_1x2_smithy",
-    "zone": "commercial",
-    "w": 1,
-    "h": 2,
-    "tiles": [
-     94,
-     95
-    ]
-   },
-   {
-    "name": "trade_2x2_smithy",
-    "zone": "commercial",
-    "w": 2,
-    "h": 2,
-    "tiles": [
-     96,
-     97,
-     98,
-     99
-    ]
-   },
-   {
-    "name": "trade_1x1_livery",
-    "zone": "commercial",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     100
+     95,
+     96
     ]
    },
    {
@@ -388,12 +392,24 @@
     "w": 2,
     "h": 1,
     "tiles": [
+     97,
+     98
+    ]
+   },
+   {
+    "name": "trade_2x2_livery",
+    "zone": "commercial",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     99,
+     100,
      101,
      102
     ]
    },
    {
-    "name": "trade_1x1_barber",
+    "name": "trade_1x1_feed",
     "zone": "commercial",
     "w": 1,
     "h": 1,
@@ -402,7 +418,7 @@
     ]
    },
    {
-    "name": "trade_2x1_barber",
+    "name": "trade_2x1_feed",
     "zone": "commercial",
     "w": 2,
     "h": 1,
@@ -412,44 +428,175 @@
     ]
    },
    {
-    "name": "trade_1x2_barber",
+    "name": "trade_1x1_laundry",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     106
+    ]
+   },
+   {
+    "name": "trade_1x2_saddler",
     "zone": "commercial",
     "w": 1,
     "h": 2,
     "tiles": [
-     106,
-     107
+     107,
+     108
     ]
    },
    {
-    "name": "trade_2x2_barber",
+    "name": "trade_1x1_bakery",
     "zone": "commercial",
-    "w": 2,
-    "h": 2,
+    "w": 1,
+    "h": 1,
     "tiles": [
-     108,
-     109,
-     110,
+     109
+    ]
+   },
+   {
+    "name": "trade_1x1_cooper",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     110
+    ]
+   },
+   {
+    "name": "trade_1x1_harness",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
      111
     ]
    },
    {
-    "name": "trade_1x1_feed",
-    "zone": "commercial",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     112
-    ]
-   },
-   {
-    "name": "trade_2x1_feed",
+    "name": "trade_2x1_hay",
     "zone": "commercial",
     "w": 2,
     "h": 1,
     "tiles": [
-     113,
-     114
+     112,
+     113
+    ]
+   },
+   {
+    "name": "trade_2x1_wagonworks",
+    "zone": "commercial",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     114,
+     115
+    ]
+   },
+   {
+    "name": "trade_1x1_tinsmith",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     116
+    ]
+   },
+   {
+    "name": "trade_1x1_boots",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     117
+    ]
+   },
+   {
+    "name": "trade_1x1_doctor",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     118
+    ]
+   },
+   {
+    "name": "trade_1x1_dentist",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     119
+    ]
+   },
+   {
+    "name": "trade_2x1_land",
+    "zone": "commercial",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     120,
+     121
+    ]
+   },
+   {
+    "name": "trade_2x1_stage",
+    "zone": "commercial",
+    "w": 2,
+    "h": 1,
+    "tiles": [
+     122,
+     123
+    ]
+   },
+   {
+    "name": "trade_1x1_baths",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     124
+    ]
+   },
+   {
+    "name": "trade_1x1_tailor",
+    "zone": "commercial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     125
+    ]
+   },
+   {
+    "name": "trade_1x2_tools",
+    "zone": "commercial",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     126,
+     127
+    ]
+   },
+   {
+    "name": "trade_1x2_rooms",
+    "zone": "commercial",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     128,
+     129
+    ]
+   },
+   {
+    "name": "trade_2x2_mercantile",
+    "zone": "commercial",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     130,
+     131,
+     132,
+     133
     ]
    },
    {
@@ -458,8 +605,8 @@
     "w": 2,
     "h": 1,
     "tiles": [
-     115,
-     116
+     134,
+     135
     ]
    },
    {
@@ -468,8 +615,8 @@
     "w": 2,
     "h": 1,
     "tiles": [
-     117,
-     118
+     136,
+     137
     ]
    },
    {
@@ -478,10 +625,10 @@
     "w": 2,
     "h": 2,
     "tiles": [
-     119,
-     120,
-     121,
-     122
+     138,
+     139,
+     140,
+     141
     ]
    },
    {
@@ -491,7 +638,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     123
+     142
     ]
    },
    {
@@ -501,7 +648,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     124
+     143
     ]
    },
    {
@@ -511,7 +658,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     125
+     144
     ]
    },
    {
@@ -521,7 +668,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     126
+     145
     ]
    },
    {
@@ -531,7 +678,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     127
+     146
     ]
    },
    {
@@ -541,7 +688,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     128
+     147
     ]
    },
    {
@@ -551,7 +698,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     129
+     148
     ]
    },
    {
@@ -561,7 +708,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     130
+     149
     ]
    },
    {
@@ -571,7 +718,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     131
+     150
     ]
    },
    {
@@ -581,7 +728,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     132
+     151
     ]
    },
    {
@@ -591,7 +738,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     133
+     152
     ]
    },
    {
@@ -601,7 +748,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     134
+     153
     ]
    },
    {
@@ -611,8 +758,8 @@
     "w": 2,
     "h": 1,
     "tiles": [
-     135,
-     136
+     154,
+     155
     ]
    },
    {
@@ -622,8 +769,8 @@
     "w": 1,
     "h": 2,
     "tiles": [
-     137,
-     138
+     156,
+     157
     ]
    },
    {
@@ -633,8 +780,8 @@
     "w": 2,
     "h": 1,
     "tiles": [
-     139,
-     140
+     158,
+     159
     ]
    },
    {
@@ -644,8 +791,8 @@
     "w": 1,
     "h": 2,
     "tiles": [
-     141,
-     142
+     160,
+     161
     ]
    },
    {
@@ -654,10 +801,44 @@
     "w": 2,
     "h": 2,
     "tiles": [
-     143,
-     144,
-     145,
-     146
+     162,
+     163,
+     164,
+     165
+    ]
+   },
+   {
+    "name": "church_1x2",
+    "zone": "residential",
+    "faces": "D",
+    "w": 1,
+    "h": 2,
+    "tiles": [
+     166,
+     167
+    ]
+   },
+   {
+    "name": "church_2x2",
+    "zone": "residential",
+    "faces": "D",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     168,
+     169,
+     170,
+     171
+    ]
+   },
+   {
+    "name": "school_1x1",
+    "zone": "residential",
+    "faces": "D",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     172
     ]
    },
    {
@@ -667,7 +848,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     147
+     173
     ]
    },
    {
@@ -677,7 +858,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     148
+     174
     ]
    },
    {
@@ -686,8 +867,8 @@
     "w": 2,
     "h": 1,
     "tiles": [
-     149,
-     150
+     175,
+     176
     ]
    },
    {
@@ -696,8 +877,8 @@
     "w": 1,
     "h": 2,
     "tiles": [
-     151,
-     152
+     177,
+     178
     ]
    },
    {
@@ -706,10 +887,10 @@
     "w": 2,
     "h": 2,
     "tiles": [
-     153,
-     154,
-     155,
-     156
+     179,
+     180,
+     181,
+     182
     ]
    },
    {
@@ -718,7 +899,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     157
+     183
     ]
    },
    {
@@ -727,7 +908,7 @@
     "w": 1,
     "h": 1,
     "tiles": [
-     158
+     184
     ]
    },
    {
@@ -736,8 +917,8 @@
     "w": 2,
     "h": 1,
     "tiles": [
-     159,
-     160
+     185,
+     186
     ]
    },
    {
@@ -746,8 +927,8 @@
     "w": 2,
     "h": 1,
     "tiles": [
-     161,
-     162
+     187,
+     188
     ]
    },
    {
@@ -756,127 +937,13 @@
     "w": 1,
     "h": 2,
     "tiles": [
-     163,
-     164
-    ]
-   },
-   {
-    "name": "freight_2x2_1",
-    "zone": "industrial",
-    "w": 2,
-    "h": 2,
-    "tiles": [
-     165,
-     166,
-     167,
-     168
-    ]
-   },
-   {
-    "name": "sawmill_1",
-    "zone": "industrial",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     169
-    ]
-   },
-   {
-    "name": "lumber_1x1_1",
-    "zone": "industrial",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     170
-    ]
-   },
-   {
-    "name": "lumber_2x1_1",
-    "zone": "industrial",
-    "w": 2,
-    "h": 1,
-    "tiles": [
-     171,
-     172
-    ]
-   },
-   {
-    "name": "towers_2x2",
-    "zone": "industrial",
-    "w": 2,
-    "h": 2,
-    "tiles": [
-     173,
-     174,
-     175,
-     176
-    ]
-   },
-   {
-    "name": "stockyard_2x2",
-    "zone": "industrial",
-    "w": 2,
-    "h": 2,
-    "tiles": [
-     177,
-     178,
-     179,
-     180
-    ]
-   },
-   {
-    "name": "park_1x1_scrub",
-    "zone": "park",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     181
-    ]
-   },
-   {
-    "name": "bandstand",
-    "zone": "park",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     182
-    ]
-   },
-   {
-    "name": "park_2x1_scrub",
-    "zone": "park",
-    "w": 2,
-    "h": 1,
-    "tiles": [
-     183,
-     184
-    ]
-   },
-   {
-    "name": "park_1x2_scrub",
-    "zone": "park",
-    "w": 1,
-    "h": 2,
-    "tiles": [
-     185,
-     186
-    ]
-   },
-   {
-    "name": "wateringhole",
-    "zone": "park",
-    "w": 2,
-    "h": 2,
-    "tiles": [
-     187,
-     188,
      189,
      190
     ]
    },
    {
-    "name": "boothill",
-    "zone": "park",
+    "name": "freight_2x2_1",
+    "zone": "industrial",
     "w": 2,
     "h": 2,
     "tiles": [
@@ -887,8 +954,8 @@
     ]
    },
    {
-    "name": "desert_0",
-    "zone": "desert",
+    "name": "sawmill_1",
+    "zone": "industrial",
     "w": 1,
     "h": 1,
     "tiles": [
@@ -896,8 +963,8 @@
     ]
    },
    {
-    "name": "desert_1",
-    "zone": "desert",
+    "name": "lumber_1x1_1",
+    "zone": "industrial",
     "w": 1,
     "h": 1,
     "tiles": [
@@ -905,62 +972,30 @@
     ]
    },
    {
-    "name": "desert_2",
-    "zone": "desert",
-    "w": 1,
+    "name": "lumber_2x1_1",
+    "zone": "industrial",
+    "w": 2,
     "h": 1,
     "tiles": [
-     197
-    ]
-   },
-   {
-    "name": "desert_3",
-    "zone": "desert",
-    "w": 1,
-    "h": 1,
-    "tiles": [
+     197,
      198
     ]
    },
    {
-    "name": "desert_4",
-    "zone": "desert",
-    "w": 1,
-    "h": 1,
+    "name": "towers_2x2",
+    "zone": "industrial",
+    "w": 2,
+    "h": 2,
     "tiles": [
-     199
-    ]
-   },
-   {
-    "name": "desert_5",
-    "zone": "desert",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     200
-    ]
-   },
-   {
-    "name": "desert_6",
-    "zone": "desert",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     201
-    ]
-   },
-   {
-    "name": "desert_7",
-    "zone": "desert",
-    "w": 1,
-    "h": 1,
-    "tiles": [
+     199,
+     200,
+     201,
      202
     ]
    },
    {
-    "name": "desert_8",
-    "zone": "desert",
+    "name": "towers_1x1",
+    "zone": "industrial",
     "w": 1,
     "h": 1,
     "tiles": [
@@ -968,80 +1003,457 @@
     ]
    },
    {
-    "name": "desert_9",
-    "zone": "desert",
-    "w": 1,
-    "h": 1,
+    "name": "stockyard_2x2",
+    "zone": "industrial",
+    "w": 2,
+    "h": 2,
     "tiles": [
-     204
-    ]
-   },
-   {
-    "name": "meadow_0",
-    "zone": "ranch",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     205
-    ]
-   },
-   {
-    "name": "meadow_1",
-    "zone": "ranch",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     206
-    ]
-   },
-   {
-    "name": "meadow_2",
-    "zone": "ranch",
-    "w": 1,
-    "h": 1,
-    "tiles": [
+     204,
+     205,
+     206,
      207
     ]
    },
    {
-    "name": "field_2x2_wheat",
-    "zone": "ranch",
-    "w": 2,
-    "h": 2,
+    "name": "park_1x1_scrub",
+    "zone": "park",
+    "w": 1,
+    "h": 1,
     "tiles": [
-     208,
-     209,
+     208
+    ]
+   },
+   {
+    "name": "bandstand",
+    "zone": "park",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     209
+    ]
+   },
+   {
+    "name": "park_2x1_scrub",
+    "zone": "park",
+    "w": 2,
+    "h": 1,
+    "tiles": [
      210,
      211
     ]
    },
    {
-    "name": "field_2x2_corn",
-    "zone": "ranch",
-    "w": 2,
+    "name": "park_1x2_scrub",
+    "zone": "park",
+    "w": 1,
     "h": 2,
     "tiles": [
      212,
-     213,
-     214,
-     215
+     213
     ]
    },
    {
-    "name": "field_2x1_ploughed",
-    "zone": "ranch",
+    "name": "wateringhole",
+    "zone": "park",
     "w": 2,
-    "h": 1,
+    "h": 2,
     "tiles": [
+     214,
+     215,
      216,
      217
     ]
    }
   ],
   "ground": 218,
+  "land": {
+   "terrain": {
+    "0000": [
+     219,
+     220,
+     221,
+     222
+    ],
+    "0001": [
+     223
+    ],
+    "0010": [
+     224
+    ],
+    "0011": [
+     225
+    ],
+    "0100": [
+     226
+    ],
+    "0101": [
+     227
+    ],
+    "0110": [
+     228
+    ],
+    "0111": [
+     229
+    ],
+    "1000": [
+     230
+    ],
+    "1001": [
+     231
+    ],
+    "1010": [
+     232
+    ],
+    "1011": [
+     233
+    ],
+    "1100": [
+     234
+    ],
+    "1101": [
+     235
+    ],
+    "1110": [
+     236
+    ],
+    "1111": [
+     237,
+     238,
+     239,
+     240
+    ]
+   },
+   "river": {
+    "5": [
+     241,
+     242,
+     243
+    ],
+    "10": [
+     244,
+     245,
+     246
+    ],
+    "3": [
+     247
+    ],
+    "6": [
+     248
+    ],
+    "12": [
+     249
+    ],
+    "9": [
+     250
+    ]
+   },
+   "trails": {
+    "1": [
+     251
+    ],
+    "2": [
+     252
+    ],
+    "3": [
+     253
+    ],
+    "4": [
+     254
+    ],
+    "5": [
+     255,
+     256,
+     257
+    ],
+    "6": [
+     258
+    ],
+    "7": [
+     259
+    ],
+    "8": [
+     260
+    ],
+    "9": [
+     261
+    ],
+    "10": [
+     262,
+     263,
+     264
+    ],
+    "11": [
+     265
+    ],
+    "12": [
+     266
+    ],
+    "13": [
+     267
+    ],
+    "14": [
+     268
+    ],
+    "15": [
+     269
+    ]
+   },
+   "decor": {
+    "desert": [
+     272,
+     273,
+     274,
+     275,
+     276,
+     277,
+     278,
+     279,
+     280,
+     281,
+     282,
+     283,
+     284,
+     285
+    ],
+    "prairie": [
+     286,
+     287,
+     288,
+     289,
+     290,
+     291,
+     292,
+     293,
+     294,
+     295,
+     296,
+     297,
+     298
+    ],
+    "riverside": [
+     299,
+     300,
+     301,
+     302,
+     303,
+     304
+    ]
+   },
+   "pieces": [
+    {
+     "name": "homestead_0",
+     "zone": "any",
+     "w": 1,
+     "h": 1,
+     "tiles": [
+      305
+     ]
+    },
+    {
+     "name": "homestead_1",
+     "zone": "any",
+     "w": 1,
+     "h": 1,
+     "tiles": [
+      306
+     ]
+    },
+    {
+     "name": "homestead_2",
+     "zone": "desert",
+     "w": 1,
+     "h": 1,
+     "tiles": [
+      307
+     ]
+    },
+    {
+     "name": "ranch_0",
+     "zone": "prairie",
+     "w": 2,
+     "h": 2,
+     "tiles": [
+      308,
+      309,
+      310,
+      311
+     ]
+    },
+    {
+     "name": "corral_0",
+     "zone": "any",
+     "w": 2,
+     "h": 1,
+     "tiles": [
+      312,
+      313
+     ]
+    },
+    {
+     "name": "windmill_0",
+     "zone": "any",
+     "w": 1,
+     "h": 1,
+     "tiles": [
+      314
+     ]
+    },
+    {
+     "name": "ranch_1",
+     "zone": "prairie",
+     "w": 2,
+     "h": 2,
+     "tiles": [
+      315,
+      316,
+      317,
+      318
+     ]
+    },
+    {
+     "name": "corral_1",
+     "zone": "any",
+     "w": 2,
+     "h": 1,
+     "tiles": [
+      319,
+      320
+     ]
+    },
+    {
+     "name": "windmill_1",
+     "zone": "any",
+     "w": 1,
+     "h": 1,
+     "tiles": [
+      321
+     ]
+    },
+    {
+     "name": "camp_0",
+     "zone": "any",
+     "w": 2,
+     "h": 1,
+     "tiles": [
+      322,
+      323
+     ]
+    },
+    {
+     "name": "mine_0",
+     "zone": "any",
+     "near": "peaks",
+     "w": 1,
+     "h": 1,
+     "tiles": [
+      324
+     ]
+    },
+    {
+     "name": "boothill_0",
+     "zone": "any",
+     "near": "town",
+     "w": 2,
+     "h": 2,
+     "tiles": [
+      325,
+      326,
+      327,
+      328
+     ]
+    },
+    {
+     "name": "mission_0",
+     "zone": "desert",
+     "w": 2,
+     "h": 1,
+     "tiles": [
+      329,
+      330
+     ]
+    },
+    {
+     "name": "field_corn",
+     "zone": "prairie",
+     "w": 2,
+     "h": 2,
+     "tiles": [
+      331,
+      332,
+      333,
+      334
+     ]
+    },
+    {
+     "name": "field_wheat",
+     "zone": "prairie",
+     "w": 2,
+     "h": 1,
+     "tiles": [
+      335,
+      336
+     ]
+    }
+   ],
+   "bridge": {
+    "H": 270,
+    "V": 271
+   }
+  },
   "tileSize": 64,
   "margin": 1,
   "spacing": 2
+ },
+ "scenery": {
+  "peak": {
+   "4x3": [
+    "peak_4x3_0",
+    "peak_4x3_1",
+    "peak_4x3_2"
+   ],
+   "3x3": [
+    "peak_3x3_0",
+    "peak_3x3_1",
+    "peak_3x3_2"
+   ],
+   "3x2": [
+    "peak_3x2_0",
+    "peak_3x2_1",
+    "peak_3x2_2"
+   ],
+   "2x2": [
+    "peak_2x2_0",
+    "peak_2x2_1",
+    "peak_2x2_2"
+   ]
+  },
+  "mesa": {
+   "4x2": [
+    "mesa_4x2_0",
+    "mesa_4x2_1",
+    "mesa_4x2_2"
+   ],
+   "3x2": [
+    "mesa_3x2_0",
+    "mesa_3x2_1",
+    "mesa_3x2_2"
+   ],
+   "2x2": [
+    "mesa_2x2_0",
+    "mesa_2x2_1",
+    "mesa_2x2_2"
+   ],
+   "2x1": [
+    "mesa_2x1_0",
+    "mesa_2x1_1",
+    "mesa_2x1_2"
+   ],
+   "1x1": [
+    "mesa_1x1_0",
+    "mesa_1x1_1",
+    "mesa_1x1_2"
+   ]
+  }
  },
  "rail": {
   "tiles": {
@@ -1081,6 +1493,10 @@
   "crossing": {
    "H": 32,
    "V": 33
+  },
+  "trestle": {
+   "H": 34,
+   "V": 35
   },
   "tileSize": 64,
   "margin": 1,

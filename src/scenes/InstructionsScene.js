@@ -37,7 +37,7 @@ export class InstructionsScene extends Phaser.Scene {
         this.heading(centre, 146, 'THE JOB');
 
         const goal = [
-            'RUSTLE GOLD OFF THE STREETS AND STASH IT AT YOUR HIDEOUT',
+            'GRAB GOLD ALONG THE TRAILS AND STASH IT AT YOUR HIDEOUT',
             'LOOT IN YOUR SADDLEBAGS IS LOST IF THE POSSE CATCHES YOU',
             '3 LIVES. LOSE ONE TO 3 TACKLES OR A WORN-OUT HORSE',
         ];
@@ -86,7 +86,7 @@ export class InstructionsScene extends Phaser.Scene {
 
         // --- Things that are not obvious from playing ------------------------
         const notes = [
-            ['YOUR HORSE RUNS ON ITS OWN - YOU ONLY CHOOSE THE TURNS', UI_COLORS.cyan],
+            ['YOUR HORSE FOLLOWS THE TRAIL - YOU ONLY PICK THE FORKS', UI_COLORS.cyan],
             ['TURNS QUEUE UP TO 3 AHEAD, SO LINE UP JUNCTIONS EARLY', UI_COLORS.white],
             ['REIN IN TO REST YOUR HORSE - A TROUGH REFILLS IT FAST', UI_COLORS.white],
             ['ROB THE STAGECOACH FOR $1000 - IT COSTS YOU 2 BADGES', UI_COLORS.white],

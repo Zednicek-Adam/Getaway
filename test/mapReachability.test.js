@@ -42,7 +42,7 @@ describe('MapManager.placeBase', () => {
     it('uses the spawn road tile as pad and the tile above as building', () => {
         const manager = makeManager(10, 10);
         manager.playerSpawnPoint = { x: 5, y: 5 };
-        // Spawn dead-end: road below, grass above (mirrors NetworkGenerator)
+        // Spawn dead-end: road below, a lot above (the hideout lane FrontierGenerator lays)
         addRoad(manager, 5, 5);
         addRoad(manager, 5, 6);
         addRoad(manager, 4, 6);

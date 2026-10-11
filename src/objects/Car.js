@@ -148,7 +148,9 @@ export class Car {
         //    possible, or we can't continue straight), the queued turn is
         //    STALE — drop it so the buffer never sticks, and try the next one.
         // 3. On a plain straight corridor the turn is KEPT for the next junction.
-        // 4. Otherwise go straight; if that's blocked too, stop.
+        // 4. Otherwise go straight. Where the way bends with only one way on,
+        //    take it (a horse follows the trail round a bend); at a fork or
+        //    a dead end, stop and wait to be steered.
 
         // Don't auto-move if waiting for first input, or braked by the player
         if (this.waitingForInput || this.halted) return;
@@ -181,7 +183,10 @@ export class Car {
 
         if (this.canMove(this.direction)) {
             this.startMove(this.direction);
+            return;
         }
+        const onward = this.getValidMoves().filter(d => !isOpposite(d, this.direction));
+        if (onward.length === 1) this.startMove(onward[0]);
     }
 
     // True when the car could turn onto a road other than straight-ahead or

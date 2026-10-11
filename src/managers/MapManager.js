@@ -1,8 +1,8 @@
 import { TILE_SIZE, TILE_TYPES } from '../constants';
 import { Collectible, pickCollectibleType } from '../objects/Collectible';
-import { NetworkGenerator } from '../generators/NetworkGenerator';
+import { FrontierGenerator } from '../generators/FrontierGenerator';
 import { CONFIG } from '../config';
-import { buildGroundLayer } from '../cityLayout';
+import { buildMapLayers } from '../landLayout';
 import { RailLine } from '../railway';
 import { ART } from '../art';
 
@@ -25,6 +25,11 @@ export class MapManager {
         this.trainBlocked = new Set(); // "x,y" keys — crossings with the barriers down
         // { line: RailLine, crossings: [loop index], station: { index, pad, building } | null }
         this.rail = null;
+        // The generator's plan for the scenery: { town, river, bridges, scenery }
+        // (null on the fallback map), and the "x,y" cells it puts out of bounds
+        // for buildings (river and mountains)
+        this.land = null;
+        this.wild = new Set();
     }
 
     generate() {
@@ -39,49 +44,29 @@ export class MapManager {
         this.autoTileRoads();
     }
 
+    // A frontier town and the open range round it (FrontierGenerator). A roll
+    // whose crossings didn't link up on both sides of the loop is re-rolled:
+    // too few and the train barely matters.
     generateProceduralMap() {
         this.playerSpawnPoint = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
 
-        let success = false;
-        let attempts = 0;
-
-        while (!success && attempts < 50) {
-            attempts++;
-
-            this.initializeGrid();
-            // The loop is a wall to the generator except at the crossings,
-            // which are seeded as road stubs straight through the track
-            const line = this.rail.line;
-            const planned = line.pickCrossings();
-            const barrier = new Set(line.cells
-                .filter((_, i) => !planned.includes(i))
-                .map(c => `${c.x},${c.y}`));
-            const crossings = planned.map(i => ({
-                ...line.cells[i],
-                axis: line.axisAt(i) === 'H' ? 'V' : 'H',
-            }));
-            const generator = new NetworkGenerator(this.width, this.height, { barrier, crossings });
-            this.grid = generator.generate(this.playerSpawnPoint);
-
-            // Clean up any remaining dead-ends (safety net)
-            this.removeDeadEnds();
-
-            // A crossing the network never linked up on both sides was pruned
-            // back to track; too few left over and the loop barely matters
-            this.rail.crossings = planned.filter(i => this.isRoad(line.cells[i].x, line.cells[i].y));
-
-            // Verify spawn is still connected to a valid road
-            if (this.isRoad(this.playerSpawnPoint.x, this.playerSpawnPoint.y + 1) &&
-                this.rail.crossings.length >= CONFIG.TRAIN.MIN_CROSSINGS) {
-                success = true;
-                console.log(`Map successfully generated after ${attempts} attempts.`);
+        for (let attempts = 1; attempts <= 50; attempts++) {
+            const plan = new FrontierGenerator(this.width, this.height, this.rail.line).generate();
+            if (!plan || plan.crossings.length < CONFIG.TRAIN.MIN_CROSSINGS) continue;
+            this.grid = plan.grid;
+            this.playerSpawnPoint = plan.spawn;
+            this.rail.crossings = plan.crossings;
+            this.land = { town: plan.town, river: plan.river, bridges: plan.bridges, scenery: plan.scenery };
+            this.wild = new Set(plan.river.map(c => `${c.x},${c.y}`));
+            for (const s of plan.scenery) {
+                for (let y = s.y; y < s.y + s.h; y++) for (let x = s.x; x < s.x + s.w; x++) this.wild.add(`${x},${y}`);
             }
+            console.log(`Map successfully generated after ${attempts} attempts.`);
+            return;
         }
 
-        if (!success) {
-            console.warn("NetworkGenerator failed after 50 attempts. Generating fallback.");
-            this.generateFallbackMap();
-        }
+        console.warn('FrontierGenerator failed after 50 attempts. Generating fallback.');
+        this.generateFallbackMap();
     }
 
 
@@ -90,6 +75,8 @@ export class MapManager {
     generateFallbackMap() {
         this.initializeGrid();
         this.rail.crossings = [];
+        this.land = null;
+        this.wild = new Set();
         for (let y = 5; y < this.height - 5; y++) {
             for (let x = 5; x < this.width - 5; x++) {
                 if (x === 5 || x === this.width - 6 || y === 5 || y === this.height - 6) {
@@ -183,9 +170,10 @@ export class MapManager {
         return this.isRail(x, y) && this.isRoad(x, y);
     }
 
-    // Free ground for a landmark building: neither road nor track
+    // Free ground for a landmark building: not road, track, river or mountain
     isLot(x, y) {
-        return this.getTile(x, y) !== null && !this.isRoad(x, y) && !this.isRail(x, y);
+        return this.getTile(x, y) !== null && !this.isRoad(x, y) && !this.isRail(x, y) &&
+            !this.wild.has(`${x},${y}`);
     }
 
     getRandomSpawnPoint() {
@@ -313,9 +301,9 @@ export class MapManager {
             return;
         }
 
-        // The top of the loop if possible, so the station is easy to find
-        const top = candidates.filter(c => c.top);
-        const pool = top.length > 0 ? top : candidates;
+        // On the town's side of the loop if possible: the depot faces Front Street
+        const town = candidates.filter(c => c.townSide);
+        const pool = town.length > 0 ? town : candidates;
         const pick = pool[Math.floor(Math.random() * pool.length)];
         const building = this.pickAdjacentBuildingTile(pick.pad);
         this.setTile(building.x, building.y, TILE_TYPES.BUILDING);
@@ -342,7 +330,7 @@ export class MapManager {
                 if (!this.isRoad(px, py) || this.isRail(px, py) || this.isBasePad(px, py)) continue;
                 const near = [[px, py - 1], [px, py + 1], [px - 1, py], [px + 1, py]];
                 if (!near.some(([nx, ny]) => this.isLot(nx, ny))) continue;
-                candidates.push({ index: i, pad: { x: px, y: py }, top: line.moves[i] === 'R' });
+                candidates.push({ index: i, pad: { x: px, y: py }, townSide: line.moves[i] === 'L' });
             }
         }
         return candidates;
@@ -511,45 +499,51 @@ export class MapManager {
         }
     }
 
-    // The logic grid only knows road / not road; cityLayout turns that into
-    // autotiled streets and dressed city blocks (purely cosmetic).
+    // The logic grid only knows road / not road; landLayout turns that into
+    // the town's autotiled streets and dressed blocks, and the open range
+    // round it (purely cosmetic)
     render() {
         const landmarks = [this.base, ...this.fuelStations];
         if (this.rail.station) landmarks.push(this.rail.station);
         const reserved = new Set(landmarks.map(l => `${l.building.x},${l.building.y}`));
-        // Track cells get plain ground; the rail layer draws over them
-        for (const { x, y } of this.rail.line.cells) {
-            if (!this.isRoad(x, y)) reserved.add(`${x},${y}`);
-        }
-        const data = buildGroundLayer(this.width, this.height, (x, y) => this.isRoad(x, y), reserved);
-
-        const map = this.scene.make.tilemap({
-            data,
-            tileWidth: TILE_SIZE,
-            tileHeight: TILE_SIZE
+        const { ground, overlay, scenery } = buildMapLayers(this.width, this.height, {
+            isRoad: (x, y) => this.isRoad(x, y),
+            isRail: (x, y) => this.isRail(x, y),
+            land: this.land,
+            reserved,
         });
-        const tiles = map.addTilesetImage('city', 'city', TILE_SIZE, TILE_SIZE, ART.city.margin, ART.city.spacing);
-        const tileLayer = map.createLayer(0, tiles, 0, 0);
-        tileLayer.setDepth(0); // Ground layer
 
+        // Ground (opaque), then trails, bridges, homesteads and scrub over it
+        this.addTileLayer(ground, 'city', ART.city, 0);
+        this.addTileLayer(overlay, 'city', ART.city, 0.02);
         this.renderRails();
+
+        // Mountains and mesas, the nearer (lower) ones in front
+        for (const s of scenery) {
+            this.scene.add.image((s.x + s.w / 2) * TILE_SIZE, (s.y + s.h) * TILE_SIZE, 'scenery', s.frame)
+                .setOrigin(0.5, 1).setDepth(0.11 + (s.y + s.h) / 10000);
+        }
     }
 
-    // Second tilemap over the ground: track pieces keyed by the loop's local
-    // shape (tools/art_rail.py), and rails across the road on crossings
+    addTileLayer(data, key, tileset, depth) {
+        const map = this.scene.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+        const tiles = map.addTilesetImage(key, key, TILE_SIZE, TILE_SIZE, tileset.margin, tileset.spacing);
+        return map.createLayer(0, tiles, 0, 0).setDepth(depth);
+    }
+
+    // Track over the ground: pieces keyed by the loop's local shape
+    // (tools/art_rail.py), rails across the road on crossings and timber
+    // trestles where the line crosses the river
     renderRails() {
         const line = this.rail.line;
         const data = [];
         for (let y = 0; y < this.height; y++) data.push(new Array(this.width).fill(-1));
         line.cells.forEach(({ x, y }, i) => {
-            data[y][x] = this.isRoad(x, y)
-                ? ART.rail.crossing[line.axisAt(i)]
-                : ART.rail.tiles[line.signature(i)];
+            if (this.isRoad(x, y)) data[y][x] = ART.rail.crossing[line.axisAt(i)];
+            else if (this.wild.has(`${x},${y}`)) data[y][x] = ART.rail.trestle[line.axisAt(i)];
+            else data[y][x] = ART.rail.tiles[line.signature(i)];
         });
-
-        const map = this.scene.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-        const tiles = map.addTilesetImage('rail', 'rail', TILE_SIZE, TILE_SIZE, ART.rail.margin, ART.rail.spacing);
-        map.createLayer(0, tiles, 0, 0).setDepth(0.05);
+        this.addTileLayer(data, 'rail', ART.rail, 0.05);
     }
 
     // The tilemap is static after render() — post-render grid edits don't show,

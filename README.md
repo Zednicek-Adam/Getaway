@@ -1,8 +1,9 @@
 # The Getaway
 
 A pixel-art Wild West getaway game. You ride an outlaw's paint horse through a
-procedurally generated frontier town, grab gold off the streets, and stash it
-at your hideout before the posse runs you down.
+procedurally generated railroad cow town and the open range around it, with its
+river, mountains, mesas, desert and prairie. You grab gold along the streets and
+trails and stash it at your hideout before the posse runs you down.
 
 Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 
@@ -71,12 +72,14 @@ in-game, reachable from both the title screen and the pause menu; opening it
 from pause leaves the run paused and returns you there. The pause menu can also
 drop you back to the title screen.
 
-Your horse runs on its own; you only choose the turns. Because turns are
-buffered, you can line up a sequence through a junction before you reach it.
+Your horse runs on its own and follows the trail round a bend; you only pick
+the way at forks. It stops at a fork (or the hideout) until you steer. Because
+turns are buffered, you can line up a sequence through a junction before you
+reach it.
 
 ## Pickups
 
-Gold is the bulk of what turns up on the streets; the rest is rarer.
+Gold is the bulk of what turns up on the streets and trails; the rest is rarer.
 
 | Sprite | Pickup | Effect |
 | ------ | ------ | ------ |
@@ -89,7 +92,7 @@ Gold is the bulk of what turns up on the streets; the rest is rarer.
 | purple ticket token | Rail pass | Ride the rails on a handcar once (only appears after the store unlock) |
 
 There is also a **stagecoach** (red and gold, a strongbox on its roof) rolling
-around town. Ride into it to rob it of $1,000, but it costs you two badges on
+around the map. Ride into it to rob it of $1,000, but it costs you two badges on
 the spot.
 
 A lasso that catches a deputy yanks him out of the saddle (his hat goes flying)
@@ -98,21 +101,23 @@ shrugs off the first rope. A lasso that lands on a barricade pulls it apart.
 
 ## The railroad
 
-A railroad loops around town, about nine tiles in from the map edges, and one
+A railroad loops around the map, about nine tiles in from the edges, and one
 steam train runs it nonstop at twice the base speed of your horse. The corners
-are cut at 45 degrees, so the loop is an octagon. Main Street and your hideout
-sit inside it and the outskirts outside it.
+are cut at 45 degrees, so the loop is an octagon. The town stands inside it,
+against the bottom of the loop. Its Front Street runs along the tracks and the
+depot faces it. The river runs over the loop on two timber trestles.
 
-Streets only cross the track at **planked crossings**. Three seconds before the
-train reaches a crossing, the engineer blows the whistle, the lanterns flash
-and the gates swing down. They stay down until the last car has cleared.
-Anything the moving train runs into is wrecked:
+Roads only cross the track at **planked crossings**, each marked with a
+crossbuck sign. There are no signal lamps; it's the 1880s. Three seconds before
+the train reaches a crossing, the engineer blows the whistle, the crossing
+keeper runs out waving his red flag, and the gates swing down. They stay down
+until the last car has cleared. Anything the moving train runs into is wrecked:
 
 | Hit | Result |
 | --- | ------ |
 | You | A life and your loot, whatever your grit |
 | Deputies / marshals' wagon | Out of the chase, replaced after the usual delay |
-| Stagecoach | Smashed; the strongbox is left on the street for you to grab |
+| Stagecoach | Smashed; the strongbox is left on the road for you to grab |
 
 The posse never rides through lowered gates, and while they're held on the
 other side of the loop they can't see you. Cross just before the train and the
@@ -122,7 +127,7 @@ round.
 **Rail pass.** A one-time store unlock ($3,000) adds rail passes to the pickups.
 With one in hand, turn off a crossing onto the track: the pass is spent, the
 outlaw jumps onto a pump handcar that follows the rails on its own, and no one
-in the posse can follow you. Turn onto the street at any crossing to get off.
+in the posse can follow you. Turn onto the road at any crossing to get off.
 Getting back on takes another pass. The train is on the same loop, so watch the
 loop map in the top-right corner. The posse waits for you beside the crossings
 ahead.
@@ -146,7 +151,7 @@ costing $500 / $1,500 / $4,000 out of your stash:
 | Lassos | 2 → 5 lassos |
 
 Upgrades apply mid-run and persist across runs. Below the tracks is the one-time
-**rail pass** unlock ($3,000), which makes rail passes turn up on the streets.
+**rail pass** unlock ($3,000), which makes rail passes turn up on the roads.
 
 ## Running it locally
 
@@ -166,36 +171,55 @@ full URL on startup.
 
 ## How the map is built
 
-The railroad loop is laid out first, with a few crossing points picked on each
-straight side. `NetworkGenerator` treats the rest of the track as a wall and
-seeds every crossing as a short street stub straight through it. Then it grows
-a street network outward from the player's spawn using a growing-tree walk,
-rather than stamping a grid. It guarantees full connectivity, balanced growth
-across all four quadrants, junctions at least 3 tiles apart, and no dead ends
-except the spawn tile, so every street you can turn onto actually goes
-somewhere. Crossings the network never connected on both sides are pruned back
-to track. `MapManager` then places the hideout, the depot (beside a straight
-stretch of track, clear of crossings) and three water troughs on reachable,
-well-spaced pads and auto-tiles the streets.
+`FrontierGenerator` lays the map out in order, on top of the railroad loop:
 
-Generation retries (up to 50 attempts) if a layout fails its reachability check
-or keeps fewer than five crossings.
+1. **The town**, a surveyed grid against the bottom of the loop. Front Street
+   runs along the tracks, the way Dodge City faced the Santa Fe, with parallel
+   streets up the hill and cross streets between them. The hideout is a dead-end
+   lane off the top street.
+2. **The river** runs from one map edge to another. It passes over the loop on
+   two trestles, bends north of town, and is routed by A* over a noise field so
+   it meanders.
+3. **Level crossings.** The town's cross streets carry on over the tracks, and
+   each other side of the loop gets a few crossings, clear of the trestles.
+4. **Mountain ranges** along one or two map edges, with the big peaks in the
+   middle of the range and one kind of rock per range. **Mesas and buttes**
+   stand alone out on the range.
+5. **Wagon trails.** Waypoints go on a jittered grid over the open range, and a
+   Gabriel graph links them with the town's gates and the crossings: the spanning
+   edges first, so everything is reached, then most of the rest for loops. Each
+   edge is routed by A* that winds round rough ground and mountain feet, never
+   runs alongside another trail, and crosses the river only on a bridge, square
+   to the current. Trails that came to nothing are pruned, so the hideout lane
+   is the only dead end.
 
-The logic grid only knows *road* and *not road*. `cityLayout.js` decides what
-that looks like. Street cells pick one of 47 autotiles from their neighbours,
-and the streets carry their own boardwalks (hitching rails and barrels
-included), so the buildings behind them pack wall to wall. Each block of
-non-street cells becomes a district: Main Street's false fronts in the middle
-(saloon, bank, hotel, mercantile), the trades around them (smithy, livery,
-barber, feed store, wagon yards), then homesteads (log cabins, painted frame
-houses, adobes), with a freight quarter of barns, lumber yards, water towers
-and a stockyard on one side of town. A few whole blocks, spread across town,
-are commons: cottonwoods, a bandstand, a watering hole, Boot Hill. Buildings
-need a street, so on the outskirts the town only reaches a lot or two back from
-the street and the rest is desert and ranch land. Blocks are carved into 1×1 /
-2×1 / 1×2 / 2×2 lots and dressed from that district's pieces: houses turn to
-face their street, and plots with no street of their own become back gardens.
-It is purely cosmetic and never feeds back into gameplay.
+`MapManager` then places the hideout, the depot (on Front Street, beside a
+straight stretch of track clear of crossings) and three water troughs on
+reachable, well-spaced pads. A roll that keeps fewer than five crossings is
+re-rolled, up to 50 times.
+
+The logic grid only knows *road* and *not road*. Two Phaser-free modules decide
+what it looks like:
+
+- `cityLayout.js` dresses the town. Street cells pick one of 47 autotiles from
+  their neighbours, boardwalks included, so the buildings behind them pack wall
+  to wall. The blocks between Front Street and Main Street are false fronts:
+  saloon, bank, hotel, jail, barber, gunsmith, opera house and the rest, each
+  business with its own lettered sign and one bank or jail to a town. Stock pens
+  and freight sheds stand at the ends by the railroad. The next blocks up hold
+  the trades (smithy, livery, feed store, wagon yards), then homesteads, a
+  church and the schoolhouse up the hill, with one block kept as the town
+  common.
+- `landLayout.js` draws everything past the edge of town. The ground is sand or
+  dry grass, chosen per tile *corner* from a broad noise field, so desert and
+  prairie drift across the map in natural shapes; the river keeps its banks
+  green. Over it lie the trails, the bridges, homesteads and ranches beside the
+  trails (a mine at a mountain's foot, Boot Hill near town, an adobe mission in
+  the desert), and a scatter of saguaros, prickly pear, sagebrush, cottonwoods
+  and boulders. Mountains and mesas are sprites standing on the footprints the
+  generator kept clear.
+
+It is all purely cosmetic and never feeds back into gameplay.
 
 ## Art
 
@@ -219,10 +243,12 @@ scaled with nearest-neighbour: 2× for the world (a 32px art tile is the game's
 | Module | Draws |
 | ------ | ----- |
 | `pixelkit.py` | canvas helpers: shapes, outlines, bevels, dithering, RotSprite rotation |
-| `art_city.py` | the town tileset: dirt streets with boardwalks, and lot pieces for each district |
+| `art_city.py` | the town tileset: dirt streets with boardwalks, homesteads, freight and stock pens, the commons |
+| `art_town.py` | Main Street's false fronts with lettered signs, the church, the schoolhouse, the water tower |
+| `art_land.py` | the open range: terrain blends, the river, trails and bridges, cacti and scrub, ranches and homesteads, mountain and mesa sprites |
 | `art_sprites.py` | riders with a four-phase gallop, wagons, the handcar, the balloon, pickups, props, effects, HUD icons, UI panels |
 | `art_menu.py` | the title screen's sunset parallax (sky, mesas, town, trail), side-on galloping riders, the logo |
-| `art_rail.py` | track tiles drawn from the loop's geometry, crossings and their gates, the steam train, the depot |
+| `art_rail.py` | track tiles drawn from the loop's geometry, trestles, crossings with their gates and keeper, the steam train, the depot |
 
 Mount sheets hold one row of LEFT / UP / RIGHT / DOWN frames per gait phase, and
 a move steps through a whole stride per tile, so the legs keep time with the
@@ -262,6 +288,7 @@ src/
   constants.js      tile size, map dimensions, tile/direction enums
   art.js            asset keys, frame indices and shared animations
   cityLayout.js     cosmetic town dressing: street autotiles, districts, lots
+  landLayout.js     cosmetic open range: terrain, river, trails, scrub, homesteads, mountains
   fx.js             one-shot effects (explosions, dust, gunsmoke, popups) and tumbleweeds
   gamepad.js        Gamepad API polling, edge detection and per-scene bindings
   GameState.js      pure run state — money, lives, stamina, badges, grit
@@ -270,7 +297,7 @@ src/
   pathfinding.js    BFS used by the posse AI
   railway.js        the loop's geometry and the train's schedule and occupancy
   turnQueue.js      the buffered-turn queue
-  generators/       NetworkGenerator — procedural street layout
+  generators/       FrontierGenerator: town, river, mountains, crossings, trails
   managers/         Input, Map, Police, Rail, UI
   objects/          Car, PoliceCar, SwatVan, Helicopter, DiamondCar,
                     Collectible, Bomb, Rocket, Roadblock, Train, LevelCrossing
@@ -283,7 +310,7 @@ tools/              the pixel-art generator (Python)
 
 The design splits Phaser-dependent rendering from plain-JS game logic. Anything
 holding rules — `GameState`, `garage`, `storage`, `pathfinding`, `turnQueue`, `railway`, gamepad
-polling, the collectible weight table, map reachability, town layout — imports no Phaser and
+polling, the collectible weight table, map generation and reachability, town and land layout — imports no Phaser and
 is unit tested directly.
 
 ## Deployment

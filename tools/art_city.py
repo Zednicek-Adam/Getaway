@@ -2,13 +2,13 @@
 
 Streets own their boardwalks (drawn on the street tile's edges that face a
 block), so lots can be packed wall to wall like a real frontier main street.
-Every lot piece belongs to a zone — downtown (Main Street's false fronts),
-commercial (the trades: smithy, livery, wagon yards), residential
-(homesteads), industrial (freight barns, lumber, water towers, stockyards),
-park (the commons and Boot Hill), or the desert and ranch land past the last
-street — and src/cityLayout.js zones whole blocks at a time. Each piece is a
-distinct design (no recoloured or re-rolled twins), and identical tiles are
-stored once in the tileset.
+Every lot piece belongs to a zone — downtown (Main Street's false fronts,
+drawn by art_town.py), commercial (the trades: smithy, livery, wagon yards),
+residential (homesteads, the church, the schoolhouse), industrial (freight
+barns, lumber, water towers, stockyards) or park (the town common) — and
+src/cityLayout.js zones whole blocks at a time. Each piece is a distinct
+design (no recoloured or re-rolled twins), and identical tiles are stored once
+in the tileset. Everything past the edge of town is art_land.py.
 """
 import math
 
@@ -83,26 +83,6 @@ HAY_D = hexc('#b08a36')
 HAY_L = hexc('#f0d27c')
 COW = hexc('#5e3a24')
 
-DOWNTOWN_STYLES = [
-    dict(name='saloon', wall=hexc('#a8452e'), trim=hexc('#ecc878'), roof=hexc('#8e6a50'),
-         sign=hexc('#2e2018'), letters=hexc('#f0d890'), doors='batwing'),
-    dict(name='bank', wall=BRICK, trim=hexc('#ddd4c2'), roof=hexc('#76706c'),
-         sign=hexc('#1e3a2a'), letters=hexc('#ffc933'), brick=True),
-    dict(name='hotel', wall=hexc('#d8c8a0'), trim=hexc('#5e7e5e'), roof=hexc('#94503c'),
-         sign=hexc('#4a6a52'), letters=hexc('#f6eedc')),
-    dict(name='mercantile', wall=hexc('#7e8e9c'), trim=hexc('#efe6cf'), roof=hexc('#5e806c'),
-         sign=hexc('#efe6cf'), letters=hexc('#3a2a20')),
-]
-COMMERCIAL_STYLES = [
-    dict(name='smithy', wall=STONE, trim=hexc('#5e5a56'), roof=hexc('#7e7268'),
-         sign=hexc('#2a2626'), letters=hexc('#e8743c'), stone=True),
-    dict(name='livery', wall=hexc('#9c3428'), trim=hexc('#efe6cf'), roof=hexc('#6a5a4c'),
-         sign=hexc('#efe6cf'), letters=hexc('#9c3428'), doors='barn'),
-    dict(name='barber', wall=hexc('#e6e0d0'), trim=hexc('#b8342a'), roof=hexc('#56707e'),
-         sign=hexc('#2f4a7a'), letters=hexc('#efe6cf')),
-    dict(name='feed', wall=hexc('#c49a5a'), trim=hexc('#6a4426'), roof=hexc('#8a6e52'),
-         sign=hexc('#6a4426'), letters=hexc('#f0d890')),
-]
 HOUSE_PAINTS = [hexc('#efe6d2'), hexc('#d8c49a'), hexc('#b8c4a8'), hexc('#c48a6a'), hexc('#a8b4c0')]
 HOUSE_ROOFS = [(hexc('#8a6a52'), hexc('#644a38')), (hexc('#6e6a64'), hexc('#4e4a46')),
                (hexc('#9a5a3e'), hexc('#6e3e2a')), (hexc('#7a7058'), hexc('#58503e'))]
@@ -417,13 +397,6 @@ def _grass(a, rng, x0=0, y0=0, w=None, h=None):
         a.set(x + 1, y - 1, TUFT)
 
 
-def _sand(a, rng):
-    noise_fill(a, 0, 0, a.w, a.h, [(SAND, 70), (SAND_D, 18), (SAND_L, 12)], rng)
-    for _ in range(a.w * a.h // 70):
-        x, y = rng.randint(1, a.w - 2), rng.randint(1, a.h - 2)
-        a.set(x, y, hexc('#b8a06a'))
-
-
 def _scatter_trees(a, rng, box, count, radii=(4, 5, 5, 6), avoid=()):
     x0, y0, x1, y1 = box
     placed = []
@@ -493,7 +466,7 @@ def _cow(a, x, y, facing=1, colour=COW):
     a.set(x + 3, y + 1, hexc('#efe6d6'))
 
 
-# --- Main Street: false fronts packed wall to wall ---------------------------------------
+# --- Shopfront helpers (the boarding house), the town well, wagon yards -----------------
 
 def _wall(a, x0, x1, ya, yb, style):
     wall = style['wall']
@@ -595,77 +568,6 @@ def _gable(a, x0, y0, x1, y1, roof, rng, tin=False):
     a.hline(x0, x1, y0, shade(roof, 1.1))
 
 
-def _flat(a, x0, y0, x1, y1, roof, rng):
-    noise_fill(a, x0, y0, x1 - x0 + 1, y1 - y0 + 1, [(roof, 20), (shade(roof, 0.93), 3), (shade(roof, 1.06), 2)], rng)
-    a.hline(x0, x1, y0, shade(roof, 1.2))
-    a.vline(x0, y0, y1, shade(roof, 1.12))
-    a.vline(x1, y0, y1, shade(roof, 0.8))
-
-
-def _parapet(a, x0, x1, fy, style, rise):
-    """The false front's top rising over the roof, stepped in the middle."""
-    w = x1 - x0 + 1
-    steps = [(x0, x1, 1), (x0 + w // 5, x1 - w // 5, rise)]
-    for (sx0, sx1, h) in steps:
-        for y in range(fy - h, fy):
-            a.hline(sx0, sx1, y, style['wall'])
-        a.hline(sx0, sx1, fy - h, style['trim'])
-        a.set(sx0, fy - h, shade(style['trim'], 1.1))
-
-
-def _cupola(a, cx, cy, roof, rng):
-    """A little square bell tower with its own pyramid roof."""
-    x0, y0 = int(cx) - 4, int(cy) - 4
-    _cast_shadow(a, x0, y0, x0 + 7, y0 + 7, 2)
-    for y in range(8):
-        for x in range(8):
-            d = min(x, y, 7 - x, 7 - y)
-            tri_left = x < 4
-            c = shade(roof, 1.15 - 0.05 * d) if tri_left else shade(roof, 0.8 - 0.03 * d)
-            if y < x and y < 7 - x:
-                c = shade(roof, 1.25)
-            elif y > x and y > 7 - x:
-                c = shade(roof, 0.7)
-            a.put(x0 + x, y0 + y, c)
-    a.set(x0 + 3, y0 + 3, hexc('#ffc933'))
-    a.set(x0 + 4, y0 + 4, hexc('#c8932a'))
-    _box_outline(a, x0, y0, x0 + 7, y0 + 7)
-
-
-def frontier_building(tw, th, style, rng, tall, roof='gable'):
-    """A false-front building filling its lot, 3/4 view (front at the bottom).
-
-    It leaves a 1px seam on the top/left and a 2px strip on the bottom/right
-    for its own shadow, so neighbours read as separate buildings sharing a
-    block. `roof` picks the roof: gable (shingles), tin, flat (tar with
-    stovepipes and a rain barrel) or cupola (a bell tower, 2x2 only)."""
-    w, h = tw * T, th * T
-    a = Art(w, h)
-    _yard(a, rng)
-    x0, y0, x1, y1 = 1, 1, w - 3, h - 3
-    facade_h = (14 if th == 1 else 18) if tall else (10 if th == 1 else 12)
-    fy = y1 - facade_h + 1
-    _cast_shadow(a, x0, y0, x1, y1, 2)
-    ry1 = fy - 1
-    if roof == 'flat':
-        _flat(a, x0, y0, x1, ry1, style['roof'], rng)
-        _stovepipe(a, x0 + 4, y0 + 3)
-        if x1 - x0 > 20:
-            _barrel(a, x1 - 5, y0 + 5)
-    else:
-        _gable(a, x0, y0, x1, ry1, style['roof'], rng, tin=roof == 'tin')
-        if ry1 - y0 > 7:
-            _chimney(a, x1 - 6 if rng.random() < 0.5 else x0 + 3, y0 + 2,
-                     STONE if style.get('stone') else BRICK)
-    if roof == 'cupola':
-        _cupola(a, (x0 + x1 + 1) / 2, (y0 + ry1) / 2, shade(style['roof'], 1.1), rng)
-    _box_outline(a, x0, y0, x1, ry1)
-    _storefront(a, rng, x0, x1, fy, y1, style, tall)
-    _parapet(a, x0, x1, fy, style, 3 if tall else 2)
-    _box_outline(a, x0, fy, x1, y1)
-    return a
-
-
 def plaza_piece(variant):
     """Town square: the well with its little roof, or the flagpole."""
     rng = rng_for('plaza', variant)
@@ -749,22 +651,22 @@ def _fence(a, style='rail', side='D', openings=()):
         return
     open_at = set(openings)
 
-    def mark(x, y, along):
-        if style == 'picket':
+    def mark(x, y, along, front):
+        if style == 'picket' and front:
             a.put(x, y, hexc('#8a7e6a') if along % 3 == 0 else hexc('#ece4d0'))
-        else:
-            a.put(x, y, WOOD_DD if along % 6 == 0 else WOOD if along % 2 else WOOD_L)
+        elif along % 2 == 0:
+            a.put(x, y, WOOD_DD if along % 6 == 0 else WOOD)
 
     for x in range(a.w):
         if not (side == 'U' and x in open_at):
-            mark(x, 0, x)
+            mark(x, 0, x, side == 'U')
         if not (side == 'D' and x in open_at):
-            mark(x, a.h - 1, x)
+            mark(x, a.h - 1, x, side == 'D')
     for y in range(a.h):
         if not (side == 'L' and y in open_at):
-            mark(0, y, y)
+            mark(0, y, y, side == 'L')
         if not (side == 'R' and y in open_at):
-            mark(a.w - 1, y, y)
+            mark(a.w - 1, y, y, side == 'R')
 
 
 def _gate(x):
@@ -807,7 +709,7 @@ def _house(a, rng, x0, y0, hw, roof_h, wall_h, kind=None):
     """A homestead house; (x0, y0) is the roof's top-left. kind: cabin (log
     walls, shake roof), frame (painted clapboard with a porch) or adobe (flat
     roof, beam ends). Returns its box and the door's column."""
-    kind = kind or rng.choice(('cabin', 'frame', 'frame', 'adobe'))
+    kind = kind or rng.choice(('cabin', 'frame', 'frame', 'frame'))
     x1 = x0 + hw - 1
     ry1 = y0 + roof_h - 1
     wy1 = ry1 + wall_h
@@ -829,10 +731,10 @@ def _house(a, rng, x0, y0, hw, roof_h, wall_h, kind=None):
         for vx in range(x0 + 2, x1 - 1, 3):
             a.set(vx, ry1 + 1, WOOD_DD)
             a.set(vx, ry1 + 2, WOOD_D)
-        door_x = x0 + hw // 2 + 1
+        door_x = x1 - 6
         a.rect(door_x, wy1 - 3, 3, 3, hexc('#2e6a8a'))  # turquoise door
         a.set(door_x + 2, wy1 - 2, hexc('#d8b060'))
-        a.rect(x0 + 3, ry1 + 3, 3, 2, GLASS)
+        a.rect(x0 + 3, ry1 + 3, 4, 2, GLASS)
         a.set(x0 + 3, ry1 + 3, GLASS_L)
         for k in range(3):  # ristra of chilies by the door
             a.set(door_x - 2, ry1 + 2 + k, hexc('#b8342a'))
@@ -849,16 +751,14 @@ def _house(a, rng, x0, y0, hw, roof_h, wall_h, kind=None):
             a.vline(x1 - 1, ry1 + 1, wy1, shade(paint, 0.8))
             roof_l, roof_d = rng.choice(HOUSE_ROOFS)
         a.hline(x0 + 1, x1 - 1, wy1, shade(a.get(x0 + 2, wy1 - 1), 0.7))
-        door_x = x0 + hw // 2 - 1
+        door_x = x0 + 3 if kind == 'frame' else x1 - 6
         a.rect(door_x, wy1 - 3, 3, 3, DOOR if kind == 'frame' else hexc('#4a2e1e'))
         a.set(door_x + 2, wy1 - 2, hexc('#d8b060'))
-        for wx in (x0 + 3, x1 - 5):
-            if wall_h >= 4:
+        windows = (door_x + 6, x1 - 5) if kind == 'frame' else (x0 + 3,)
+        for wx in windows:
+            if wall_h >= 4 and wx + 3 < x1:
                 a.rect(wx, ry1 + 2, 3, 2, GLASS)
                 a.set(wx, ry1 + 2, GLASS_L)
-                if kind == 'frame':
-                    a.set(wx - 1, ry1 + 2, hexc('#4a6a52'))
-                    a.set(wx + 3, ry1 + 2, hexc('#4a6a52'))
         # roof: lit upper slope, shaded lower slope, bright ridge; shakes in courses
         mid = y0 + roof_h // 2
         for y in range(y0, ry1 + 1):
@@ -871,9 +771,9 @@ def _house(a, rng, x0, y0, hw, roof_h, wall_h, kind=None):
         a.hline(x0, x1, mid, shade(roof_l, 1.2))
         a.hline(x0, x1, ry1, shade(roof_d, 0.78))
         if kind == 'frame':
-            # porch roof along the front
+            # porch roof along the front, on posts
             a.hline(x0, x1, ry1 + 1, shade(roof_d, 1.1))
-            for px in (x0 + 1, x1 - 1):
+            for px in range(x0 + 1, x1, 6):
                 a.vline(px, ry1 + 2, wy1, hexc('#ece4d0'))
         cx = x1 - 5 if rng.random() < 0.5 else x0 + 3
         _chimney(a, cx, y0 + 1, STONE if kind == 'cabin' else BRICK)
@@ -1118,7 +1018,7 @@ def freight_barn(tw, th, variant):
     w, h = tw * T, th * T
     a = Art(w, h)
     _work_yard(a, rng)
-    roofs = (hexc('#8e969c'), hexc('#8a5a44'), hexc('#7a6a58'))
+    roofs = (hexc('#9a948a'), hexc('#8a5a44'), hexc('#7a6a58'))
     shape = {(2, 1): 0, (1, 2): 1, (2, 2): 2}[(tw, th)]
     roof = roofs[(shape + variant) % len(roofs)]
     wall = (hexc('#9a6a44'), hexc('#a84a34'))[variant % 2]
@@ -1255,7 +1155,7 @@ def sawmill_piece(variant):
     return a
 
 
-# --- The commons and Boot Hill -------------------------------------------------------
+# --- The town common ------------------------------------------------------------------
 
 def _scrub(a, rng, w, h, trees):
     """Cottonwoods, sage and wildflowers. No paths: they'd dead-end at the
@@ -1270,7 +1170,7 @@ def _scrub(a, rng, w, h, trees):
 
 def park_piece(tw, th, kind):
     """Grass runs to every edge so neighbouring park lots merge into one
-    common. kind: scrub, bandstand (1x1), wateringhole or boothill (2x2)."""
+    common. kind: scrub, bandstand (1x1) or wateringhole (2x2)."""
     rng = rng_for('park', tw, th, kind)
     w, h = tw * T, th * T
     a = Art(w, h)
@@ -1287,35 +1187,6 @@ def park_piece(tw, th, kind):
                 a.vline(int(px) + k, int(py) - 2 - k % 2, int(py), hexc('#6e8a3c'))  # reeds
         for (tx, ty, tr) in [(8, 9, 5), (w - 9, 10, 6), (9, h - 9, 5), (w - 8, h - 8, 4)]:
             draw_tree(a, tx, ty, tr, rng)
-    elif kind == 'boothill':
-        # graves in rows inside a picket fence, a dead tree in the corner
-        x0, y0, x1, y1 = 5, 6, w - 6, h - 6
-        for x in range(x0, x1 + 1):
-            a.put(x, y0, hexc('#ece4d0') if x % 3 else hexc('#8a7e6a'))
-            a.put(x, y1, hexc('#ece4d0') if x % 3 else hexc('#8a7e6a'))
-        for y in range(y0, y1 + 1):
-            a.put(x0, y, hexc('#ece4d0') if y % 3 else hexc('#8a7e6a'))
-            a.put(x1, y, hexc('#ece4d0') if y % 3 else hexc('#8a7e6a'))
-        for gy in range(y0 + 5, y1 - 6, 11):
-            for gx in range(x0 + 5, x1 - 6, 9):
-                a.rect(gx, gy + 3, 4, 6, hexc('#a08058'))  # the mound
-                a.hline(gx, gx + 3, gy + 3, hexc('#b8966a'))
-                if rng.random() < 0.6:
-                    a.vline(gx + 1, gy, gy + 4, WOOD_L)  # cross
-                    a.hline(gx, gx + 2, gy + 1, WOOD_L)
-                    a.set(gx + 2, gy + 4, WOOD_DD)
-                else:
-                    a.rect(gx, gy, 4, 3, STONE)  # headstone
-                    a.hline(gx, gx + 3, gy, hexc('#c8c2b4'))
-                    a.set(gx + 3, gy + 2, STONE_D)
-        # a dead tree, bare branches
-        tx, ty = w - 11, 13
-        for (dx, dy) in ((-5, -4), (4, -5), (-3, 3), (5, 2), (0, -7)):
-            a.line(tx, ty, tx + dx, ty + dy, hexc('#5e4632'))
-        a.disc(tx, ty, 1.4, hexc('#4a3626'))
-        _gate_x = w // 2
-        for x in range(_gate_x - 2, _gate_x + 2):
-            a.put(x, y1, hexc('#a08058'))
     elif kind == 'bandstand':
         cx, cy = T / 2, T / 2
         a.disc(cx + 2, cy + 2, 10, SHADOW)
@@ -1349,144 +1220,7 @@ def _octagon_outline(size, cx, cy, r):
     return o
 
 
-# --- Desert and ranch land --------------------------------------------------------
-# Past the last street the town gives way to desert and ranches. Like park
-# lots, these run to every edge so neighbouring lots read as one landscape.
-
-DESERT_VARIANTS = 10
-
-
-def _tufts(a, rng, count):
-    for _ in range(count):
-        x, y = rng.randint(2, T - 3), rng.randint(2, T - 3)
-        a.set(x, y, TUFT)
-        a.set(x + 1, y - 1, TUFT)
-        if rng.random() < 0.5:
-            a.set(x - 1, y - 1, GRASS_D)
-
-
-def _skull(a, x, y):
-    """A cow skull bleaching in the sun."""
-    bone, bone_d = hexc('#f2ece0'), hexc('#d8ccb4')
-    a.rect(x, y, 3, 3, bone)
-    a.set(x + 1, y + 3, bone)
-    for dx, dy in ((-1, -1), (3, -1), (-2, -2), (4, -2)):
-        a.set(x + dx, y + dy, bone_d)
-    a.set(x, y + 1, hexc('#3a2a20'))
-    a.set(x + 2, y + 1, hexc('#3a2a20'))
-
-
-def desert_piece(variant):
-    """Open desert. Most stretches are bare sand — wind ripples, cracked
-    pans, a few tufts — so the land doesn't tile like wallpaper; the rest
-    carry a saguaro, prickly pear, sage, a rock outcrop or a bleached skull.
-    Everything stays inside the tile so nothing gets cut off at its edge."""
-    rng = rng_for('desert', variant)
-    a = Art(T, T)
-    _sand(a, rng)
-    cx, cy = rng.randint(9, T - 10), rng.randint(9, T - 10)
-    if variant == 0:
-        _tufts(a, rng, 2)
-    elif variant == 1:
-        # wind ripples
-        for k in range(4):
-            y0 = 5 + k * 7 + rng.randint(-1, 1)
-            for x in range(2, T - 2):
-                y = int(y0 + 1.5 * math.sin(x * 0.35 + k))
-                if rng.random() < 0.8:
-                    a.set(x, y, SAND_D)
-                    a.set(x, y - 1, SAND_L)
-    elif variant == 2:
-        # a dry, cracked pan
-        a.ellipse(cx, cy, 8, 6, hexc('#d2b480'))
-        for _ in range(7):
-            x, y = cx + rng.randint(-6, 6), cy + rng.randint(-4, 4)
-            a.line(x, y, x + rng.randint(-3, 3), y + rng.randint(-3, 3), hexc('#b0905e'))
-    elif variant == 3:
-        _tufts(a, rng, 6)
-    elif variant == 4:
-        _tufts(a, rng, 3)
-        _sage(a, cx, cy)
-        _sage(a, cx + rng.choice((-7, 7)), cy + rng.choice((-6, 6)))
-    elif variant == 5:
-        _saguaro(a, cx, cy, [(-4, 0), (4, 1), (0, -4)], rng)
-        _tufts(a, rng, 2)
-    elif variant == 6:
-        _prickly_pear(a, cx, cy)
-        _rock(a, cx + 8 if cx < 16 else cx - 8, cy + 5, 2.2)
-    elif variant == 7:
-        _rock(a, cx, cy, 5.0)
-        _rock(a, cx + 5, cy + 4, 3.0)
-        _tufts(a, rng, 2)
-    elif variant == 8:
-        _skull(a, cx, cy)
-        _tufts(a, rng, 3)
-    else:
-        _saguaro(a, cx, cy, [(3, 0), (-3, -2)], rng)
-        _rock(a, cx - 6 if cx > 16 else cx + 6, cy + 6, 2.0)
-    return a
-
-
-def meadow_piece(variant):
-    """Open range: wildflowers and a lone cottonwood, haystacks, or cattle."""
-    rng = rng_for('meadow', variant)
-    a = Art(T, T)
-    _grass(a, rng)
-    if variant == 0:
-        for _ in range(14):
-            a.set(rng.randint(1, T - 2), rng.randint(1, T - 2), rng.choice(FLOWERS))
-        draw_tree(a, 20, 12, 5, rng)
-    elif variant == 1:
-        for bx, by in ((8, 9), (21, 13), (12, 23)):
-            a.disc(bx + 1.5, by + 1.5, 4, SHADOW)
-            a.disc(bx, by, 4, HAY_D)
-            a.disc(bx - 0.5, by - 0.5, 3.1, HAY)
-            a.disc(bx - 1.2, by - 1.2, 1.4, HAY_L)
-    else:
-        _cow(a, 5, 7, 1)
-        _cow(a, 18, 12, -1, hexc('#2e2420'))
-        _cow(a, 9, 21, 1, hexc('#a8603e'))
-        _sage(a, 25, 25)
-    return a
-
-
-FIELD_CROPS = {
-    'wheat': (hexc('#d8b85a'), hexc('#b8983e')),
-    'corn': (hexc('#8a6440'), hexc('#6aa043')),
-    'ploughed': (hexc('#8e6842'), hexc('#70502e')),
-}
-
-
-def field_piece(tw, th, crop):
-    """A crop field inside a grass margin, so neighbouring fields read as
-    separate plots."""
-    rng = rng_for('field', tw, th, crop)
-    w, h = tw * T, th * T
-    a = Art(w, h)
-    _grass(a, rng)
-    base, row = FIELD_CROPS[crop]
-    x0, y0, x1, y1 = 3, 3, w - 4, h - 4
-    for y in range(y0, y1 + 1):
-        for x in range(x0, x1 + 1):
-            if crop == 'corn':
-                c = row if (y - y0) % 4 in (1, 2) and (x + y) % 3 else base
-                if (y - y0) % 4 == 1 and (x + y) % 5 == 0:
-                    c = hexc('#e8c84a')
-            else:
-                c = row if (y - y0) % 3 == 0 else base
-            if rng.random() < 0.06:
-                c = shade(c, 1.1 if rng.random() < 0.5 else 0.9)
-            a.put(x, y, c)
-    a.hline(x0, x1, y1 + 1, shade(base, 0.7))
-    if crop == 'wheat':
-        # a scarecrow keeping watch
-        sx, sy = w - 12, 10
-        a.hline(sx - 3, sx + 3, sy, WOOD_D)
-        a.vline(sx, sy - 2, sy + 4, WOOD_D)
-        a.disc(sx + 0.5, sy - 2.5, 1.6, hexc('#c8986a'))
-        a.set(sx - 3, sy - 1, hexc('#b8342a'))
-    return a
-
+# --- Bare ground (under the landmarks) -----------------------------------------------
 
 def ground_piece():
     rng = rng_for('ground')
@@ -1497,20 +1231,6 @@ def ground_piece():
 
 # --- Catalogue -------------------------------------------------------------------
 
-# Roof per footprint (1x1, 2x1, 1x2, 2x2), spread so no two pieces of the
-# same footprint read alike
-DOWNTOWN_ROOFS = {
-    'saloon': ('gable', 'tin', 'gable', 'cupola'),
-    'bank': ('flat', 'flat', 'tin', 'cupola'),
-    'hotel': ('gable', 'gable', 'flat', 'tin'),
-    'mercantile': ('tin', 'flat', 'gable', 'gable'),
-}
-COMMERCIAL_ROOFS = {
-    'smithy': ('tin', 'flat', 'tin', 'flat'),
-    'livery': ('gable', 'tin'),
-    'barber': ('gable', 'flat', 'tin', 'gable'),
-    'feed': ('flat', 'gable'),
-}
 FOOTPRINTS = ((1, 1), (2, 1), (1, 2), (2, 2))
 
 
@@ -1525,19 +1245,17 @@ def city_pieces():
     def add(name, zone, art, **extra):
         pieces.append({'name': name, 'zone': zone, 'art': art, **extra})
 
-    # Main Street: false fronts wall to wall, the odd town square
-    for style in DOWNTOWN_STYLES:
-        for (tw, th), roof in zip(FOOTPRINTS, DOWNTOWN_ROOFS[style['name']]):
-            add(f'front_{tw}x{th}_{style["name"]}', 'downtown',
-                frontier_building(tw, th, style, rng_for('front', tw, th, style['name']), True, roof))
+    import art_town
+
+    # Main Street: every business its own false front, and the town well
+    for name, (tw, th), spec in art_town.DOWNTOWN:
+        add(f'front_{tw}x{th}_{name}', 'downtown', art_town.false_front(tw, th, spec))
     for v in range(2):
         add(f'plaza_{v}', 'downtown', plaza_piece(v))
 
-    # The trades: low workshops and stables, wagon yards
-    for style in COMMERCIAL_STYLES:
-        for (tw, th), roof in zip(FOOTPRINTS, COMMERCIAL_ROOFS[style['name']]):
-            add(f'trade_{tw}x{th}_{style["name"]}', 'commercial',
-                frontier_building(tw, th, style, rng_for('trade', tw, th, style['name']), False, roof))
+    # The trades, a block back: smithy, livery, feed store, wagon yards
+    for name, (tw, th), spec in art_town.COMMERCIAL:
+        add(f'trade_{tw}x{th}_{name}', 'commercial', art_town.false_front(tw, th, spec))
     for v in range(2):
         add(f'wagons_2x1_{v}', 'commercial', wagon_yard(2, 1, v))
     add('wagons_2x2', 'commercial', wagon_yard(2, 2, 0))
@@ -1551,6 +1269,9 @@ def city_pieces():
         add(f'house_2x1_{facing}', 'residential', wide_house_lot(facing), faces=facing)
         add(f'house_1x2_{facing}', 'residential', tall_house_lot(facing), faces=facing)
     add('boarding_2x2', 'residential', boarding_lot())
+    add('church_1x2', 'residential', art_town.church(1, 2), faces='D')
+    add('church_2x2', 'residential', art_town.church(2, 2), faces='D')
+    add('school_1x1', 'residential', art_town.schoolhouse(), faces='D')
     for v in range(2):
         add(f'garden_{v}', 'residential', garden_lot(v), back=True)
 
@@ -1562,6 +1283,7 @@ def city_pieces():
         add(f'lumber_1x1_{v}', 'industrial', lumber_yard(1, 1, v))
         add(f'lumber_2x1_{v}', 'industrial', lumber_yard(2, 1, v))
     add('towers_2x2', 'industrial', tower_piece(0))
+    add('towers_1x1', 'industrial', art_town.water_tower())
     add('stockyard_2x2', 'industrial', tower_piece(1))
 
     # The commons fill whole blocks
@@ -1570,16 +1292,7 @@ def city_pieces():
     add('park_2x1_scrub', 'park', park_piece(2, 1, 'scrub'))
     add('park_1x2_scrub', 'park', park_piece(1, 2, 'scrub'))
     add('wateringhole', 'park', park_piece(2, 2, 'wateringhole'))
-    add('boothill', 'park', park_piece(2, 2, 'boothill'))
 
-    # Desert and ranch land past the last street
-    for v in range(DESERT_VARIANTS):
-        add(f'desert_{v}', 'desert', desert_piece(v))
-    for v in range(3):
-        add(f'meadow_{v}', 'ranch', meadow_piece(v))
-    add('field_2x2_wheat', 'ranch', field_piece(2, 2, 'wheat'))
-    add('field_2x2_corn', 'ranch', field_piece(2, 2, 'corn'))
-    add('field_2x1_ploughed', 'ranch', field_piece(2, 1, 'ploughed'))
     return pieces
 
 
