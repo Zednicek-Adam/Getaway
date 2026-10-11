@@ -1,39 +1,42 @@
 import { TILE_SIZE } from '../constants';
 import { CONFIG } from '../config';
 
-// Where the airframe is drawn relative to its ground point (the spotlight
-// centre). It hangs well above and behind the beam so it never sits on top of
-// the player's car; the shadow is thrown down-right like every other shadow.
-const BODY_LIFT = 84;
-const SHADOW_OFFSET = { x: 40, y: 52 };
+// Where the balloon is drawn relative to its ground point (the limelight's
+// centre). It floats well above and behind the beam so it never sits on top
+// of the player; its shadow is thrown down-right like every other shadow.
+const BODY_LIFT = 110;
+const LAMP_Y = 36;            // the limelight on the basket, below the body's centre
+const SHADOW_OFFSET = { x: 44, y: 54 };
+const BEAM_COLOUR = 0xffe8a8;
 
-// A 5-star helicopter. Pixel-space follower (not grid-bound): chases the player
-// at a fixed px/s so it lags on straights and cuts corners. Not destroyable —
-// pure pressure. Its spotlight overlapping the player counts as "spotted".
+// The 5-star army observation balloon. Pixel-space follower (not grid-bound):
+// drifts after the player at a fixed px/s so it lags on straights and cuts
+// corners. Not destroyable — pure pressure. Its limelight on the player
+// counts as "spotted".
 export class Helicopter {
     constructor(scene, x, y) {
         this.scene = scene;
         this.x = x;
         this.y = y;
-        this.frame = 4; // facing down, towards the player it spawned above
+        this.frame = 1; // pennant hanging limp
 
-        // Spotlight cast on the ground (under cars, depth 0.8). The texture's
+        // Limelight cast on the ground (under riders, depth 0.8). The texture's
         // radius is exactly SPOT_RADIUS_TILES, so what you see is what spots you.
         this.spotlight = scene.add.image(x, y, 'spotlight').setDepth(0.8).setBlendMode('ADD');
         this.spotlight.setDisplaySize(CONFIG.HELICOPTER.SPOT_RADIUS_TILES * TILE_SIZE * 2,
             CONFIG.HELICOPTER.SPOT_RADIUS_TILES * TILE_SIZE * 2);
 
-        // Airframe + rotor sit above cars (depth 5); the shadow is on the ground
-        this.shadow = scene.add.sprite(x, y, 'heliShadow', this.frame).setDepth(0.85);
-        this.body = scene.add.sprite(x, y, 'heli', this.frame).setDepth(5);
-        this.rotor = scene.add.sprite(x, y, 'rotor', 0).setDepth(5.1).setAlpha(0.9);
-        this.rotor.play('rotor-spin');
+        // The beam from the basket down to the pool of light, then the balloon
+        // itself above everything on the ground; its shadow lies on the street
+        this.beam = scene.add.graphics().setDepth(4.9).setBlendMode('ADD');
+        this.shadow = scene.add.image(x, y, 'balloonShadow').setDepth(0.85);
+        this.body = scene.add.sprite(x, y, 'balloon', this.frame).setDepth(5);
         this.time = 0;
     }
 
-    // Move toward (targetX, targetY) at a fixed pixel speed (no naive lerp), then
-    // drag every visual to the new position and turn the airframe to face along
-    // its flight path.
+    // Drift toward (targetX, targetY) at a fixed pixel speed (no naive lerp),
+    // then drag every visual along. The pennant streams back from the way
+    // the balloon is drifting.
     update(delta, targetX, targetY) {
         const dx = targetX - this.x;
         const dy = targetY - this.y;
@@ -45,21 +48,26 @@ export class Helicopter {
             this.y += (dy / dist) * step;
         }
         if (dist > 12) {
-            // 8 pre-rotated frames, clockwise from "up"
-            const deg = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
-            this.frame = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
+            this.frame = Math.abs(dx) < dist * 0.4 ? 1 : dx > 0 ? 0 : 2;
         }
 
         this.time += delta;
-        const hover = Math.round(Math.sin(this.time / 260) * 2);
+        const bob = Math.round(Math.sin(this.time / 420) * 3);
+        const bodyY = this.y - BODY_LIFT + bob;
         this.spotlight.setPosition(this.x, this.y);
         this.spotlight.setAlpha(0.85 + Math.sin(this.time / 90) * 0.08);
-        this.shadow.setPosition(this.x + SHADOW_OFFSET.x, this.y + SHADOW_OFFSET.y).setFrame(this.frame);
-        this.body.setPosition(this.x, this.y - BODY_LIFT + hover).setFrame(this.frame);
-        this.rotor.setPosition(this.x, this.y - BODY_LIFT + hover - 4);
+        this.shadow.setPosition(this.x + SHADOW_OFFSET.x, this.y + SHADOW_OFFSET.y);
+        this.body.setPosition(this.x, bodyY).setFrame(this.frame)
+            .setAngle(Math.sin(this.time / 700) * 2.5);
+
+        // A faint cone of limelight from the lamp to the ground
+        const r = CONFIG.HELICOPTER.SPOT_RADIUS_TILES * TILE_SIZE * 0.8;
+        this.beam.clear()
+            .fillStyle(BEAM_COLOUR, 0.1 + Math.sin(this.time / 90) * 0.02)
+            .fillTriangle(this.x, bodyY + LAMP_Y, this.x - r, this.y, this.x + r, this.y);
     }
 
-    // Euclidean overlap of the spotlight with the player position.
+    // Euclidean overlap of the limelight with the player position.
     isOverPlayer(px, py) {
         const dx = px - this.x;
         const dy = py - this.y;
@@ -69,8 +77,8 @@ export class Helicopter {
 
     destroy() {
         this.spotlight.destroy();
+        this.beam.destroy();
         this.shadow.destroy();
         this.body.destroy();
-        this.rotor.destroy();
     }
 }

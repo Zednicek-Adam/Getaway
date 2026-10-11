@@ -1,10 +1,15 @@
 import Phaser from 'phaser';
 import { loadSave, getBrowserStorage } from '../storage';
-import { label, panel, icon, money, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
+import { label, panel, icon, money, UI_COLORS, createMenu, townBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
+import { dustPuff, gunshot, DUST_TINT } from '../fx';
 
 // Parallax speeds in texture pixels per millisecond
 const SCROLL = { far: 0.012, near: 0.035, street: 0.3 };
+
+// The trail the riders gallop along, and where their hooves land on it
+const TRAIL_Y = 888;
+const RIDER_Y = TRAIL_Y - 68;
 
 export class MenuScene extends Phaser.Scene {
     constructor() {
@@ -17,21 +22,22 @@ export class MenuScene extends Phaser.Scene {
         // Container for all menu elements (so we can slide them as one unit)
         this.menuContainer = this.add.container(0, 0);
 
-        // Night-city backdrop with a chase playing out on the street
-        this.layers = cityBackdrop(this, this.menuContainer);
+        // Desert sunset with a chase playing out on the trail
+        this.layers = townBackdrop(this, this.menuContainer);
         this.createChase();
 
         // Title
-        const logo = this.add.image(width / 2, 160, 'logo');
+        const logo = this.add.image(width / 2, 170, 'logo');
         this.menuContainer.add(logo);
-        this.tweens.add({ targets: logo, y: 168, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        this.tweens.add({ targets: logo, y: 178, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-        const subtitle = label(this, width / 2, 290, 'PIXEL REMAKE', { color: UI_COLORS.white }).setOrigin(0.5);
+        const subtitle = label(this, width / 2, 322, 'A WILD WEST PIXEL REMAKE', { color: UI_COLORS.goldLight })
+            .setOrigin(0.5);
         this.menuContainer.add(subtitle);
 
-        // Persistent bank readout — shows $0 fine when empty
+        // The persistent stash — shows $0 fine when empty
         const banked = loadSave(getBrowserStorage()).banked;
-        const bankLabel = label(this, 0, 0, `BANK ${money(banked)}`, { color: UI_COLORS.gold }).setOrigin(0, 0.5);
+        const bankLabel = label(this, 0, 0, `STASH ${money(banked)}`, { color: UI_COLORS.gold }).setOrigin(0, 0.5);
         const bankW = Math.ceil((bankLabel.width + 72) / 2) * 2;
         const bankX = width / 2 - bankW / 2;
         const bankPanel = panel(this, bankX, 598, bankW, 52);
@@ -42,13 +48,14 @@ export class MenuScene extends Phaser.Scene {
         // Track whether transition is already in progress
         this.isTransitioning = false;
 
-        // Start Game Action — garage door slide-up transition
+        // Saddle up — the whole title slides away to reveal the town
         const startGame = () => {
             if (this.isTransitioning) return;
             this.isTransitioning = true;
 
-            // Stop the idle tweens so they don't fight the slide
+            // Stop the idle tweens and timers so they don't fight the slide
             this.tweens.killAll();
+            this.time.removeAllEvents();
 
             // Launch GameScene behind the menu so it's visible as menu slides up
             this.scene.launch('GameScene');
@@ -73,10 +80,10 @@ export class MenuScene extends Phaser.Scene {
 
         this.menu = createMenu(this, {
             x: width / 2,
-            y: 410,
+            y: 420,
             items: [
-                { label: 'START', action: startGame },
-                { label: 'INSTRUCTIONS', action: showInstructions },
+                { label: 'SADDLE UP', action: startGame },
+                { label: 'HOW TO PLAY', action: showInstructions },
             ],
             container: this.menuContainer,
         });
@@ -100,26 +107,54 @@ export class MenuScene extends Phaser.Scene {
         bindPad(this, { a: () => this.menu.activate(), start: () => this.menu.activate() });
     }
 
-    // The getaway car tearing along the street with a patrol car on its tail
+    // The outlaw tearing along the trail with two deputies on his tail,
+    // dust flying and the posse firing into the air
     createChase() {
-        const roadY = 888;
-        const police = this.add.sprite(330, roadY, 'menuCars', 2).play('menu-police');
-        const player = this.add.sprite(790, roadY, 'menuCars', 0).play('menu-player');
-        this.sirenGlow = this.add.image(330, roadY - 38, 'glow').setBlendMode('ADD').setScale(3).setAlpha(0.7);
-        this.menuContainer.add([this.sirenGlow, police, player]);
+        const outlaw = this.add.sprite(860, RIDER_Y, 'menuRiders', 0).play('menu-outlaw');
+        const deputies = [300, 520].map((x, i) => this.add.sprite(x, RIDER_Y, 'menuRiders', 6)
+            .play({ key: 'menu-deputy', startFrame: i * 3 }));
+        this.menuContainer.add([...deputies, outlaw]);
+        this.riders = [outlaw, ...deputies];
 
-        // Cars jostle on their suspension, out of step with each other
-        this.tweens.add({ targets: player, y: roadY - 4, duration: 180, yoyo: true, repeat: -1 });
-        this.tweens.add({ targets: police, y: roadY - 4, duration: 210, yoyo: true, repeat: -1, delay: 90 });
-        // The cop surges and drops back as if trying to close the gap
-        this.tweens.add({
-            targets: [police, this.sirenGlow], x: '+=90', duration: 2200, yoyo: true, repeat: -1,
-            ease: 'Sine.easeInOut',
+        // The deputies surge and drop back as if trying to close the gap
+        deputies.forEach((d, i) => {
+            this.tweens.add({
+                targets: d, x: `+=${90 - i * 30}`, duration: 2200 + i * 500, yoyo: true, repeat: -1,
+                ease: 'Sine.easeInOut', delay: i * 400,
+            });
         });
-        // Keep the glow in step with the light bar frame (red first, then blue)
-        police.on('animationupdate', (anim, frame) => {
-            this.sirenGlow.setTint(frame.index === 1 ? 0xff2a3a : 0x2a6aff);
+        this.tweens.add({ targets: outlaw, x: '+=40', duration: 3100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+        // Dust off every set of hooves
+        this.time.addEvent({
+            delay: 90, loop: true, callback: () => {
+                for (const r of this.riders) {
+                    const puff = dustPuff(this, r.x - 60 + Phaser.Math.Between(-10, 10), TRAIL_Y - 8,
+                        { drift: 30, scale: 2.4, depth: 0, tint: 0xc08a64 });
+                    this.menuContainer.addAt(puff, 4);
+                }
+            },
         });
+
+        // Warning shots from the posse
+        this.time.addEvent({
+            delay: 1300, loop: true, callback: () => {
+                const d = Phaser.Utils.Array.GetRandom(deputies);
+                gunshot(this, d.x + 34, d.y - 78);
+            },
+        });
+
+        // Now and then a tumbleweed bowls past
+        this.time.addEvent({ delay: 4500, loop: true, callback: () => this.rollTumbleweed() });
+    }
+
+    rollTumbleweed() {
+        const { width } = this.scale;
+        const weed = this.add.sprite(width + 40, TRAIL_Y - 24, 'tumbleweed', 0).setScale(2).play('tumble');
+        this.menuContainer.add(weed);
+        this.tweens.add({ targets: weed, x: -60, duration: 3600, onComplete: () => weed.destroy() });
+        this.tweens.add({ targets: weed, y: TRAIL_Y - 64, duration: 300, yoyo: true, repeat: 5, ease: 'Quad.easeOut' });
+        dustPuff(this, width - 20, TRAIL_Y - 10, { drift: 10, scale: 2, depth: 0, tint: DUST_TINT });
     }
 
     update(time, delta) {

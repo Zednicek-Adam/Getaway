@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { TILE_SIZE } from '../constants';
 import { COLLECTIBLE_TYPES, createCollectibleIcon } from '../objects/Collectible';
-import { label, panel, dim, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
+import { label, panel, dim, UI_COLORS, createMenu, townBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
 
 // Static "how to play" page reached from the main menu.
@@ -26,10 +26,10 @@ export class InstructionsScene extends Phaser.Scene {
         const { width, height } = this.scale;
         const centre = width / 2;
 
-        // The title screen's city, dimmed behind a big panel
-        cityBackdrop(this);
+        // The title screen's desert sunset, dimmed behind a big panel
+        townBackdrop(this);
         dim(this, 0.55);
-        panel(this, 40, 104, width - 80, height - 224);
+        panel(this, 40, 104, width - 80, height - 200);
 
         label(this, centre, 56, 'HOW TO PLAY', { size: 40, color: UI_COLORS.gold }).setOrigin(0.5);
 
@@ -37,9 +37,9 @@ export class InstructionsScene extends Phaser.Scene {
         this.heading(centre, 146, 'THE JOB');
 
         const goal = [
-            'GRAB CASH OFF THE STREETS AND BANK IT AT THE SAFEHOUSE',
-            'CARRIED CASH IS LOST IF THE COPS BUST YOU - BANK IT OFTEN',
-            '3 LIVES. YOU LOSE ONE TO 3 RAMS OR AN EMPTY TANK',
+            'GRAB GOLD ALONG THE TRAILS AND STASH IT AT YOUR HIDEOUT',
+            'LOOT IN YOUR SADDLEBAGS IS LOST IF THE POSSE CATCHES YOU',
+            '3 LIVES. LOSE ONE TO 3 TACKLES OR A WORN-OUT HORSE',
         ];
         goal.forEach((line, i) => {
             this.body(centre, 186 + i * 30, line, UI_COLORS.white).setOrigin(0.5);
@@ -52,10 +52,10 @@ export class InstructionsScene extends Phaser.Scene {
         // keycap.
         const controls = [
             ['ARROWS/WASD', 'STEER'],
-            ['F / A', 'BRAKE/REFUEL'],
-            ['SPACE / B', 'DROP BOMB'],
-            ['E / X', 'FIRE ROCKET'],
-            ['G / Y', 'GARAGE (BASE)'],
+            ['F / A', 'REIN IN/DRINK'],
+            ['SPACE / B', 'LIGHT DYNAMITE'],
+            ['E / X', 'THROW LASSO'],
+            ['G / Y', 'STORE (HIDEOUT)'],
             ['ESC / START', 'PAUSE'],
         ];
         controls.forEach(([key, action], i) => {
@@ -68,16 +68,16 @@ export class InstructionsScene extends Phaser.Scene {
         this.heading(940, 300, 'PICKUPS');
 
         const pickups = [
-            [COLLECTIBLE_TYPES.MONEY, 'CASH', '+$100'],
-            [COLLECTIBLE_TYPES.REPAIR, 'REPAIR', '-1 DMG'],
-            [COLLECTIBLE_TYPES.NITRO, 'NITRO', '4S BOOST'],
-            [COLLECTIBLE_TYPES.ROCKET, 'ROCKET', '+1 AMMO'],
-            [COLLECTIBLE_TYPES.BOMB, 'BOMB', '+1 AMMO'],
-            [COLLECTIBLE_TYPES.LIFE, 'LIFE', '+1 LIFE'],
-            [COLLECTIBLE_TYPES.RAIL_PASS, 'RAIL PASS', 'RIDE RAILS'],
+            [COLLECTIBLE_TYPES.MONEY, 'GOLD COIN', '+$100'],
+            [COLLECTIBLE_TYPES.REPAIR, 'SNAKE OIL', '+1 GRIT'],
+            [COLLECTIBLE_TYPES.NITRO, 'CARROT', '4S GALLOP'],
+            [COLLECTIBLE_TYPES.ROCKET, 'LASSO', '+1 ROPE'],
+            [COLLECTIBLE_TYPES.BOMB, 'DYNAMITE', '+1 BUNDLE'],
+            [COLLECTIBLE_TYPES.LIFE, 'STETSON', '+1 LIFE'],
+            [COLLECTIBLE_TYPES.RAIL_PASS, 'RAIL PASS', 'HANDCAR'],
         ];
         pickups.forEach(([type, name, effect], i) => {
-            const y = 346 + i * 40;
+            const y = 346 + i * 38;
             const pickup = createCollectibleIcon(this, type, TILE_SIZE);
             pickup.setPosition(770, y);
             this.body(806, y, name, UI_COLORS.white);
@@ -86,20 +86,21 @@ export class InstructionsScene extends Phaser.Scene {
 
         // --- Things that are not obvious from playing ------------------------
         const notes = [
-            ['YOUR CAR DRIVES ITSELF - YOU ONLY CHOOSE THE TURNS', UI_COLORS.cyan],
+            ['YOUR HORSE FOLLOWS THE TRAIL - YOU ONLY PICK THE FORKS', UI_COLORS.cyan],
             ['TURNS QUEUE UP TO 3 AHEAD, SO LINE UP JUNCTIONS EARLY', UI_COLORS.white],
-            ['RAM THE DIAMOND CAR FOR $1000 - IT COSTS YOU 2 STARS', UI_COLORS.white],
-            ['COPS STOP AT LOWERED BARRIERS - YOU CAN BEAT THE TRAIN', UI_COLORS.white],
-            ['RAIL PASS (GARAGE UNLOCK): TURN AT A CROSSING TO RIDE', UI_COLORS.purple],
+            ['REIN IN TO REST YOUR HORSE - A TROUGH REFILLS IT FAST', UI_COLORS.white],
+            ['ROB THE STAGECOACH FOR $1000 - IT COSTS YOU 2 BADGES', UI_COLORS.white],
+            ['THE POSSE WAITS AT CROSSING GATES - BEAT THE TRAIN', UI_COLORS.white],
+            ['RAIL PASS (STORE UNLOCK): TURN AT A CROSSING TO RIDE', UI_COLORS.purple],
         ];
         notes.forEach(([line, colour], i) => {
-            this.body(centre, 616 + i * 26, line, colour).setOrigin(0.5);
+            this.body(centre, 614 + i * 25, line, colour).setOrigin(0.5);
         });
 
         // --- Wanted level ----------------------------------------------------
-        this.heading(centre, 758, 'HEAT');
-        this.body(centre, 792, 'EVERY PICKUP RAISES YOUR WANTED STARS', UI_COLORS.white).setOrigin(0.5);
-        this.body(centre, 820, '1-3 PATROLS   4 SWAT + ROADBLOCKS   5 HELICOPTER', UI_COLORS.red)
+        this.heading(centre, 776, 'HEAT');
+        this.body(centre, 808, 'EVERY PICKUP RAISES YOUR WANTED BADGES', UI_COLORS.white).setOrigin(0.5);
+        this.body(centre, 834, '1-3 DEPUTIES   4 MARSHALS + BARRICADES   5 BALLOON', UI_COLORS.red)
             .setOrigin(0.5);
 
         this.createBackButton(centre, height - 60);

@@ -1,206 +1,348 @@
-"""Vehicles, pickups, props, effects and HUD icons."""
+"""Riders, wagons, the balloon, pickups, props, effects, HUD icons and UI panels.
+
+Mounts are drawn top-down facing up. Horses gallop in four phases (legs
+reaching and tucking, the head bobbing, the tail swinging), and every sheet
+that carries a mount lays its frames out as rows of [LEFT, UP, RIGHT, DOWN],
+one row per gait phase (src/objects/Car.js steps through the rows).
+"""
 import math
 
-from pixelkit import Art, hexc, shade, mix, with_alpha, bayer, rng_for, rotsprite, noise_fill
+from pixelkit import Art, hexc, shade, mix, with_alpha, bayer, rng_for, rotsprite
 
-OUTLINE = hexc('#161821')
-TIRE = hexc('#15161c')
-TIRE_L = hexc('#3a3d47')
-HEAD = hexc('#fff6c0')
-TAIL = hexc('#ff3b3b')
-TAIL_D = hexc('#a81c24')
-GLASS = hexc('#28395a')
-GLASS_M = hexc('#3d5a86')
-GLASS_L = hexc('#8fc0ec')
-CHROME = hexc('#aab1bc')
-SHADOW = (12, 14, 26, 90)
-WHITE = hexc('#f4f6f8')
+OUTLINE = hexc('#1e130f')
+SHADOW = (40, 22, 12, 90)
+WHITE = hexc('#f6efe0')
 GOLD = hexc('#ffc933')
 GOLD_L = hexc('#fff09a')
 GOLD_D = hexc('#d88a14')
 GOLD_DD = hexc('#9c5a0c')
+SKIN = hexc('#e2a878')
+LEATHER = hexc('#8a5a34')
+LEATHER_L = hexc('#b07a48')
+LEATHER_D = hexc('#5e3a22')
+WOOD = hexc('#9a6a3c')
+WOOD_L = hexc('#c08a52')
+WOOD_D = hexc('#6a4426')
+WOOD_DD = hexc('#4a2e1a')
+IRON = hexc('#3e3a3c')
+IRON_L = hexc('#6e6a6c')
+STEEL = hexc('#b8bcc4')
+HOOF = hexc('#22160f')
+LAMP = hexc('#ffe9a0')
+RED = hexc('#c0392b')
+RED_L = hexc('#e5604a')
+RED_D = hexc('#842218')
+CANVAS = hexc('#efe6cf')
+WATER = hexc('#3f8fd0')
+WATER_L = hexc('#8fd0f4')
+WATER_D = hexc('#2a62a0')
+
+GAIT_PHASES = 4
 
 
-# --- Vehicles (drawn facing up in a 32x32 frame) -------------------------------------
+# --- Horses (top-down, facing up) ---------------------------------------------------
 
-def _body(a, x0, y0, W, L, body, light, dark):
-    for y in range(L):
-        for x in range(W):
-            if y in (0, L - 1) and x in (0, W - 1):
+COATS = {
+    #            base              light             dark              mane / tail
+    'bay': (hexc('#6e3e22'), hexc('#93592f'), hexc('#4a2816'), hexc('#1f1410')),
+    'chestnut': (hexc('#b4692e'), hexc('#d68e4e'), hexc('#82481e'), hexc('#5e2c12')),
+    'grey': (hexc('#cfc9bd'), hexc('#efe9dd'), hexc('#9c968a'), hexc('#6e685e')),
+    'black': (hexc('#3c2e2c'), hexc('#5a4846'), hexc('#251b19'), hexc('#140e0c')),
+    'palomino': (hexc('#d9a64e'), hexc('#f2c878'), hexc('#a8782c'), hexc('#f6ecd2')),
+    'dun': (hexc('#b89a6a'), hexc('#d6ba86'), hexc('#8a7048'), hexc('#3a2a1e')),
+    'white': (hexc('#ece6da'), hexc('#fffaf0'), hexc('#b8b0a2'), hexc('#3a2a22')),
+}
+
+# Saddle horse silhouette, facing up: (y, first column, last column).
+# Head and ears are added separately so they can bob with the gait.
+HORSE_BODY = ([(10, 12, 19), (11, 12, 19), (12, 11, 20), (13, 11, 20)]
+              + [(y, 10, 21) for y in range(14, 23)]
+              + [(23, 11, 20), (24, 11, 20), (25, 11, 20), (26, 12, 19), (27, 13, 18)])
+
+# Gallop, one entry per phase: head bob, tail swing, and each hoof as
+# (x, y, leg) where leg is the direction back to the body. Phase 0 doubles
+# as the standing pose.
+L_, R_, U_, D_ = (1, 0), (-1, 0), (0, 1), (0, -1)
+GALLOP = [
+    dict(bob=0, sway=0, legs=((9, 13, L_), (22, 13, R_), (8, 21, L_), (23, 21, R_))),
+    dict(bob=-1, sway=-1, legs=((11, 7, U_), (20, 8, U_), (8, 19, L_), (23, 18, R_))),
+    dict(bob=0, sway=0, legs=((8, 16, L_), (23, 17, R_), (12, 30, D_), (19, 29, D_))),
+    dict(bob=1, sway=1, legs=((9, 11, L_), (22, 12, R_), (8, 24, L_), (23, 25, R_))),
+]
+
+# Patches on the outlaw's paint horse: (centre x, centre y, radius)
+PAINT_PATCHES = ((13.5, 11.5, 2.8), (19.0, 19.5, 3.8), (12.5, 25.0, 3.2), (11.0, 16.5, 1.8))
+
+
+def _span_shade(a, y, x0, x1, base, light, dark):
+    for x in range(x0, x1 + 1):
+        a.set(x, y, light if x == x0 else dark if x == x1 else base)
+
+
+def saddle_horse(a, coat, phase, paint=None):
+    """A riding horse. `paint` = (base, light, dark) patches over a white coat."""
+    base, light, dark, mane = COATS[coat]
+    g = GALLOP[phase]
+    bob = g['bob']
+    # Legs first, so the body overlaps their roots
+    leg = paint[0] if paint else base
+    for (x, y, (dx, dy)) in g['legs']:
+        a.set(x + dx, y + dy, leg)
+        a.set(x + 2 * dx, y + 2 * dy, shade(leg, 0.8))
+        a.set(x, y, HOOF)
+    # Tail streams out behind, swinging from side to side
+    sway = g['sway']
+    for i, y in enumerate(range(27, 32)):
+        off = (sway * (i + 1)) // 3
+        a.set(15 + off, y, mane)
+        a.set(16 + off, y, shade(mane, 1.5) if i == 4 else mane)
+    # Body, then the head (it bobs as the horse reaches)
+    for (y, x0, x1) in HORSE_BODY:
+        _span_shade(a, y, x0, x1, base, light, dark)
+    for y in range(3 + bob, 10):
+        _span_shade(a, y, 13, 18, base, light, dark)
+    a.hline(14, 17, 2 + bob, mix(base, dark, 0.5))
+    a.hline(13, 18, 3 + bob, mix(base, dark, 0.3))
+    a.set(14, 2 + bob, mix(base, HOOF, 0.6))  # nostrils
+    a.set(17, 2 + bob, mix(base, HOOF, 0.6))
+    if paint:
+        p, pl, pd = paint
+        for (y, x0, x1) in HORSE_BODY:
+            for x in range(x0, x1 + 1):
+                if any((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r for cx, cy, r in PAINT_PATCHES):
+                    a.put(x, y, pl if x == x0 else pd if x == x1 else p)
+    # Ears at the poll, mane down the neck
+    a.set(12, 8 + bob, dark)
+    a.set(19, 8 + bob, dark)
+    a.set(12, 9 + bob, mane)
+    a.set(19, 9 + bob, mane)
+    for y in range(8 + bob, 14):
+        a.set(15, y, mane)
+        a.set(16, y, shade(mane, 1.3))
+
+
+def team_horse(a, x0, y0, coat, phase):
+    """A draft horse in harness, 6 wide; the gait drives the forelegs and
+    the head, the hind end is tucked against the wagon."""
+    base, light, dark, mane = COATS[coat]
+    bob = -1 if GALLOP[phase]['bob'] < 0 else 0
+    reach = {0: (7, 8), 1: (3, 4), 2: (9, 8), 3: (5, 6)}[phase]
+    for x, ry in ((x0 - 1, reach[0]), (x0 + 6, reach[1])):
+        a.set(x, y0 + ry, HOOF)
+        a.set(x, y0 + ry + 1, base)
+    rows = [(y0 + 5, 1, 4), (y0 + 6, 1, 4), (y0 + 7, 0, 5), (y0 + 8, 0, 5), (y0 + 9, 0, 5),
+            (y0 + 10, 0, 5), (y0 + 11, 0, 5), (y0 + 12, 0, 5), (y0 + 13, 1, 4)]
+    for (y, i0, i1) in rows:
+        _span_shade(a, y, x0 + i0, x0 + i1, base, light, dark)
+    for y in range(y0 + 1 + bob, y0 + 5):
+        _span_shade(a, y, x0 + 1, x0 + 4, base, light, dark)
+    a.hline(x0 + 2, x0 + 3, y0 + bob, mix(base, dark, 0.5))
+    a.hline(x0 + 1, x0 + 4, y0 + 1 + bob, mix(base, dark, 0.3))
+    a.set(x0, y0 + 4 + bob, dark)
+    a.set(x0 + 5, y0 + 4 + bob, dark)
+    for y in range(y0 + 4 + bob, y0 + 8):
+        a.set(x0 + 3, y, mane)
+    # Collar and the traces back to the wagon
+    a.hline(x0, x0 + 5, y0 + 7, LEATHER_D)
+    a.hline(x0 + 1, x0 + 4, y0 + 7, LEATHER)
+    a.set(x0, y0 + 11, LEATHER_D)
+    a.set(x0 + 5, y0 + 11, LEATHER_D)
+
+
+# --- Riders ---------------------------------------------------------------------------
+
+OUTLAW = dict(
+    hat=hexc('#2e2422'), hat_l=hexc('#54443e'), hat_d=hexc('#170f0e'), band=hexc('#c0c4cc'),
+    shirt=hexc('#b8342a'), shirt_l=hexc('#e05a46'), shirt_d=hexc('#7e1e18'),
+    coat=hexc('#5e4c3e'), roll=hexc('#8e929a'), roll_stripe=hexc('#b8342a'),
+    hands=hexc('#3a2a20'), bags=GOLD, badge=False,
+)
+DEPUTY = dict(
+    hat=hexc('#ddd0b4'), hat_l=hexc('#fbf3e0'), hat_d=hexc('#a89a7e'), band=hexc('#5e3a22'),
+    shirt=hexc('#3a5a96'), shirt_l=hexc('#5a7cc0'), shirt_d=hexc('#26406e'),
+    coat=hexc('#7a5434'), roll=hexc('#c8b088'), roll_stripe=hexc('#8a6a44'),
+    hands=hexc('#c8a070'), bags=None, badge=True,
+)
+# The outlaw rides a paint horse: brown patches over a white coat
+PAINT = (hexc('#7a4426'), hexc('#9a5c34'), hexc('#52301a'))
+
+
+def cowboy_hat_top(a, cx, cy, look, r=4.6):
+    """A wide-brimmed hat seen from above, centred on (cx, cy): the brim lit
+    top-left, the crown a lighter oval, its crease down the middle."""
+    hat, hat_l, hat_d = look['hat'], look['hat_l'], look['hat_d']
+    a.disc(cx, cy, r, hat)
+    for y in range(int(cy - r - 1), int(cy + r + 2)):
+        for x in range(int(cx - r - 1), int(cx + r + 2)):
+            if not a.inside(x, y) or a.get(x, y) != hat:
                 continue
-            c = body
-            if x == 0:
-                c = light
-            elif x == W - 1:
-                c = dark
-            a.set(x0 + x, y0 + y, c)
+            dx, dy = x + 0.5 - cx, y + 0.5 - cy
+            if math.hypot(dx, dy) > r - 1.1:
+                if dx + dy < -1.5:
+                    a.put(x, y, hat_l)
+                elif dx + dy > 1.5:
+                    a.put(x, y, hat_d)
+    a.ellipse(cx + 0.3, cy + 0.4, 2.6, 3.0, look['band'])
+    crown = Art(a.w, a.h)
+    crown.ellipse(cx, cy - 0.1, 2.4, 2.9, hat)
+    for y in range(a.h):
+        for x in range(a.w):
+            if crown.filled(x, y):
+                a.put(x, y, mix(hat_l, WHITE, 0.15) if x + 0.5 < cx else hat_l)
+    a.set(int(cx), int(cy), hat)
+    a.set(int(cx), int(cy) - 1, hat)
 
 
-def _glass_rows(a, x0, y0, W, rows, taper_first=True):
-    for i, y in enumerate(rows):
-        inset = 2 if (i == 0 and taper_first) else 1
-        a.hline(x0 + inset, x0 + W - 1 - inset, y, GLASS if i else GLASS_M)
-    # diagonal glint
-    a.set(x0 + 2, rows[-1], GLASS_L)
-    if len(rows) > 1:
-        a.set(x0 + 3, rows[-2], GLASS_L)
+def rider(a, look, lean=0):
+    """Rider on a saddle horse: saddlebags, bedroll, coat tails, shoulders,
+    arms out to the reins and the hat on top. `lean` shifts the rider
+    forward or back a pixel with the gait."""
+    # Saddlebags hang either side, the bedroll is tied behind the saddle
+    for x in (9, 22):
+        a.rect(x, 20, 1, 3, LEATHER_D if x > 16 else LEATHER)
+        if look['bags']:
+            a.set(x, 20, look['bags'])
+    a.rect(12, 20, 8, 2, LEATHER)
+    a.hline(12, 19, 20, LEATHER_L)
+    a.rect(11, 22, 10, 2, look['roll'])
+    a.hline(11, 20, 22, shade(look['roll'], 1.15))
+    a.vline(13, 22, 23, look['roll_stripe'])
+    a.vline(18, 22, 23, look['roll_stripe'])
+    y = 15 + lean
+    a.rect(12, y + 3, 8, 2, look['coat'])
+    a.hline(12, 19, y + 4, shade(look['coat'], 0.8))
+    for x in range(9, 23):
+        for yy in range(y - 1, y + 3):
+            if x in (9, 22) and yy not in (y, y + 1):
+                continue
+            if x in (10, 21) and yy == y - 1:
+                continue
+            c = look['shirt_l'] if x <= 10 else look['shirt_d'] if x >= 21 else look['shirt']
+            a.set(x, yy, c)
+    a.set(10, y - 2, look['shirt_l'])
+    a.set(21, y - 2, look['shirt_d'])
+    a.set(11, y - 3, look['hands'])
+    a.set(20, y - 3, look['hands'])
+    a.set(13, y - 5, LEATHER_D)  # reins
+    a.set(18, y - 5, LEATHER_D)
+    if look['badge']:
+        a.set(10, y, GOLD_L)
+        a.set(10, y + 1, GOLD)
+    cowboy_hat_top(a, 16, y + 1.5, look)
 
 
-def _wheels(a, x0, y0, W, rows_front, rows_rear):
-    for rows in (rows_front, rows_rear):
-        for i, y in enumerate(rows):
-            c = TIRE_L if i == 0 else TIRE
-            a.set(x0 - 1, y0 + y, c)
-            a.set(x0 + W, y0 + y, c)
-
-
-def player_car():
+def mounted(look, coat, phase, paint=None):
     a = Art(32, 32)
-    W, L = 12, 22
-    x0, y0 = 10, 5
-    red, red_l, red_d = hexc('#d9303a'), hexc('#ff6a5c'), hexc('#8e1826')
-    _body(a, x0, y0, W, L, red, red_l, red_d)
-    _wheels(a, x0, y0, W, range(3, 7), range(15, 19))
-    # Front: grille + headlights
-    a.hline(x0 + 3, x0 + W - 4, y0, hexc('#2a1a1e'))
-    for dx in (1, 2, W - 3, W - 2):
-        a.set(x0 + dx, y0, HEAD)
-    # Hood scoop
-    a.rect(x0 + 5, y0 + 3, 2, 2, hexc('#3a1016'))
-    # Windshield / roof / rear window
-    _glass_rows(a, x0, y0, W, [y0 + 7, y0 + 8, y0 + 9])
-    a.rect(x0 + 1, y0 + 10, W - 2, 5, shade(red, 1.07))
-    _glass_rows(a, x0, y0, W, [y0 + 15, y0 + 16], taper_first=False)
-    # Twin racing stripes (skip the glass)
-    for y in list(range(1, 7)) + list(range(10, 15)) + list(range(17, 21)):
-        a.set(x0 + 4, y0 + y, WHITE)
-        a.set(x0 + 7, y0 + y, WHITE)
-    # Mirrors
-    a.set(x0 - 1, y0 + 8, red_d)
-    a.set(x0 + W, y0 + 8, red_d)
-    # Spoiler + tail
-    a.hline(x0 - 1, x0 + W, y0 + 19, hexc('#1c1e26'))
-    for dx in (1, 2, W - 3, W - 2):
-        a.set(x0 + dx, y0 + L - 1, TAIL)
-    a.set(x0 + 4, y0 + L, CHROME)
-    a.set(x0 + 7, y0 + L, CHROME)
+    saddle_horse(a, coat, phase, paint)
+    rider(a, look, lean=-1 if GALLOP[phase]['bob'] < 0 else 0)
     a.outline(OUTLINE)
     return a
 
 
-def police_car(light_state):
-    """light_state: 0 off, 1 red phase, 2 blue phase."""
+def outlaw(phase):
+    return mounted(OUTLAW, 'white', phase, paint=PAINT)
+
+
+def deputy(phase):
+    return mounted(DEPUTY, 'chestnut', phase)
+
+
+# --- Wagons ---------------------------------------------------------------------------
+
+def _wheel_top(a, x, y0, rim=IRON, hub=IRON_L):
+    """A wagon wheel seen edge-on from above, 2 wide and 4 long."""
+    a.rect(x, y0, 2, 4, rim)
+    a.set(x, y0 + 1, hub)
+    a.set(x + 1, y0 + 2, hub)
+
+
+def _team(a, coats, phase):
+    team_horse(a, 9, 1, coats[0], phase)
+    team_horse(a, 17, 1, coats[1], (phase + 1) % GAIT_PHASES)
+    # wagon tongue between the pair
+    a.vline(15, 6, 15, WOOD_D)
+    a.vline(16, 6, 15, WOOD_DD)
+
+
+def marshal_wagon(phase):
+    """The marshals' prison wagon: a black barred box behind a dark team,
+    a gold star on the roof and a lantern on the driver's corner."""
     a = Art(32, 32)
-    W, L = 12, 22
-    x0, y0 = 10, 5
-    white, white_l, white_d = hexc('#e9edf2'), hexc('#ffffff'), hexc('#b0b8c4')
-    black, black_l, black_d = hexc('#2a2e38'), hexc('#454a57'), hexc('#1a1d24')
-    _body(a, x0, y0, W, L, white, white_l, white_d)
-    # Black hood and trunk (classic black & white)
-    for y in list(range(0, 7)) + list(range(17, L)):
-        for x in range(W):
-            if a.filled(x0 + x, y0 + y):
-                c = black_l if x == 0 else black_d if x == W - 1 else black
-                a.put(x0 + x, y0 + y, c)
-    _wheels(a, x0, y0, W, range(3, 7), range(15, 19))
-    # Push bar
-    a.hline(x0 + 2, x0 + W - 3, y0 - 1, hexc('#5a5f6b'))
-    for dx in (1, 2, W - 3, W - 2):
-        a.set(x0 + dx, y0, HEAD)
-    _glass_rows(a, x0, y0, W, [y0 + 7, y0 + 8, y0 + 9])
-    _glass_rows(a, x0, y0, W, [y0 + 15, y0 + 16], taper_first=False)
-    # Light bar across the roof
-    red_off, blue_off = hexc('#6e1c26'), hexc('#1c2e6e')
-    red_on, blue_on = hexc('#ff3346'), hexc('#3f86ff')
-    red = red_on if light_state == 1 else red_off
-    blue = blue_on if light_state == 2 else blue_off
-    for y in (y0 + 11, y0 + 12):
-        for x in range(x0 + 1, x0 + W - 1):
-            mid = x0 + W // 2
-            if x in (mid - 1, mid):
-                c = hexc('#c9ced8')
-            else:
-                c = red if x < mid else blue
-            a.set(x, y, c)
-    if light_state == 1:
-        a.set(x0 + 2, y0 + 11, hexc('#ffc4ca'))
-    if light_state == 2:
-        a.set(x0 + W - 3, y0 + 11, hexc('#cfe0ff'))
-    # Door badges
-    a.set(x0 + 1, y0 + 13, GOLD)
-    a.set(x0 + W - 2, y0 + 13, GOLD)
-    for dx in (1, W - 2):
-        a.set(x0 + dx, y0 + L - 1, TAIL)
+    box, box_l, box_d = hexc('#2e2826'), hexc('#4a403c'), hexc('#1c1716')
+    for wy in (17, 25):
+        _wheel_top(a, 7, wy)
+        _wheel_top(a, 23, wy)
+    x0, x1, y0, y1 = 9, 22, 15, 30
+    for y in range(y0, y1 + 1):
+        _span_shade(a, y, x0, x1, box, box_l, box_d)
+    a.hline(x0, x1, y0, box_l)
+    # iron bars down both walls
+    for y in range(y0 + 5, y1, 2):
+        a.set(x0, y, STEEL)
+        a.set(x1, y, IRON_L)
+    # roof boards and the star
+    for y in range(y0 + 5, y1, 3):
+        a.hline(x0 + 2, x1 - 2, y, box_d)
+    a.grid(13, 21, ['..#..', '#####', '.###.', '##.##'], {'#': GOLD})
+    a.set(15, 21, GOLD_L)
+    # driver's bench: a lawman in a bowler hat, a lantern on the corner
+    a.rect(x0 + 1, y0 + 1, x1 - x0 - 1, 2, WOOD_D)
+    a.rect(13, y0 + 2, 6, 2, hexc('#3a3436'))
+    a.disc(16, y0 + 1.5, 1.9, hexc('#4a4446'))
+    a.disc(15.6, y0 + 1.1, 1.0, hexc('#6a6466'))
+    a.set(x0, y0 + 1, LAMP)
+    a.set(x0, y0 + 2, GOLD_D)
+    _team(a, ('bay', 'dun'), phase)
     a.outline(OUTLINE)
     return a
 
 
-def swat_van(light_state):
+def stagecoach(phase):
+    """The stagecoach: a red and gold coach behind a light team, a strongbox
+    strapped on the roof among the luggage."""
     a = Art(32, 32)
-    W, L = 14, 26
-    x0, y0 = 9, 3
-    navy, navy_l, navy_d = hexc('#2c3549'), hexc('#46526d'), hexc('#1c2232')
-    _body(a, x0, y0, W, L, navy, navy_l, navy_d)
-    _wheels(a, x0, y0, W, range(3, 7), range(19, 23))
-    a.hline(x0 + 1, x0 + W - 2, y0 - 1, hexc('#5a5f6b'))  # ram bar
-    for dx in (1, 2, W - 3, W - 2):
-        a.set(x0 + dx, y0, HEAD)
-    _glass_rows(a, x0, y0, W, [y0 + 4, y0 + 5, y0 + 6])
-    # Roof box with panel seams and hatches
-    a.rect(x0 + 1, y0 + 8, W - 2, 17, shade(navy, 1.1))
-    for y in (y0 + 14, y0 + 20):
-        a.hline(x0 + 1, x0 + W - 2, y, navy_d)
-    for hy in (y0 + 15, y0 + 21):
-        a.rect(x0 + 4, hy + 1, 6, 3, navy_d)
-        a.hline(x0 + 4, x0 + 9, hy + 1, navy_l)
-    # Yellow side stripes read as "tactical"
-    for y in range(y0 + 8, y0 + 25):
-        a.set(x0 + 1, y, hexc('#e8c547'))
-        a.set(x0 + W - 2, y, hexc('#b8962a'))
-    # Light bar
-    red_on, blue_on = hexc('#ff3346'), hexc('#3f86ff')
-    red = red_on if light_state == 1 else hexc('#6e1c26')
-    blue = blue_on if light_state == 2 else hexc('#1c2e6e')
-    mid = x0 + W // 2
-    for y in (y0 + 9, y0 + 10):
-        for x in range(x0 + 2, x0 + W - 2):
-            a.set(x, y, hexc('#c9ced8') if x in (mid - 1, mid) else (red if x < mid else blue))
-    for dx in (1, 2, W - 3, W - 2):
-        a.set(x0 + dx, y0 + L - 1, TAIL)
-    a.vline(mid, y0 + 22, y0 + L - 1, navy_d)  # rear doors
+    body, body_l, body_d = hexc('#a8322a'), hexc('#d0503e'), hexc('#6e1c16')
+    for wy in (16, 25):
+        _wheel_top(a, 7, wy, rim=hexc('#c89a2a'), hub=GOLD_L)
+        _wheel_top(a, 23, wy, rim=hexc('#c89a2a'), hub=GOLD_L)
+    x0, x1, y0, y1 = 9, 22, 15, 30
+    for y in range(y0 + 1, y1 + 1):
+        _span_shade(a, y, x0, x1, body, body_l, body_d)
+    a.hline(x0 + 1, x1 - 1, y0, body_l)
+    # gold trim round the roof
+    a.hline(x0 + 1, x1 - 1, y0 + 4, GOLD)
+    a.hline(x0 + 1, x1 - 1, y1, GOLD_D)
+    a.vline(x0 + 1, y0 + 4, y1, GOLD_L)
+    a.vline(x1 - 1, y0 + 4, y1, GOLD_D)
+    # luggage rail: carpet bag, trunk and the green strongbox
+    a.rect(x0 + 2, y0 + 5, x1 - x0 - 3, y1 - y0 - 6, hexc('#5a3a26'))
+    a.rect(12, y0 + 6, 4, 3, hexc('#8a6a44'))
+    a.hline(12, 15, y0 + 6, hexc('#a8845a'))
+    a.rect(16, y0 + 6, 4, 4, hexc('#3a2a4a'))
+    a.hline(16, 19, y0 + 7, hexc('#c8a050'))
+    a.rect(12, y0 + 10, 8, 5, hexc('#2f6a46'))
+    a.hline(12, 19, y0 + 10, hexc('#4a9a66'))
+    for (x, y) in ((12, y0 + 10), (19, y0 + 10), (12, y0 + 14), (19, y0 + 14)):
+        a.set(x, y, GOLD)
+    a.rect(15, y0 + 11, 2, 2, GOLD)
+    a.set(15, y0 + 11, GOLD_L)
+    # driver and shotgun guard up on the box
+    a.rect(x0 + 1, y0 + 1, x1 - x0 - 1, 3, WOOD_D)
+    for cx, hat in ((13, (hexc('#c8a070'), hexc('#e8c898'), hexc('#8a6a44'))),
+                    (19, (hexc('#6a6466'), hexc('#8a8486'), hexc('#3e3a3c')))):
+        a.disc(cx, y0 + 2, 2.1, hat[0])
+        a.set(cx - 1, y0 + 1, hat[1])
+        a.set(cx, y0 + 2, hat[2])
+    a.set(21, y0 + 3, IRON)  # shotgun barrel
+    a.set(22, y0 + 2, IRON)
+    _team(a, ('palomino', 'grey'), phase)
     a.outline(OUTLINE)
     return a
 
 
-def diamond_truck():
-    a = Art(32, 32)
-    W, L = 14, 26
-    x0, y0 = 9, 3
-    s, s_l, s_d = hexc('#c9d0da'), hexc('#f1f4f8'), hexc('#8a93a3')
-    _body(a, x0, y0, W, L, s, s_l, s_d)
-    _wheels(a, x0, y0, W, range(3, 7), range(19, 23))
-    a.hline(x0 + 3, x0 + W - 4, y0, hexc('#4a505c'))
-    for dx in (1, 2, W - 3, W - 2):
-        a.set(x0 + dx, y0, HEAD)
-    _glass_rows(a, x0, y0, W, [y0 + 4, y0 + 5, y0 + 6])
-    a.hline(x0, x0 + W - 1, y0 + 9, hexc('#5a6070'))  # cab / box seam
-    # Armoured cargo box with a gold trim
-    bx0, by0, bx1, by1 = x0 + 1, y0 + 10, x0 + W - 2, y0 + L - 2
-    a.rect(bx0, by0, bx1 - bx0 + 1, by1 - by0 + 1, hexc('#b3bbc8'))
-    a.hline(bx0, bx1, by0, GOLD)
-    a.hline(bx0, bx1, by1, GOLD_D)
-    a.vline(bx0, by0, by1, GOLD_L)
-    a.vline(bx1, by0, by1, GOLD_D)
-    for y in range(by0 + 2, by1, 3):
-        a.set(bx0 + 1, y, s_d)
-        a.set(bx1 - 1, y, s_d)
-    gem = ['.ooooo.', 'oWCccco', 'occccco', '.occco.', '..oco..', '...o...']
-    a.grid(x0 + 4 - 1 + 1, y0 + 13, gem, {'o': hexc('#1f7f8f'), 'c': hexc('#3fd8e8'),
-                                          'C': hexc('#a8f0f8'), 'W': WHITE})
-    for dx in (1, W - 2):
-        a.set(x0 + dx, y0 + L - 1, TAIL)
-    a.outline(OUTLINE)
-    return a
+def gait_rows(make):
+    """[phase 0: L, U, R, D, phase 1: L, U, R, D, ...] for a mount drawn by make(phase)."""
+    return [f for p in range(GAIT_PHASES) for f in direction_frames(make(p))]
 
 
 def direction_frames(up_art):
@@ -211,6 +353,38 @@ def direction_frames(up_art):
         f.drop_shadow(2, 2, SHADOW)
         out.append(f)
     return out
+
+
+# --- The handcar the outlaw rides the rails on ------------------------------------------
+
+def handcar(phase):
+    """A pump handcar sized to the track gauge (rails at columns 8-9 and
+    21-22); the walking beam rocks between the two phases."""
+    a = Art(32, 32)
+    for x in (8, 21):
+        for y in (8, 20):
+            a.rect(x, y, 2, 4, IRON)
+            a.set(x, y + 1, IRON_L)
+    a.rect(9, 9, 14, 14, WOOD)
+    for y in range(9, 23):
+        a.hline(9, 22, y, WOOD_L if y % 3 == 0 else WOOD if y % 3 == 1 else WOOD_D)
+    a.vline(9, 9, 22, WOOD_L)
+    a.vline(22, 9, 22, WOOD_DD)
+    # pump post and walking beam; the handle at the low end reads darker
+    a.rect(15, 14, 2, 3, IRON)
+    a.vline(15, 10, 21, IRON_L)
+    a.vline(16, 10, 21, IRON)
+    front, back = ((STEEL, IRON), (IRON, STEEL))[phase]
+    a.hline(12, 19, 10, front)
+    a.hline(12, 19, 21, back)
+    # the outlaw heaves on the back handle
+    lean = 0 if phase == 0 else 1
+    look = OUTLAW
+    a.rect(12, 21 - lean, 8, 2, look['shirt'])
+    a.hline(12, 19, 21 - lean, look['shirt_l'])
+    cowboy_hat_top(a, 16, 22.5 - lean, look, r=3.4)
+    a.outline(OUTLINE)
+    return a
 
 
 # --- Shared shape helpers ------------------------------------------------------------
@@ -234,15 +408,11 @@ def glyph(a, x, y, rows, c, shadow=None):
 
 
 DOLLAR = ['..#..', '.####', '#.#..', '.###.', '..#.#', '####.', '..#..']
-CROSS = ['.##.', '.##.', '####', '####', '.##.', '.##.']
-CROSS = ['..##..', '..##..', '######', '######', '..##..', '..##..']
-BOLT = ['...##', '..##.', '.##..', '#####', '..##.', '.##..', '##...']
-MISSILE = ['..#..', '.###.', '.###.', '.###.', '.###.', '#####', '#.#.#']
+TICKET = ['####.##', '#######', '.###.#.', '#######', '####.##']
 
 
 def coin_full():
     a = shape_from_fn(16, 16, lambda x, y: (x - 8) ** 2 + (y - 8) ** 2 <= 6.6 ** 2, GOLD, GOLD_L, GOLD_D)
-    # inner rim ring
     for y in range(16):
         for x in range(16):
             d = math.hypot(x + 0.5 - 8, y + 0.5 - 8)
@@ -273,35 +443,154 @@ def coin_frames():
 
 def token(base, light, dark, icon):
     a = shape_from_fn(16, 16, lambda x, y: (x - 8) ** 2 + (y - 8) ** 2 <= 6.8 ** 2, base, light, dark)
-    rows = icon
-    gw = len(rows[0])
-    gh = len(rows)
-    glyph(a, 8 - gw // 2, 8 - gh // 2, rows, WHITE, shadow=shade(dark, 0.8))
+    gw, gh = len(icon[0]), len(icon)
+    glyph(a, 8 - gw // 2, 8 - gh // 2, icon, WHITE, shadow=shade(dark, 0.8))
     return a
 
 
-def bomb(spark_phase=0, led=None):
-    a = shape_from_fn(16, 16, lambda x, y: (x - 7.5) ** 2 + (y - 9.5) ** 2 <= 5.4 ** 2,
-                      hexc('#2c303c'), hexc('#5a6278'), hexc('#171920'))
-    a.set(5, 7, hexc('#9aa3bd'))
-    a.set(6, 6, hexc('#9aa3bd'))
-    # Fuse cap + fuse
-    a.rect(9, 3, 3, 2, hexc('#8a8f99'))
-    a.set(9, 3, hexc('#c0c5cd'))
-    a.set(11, 4, hexc('#5a5f6b'))
-    a.set(12, 2, hexc('#c8a878'))
-    a.set(13, 1, hexc('#c8a878'))
-    if spark_phase == 0:
-        a.set(14, 0, hexc('#ffffff'))
-        a.set(13, 0, GOLD)
-        a.set(14, 1, hexc('#ff8a2a'))
-    else:
-        a.set(14, 0, GOLD)
-        a.set(15, 1, hexc('#ff8a2a'))
-        a.set(13, 0, hexc('#ff8a2a'))
-    if led is not None:
-        a.rect(6, 9, 3, 2, hexc('#101218'))
-        a.set(7, 9, hexc('#ff3b3b') if led else hexc('#4a1a1e'))
+# --- Pickups and icons ---------------------------------------------------------------
+
+def dynamite_bundle(spark_phase=0, lit=True):
+    """Three red sticks bound with twine, fuse curling up to a spark."""
+    a = Art(16, 16)
+    for i, x in enumerate((3, 6, 9)):
+        top = 6 if i != 1 else 5
+        a.rect(x, top, 3, 14 - top, RED)
+        a.vline(x, top, 13, RED_L)
+        a.vline(x + 2, top, 13, RED_D)
+        a.hline(x, x + 2, top, hexc('#f0d8b0'))
+    a.hline(3, 11, 9, hexc('#d8b880'))
+    a.hline(3, 11, 10, hexc('#a8844e'))
+    a.outline(OUTLINE)
+    # fuse from the middle stick
+    for (x, y) in ((7, 4), (8, 3), (9, 3), (10, 2)):
+        a.set(x, y, hexc('#d8c8a0'))
+    if lit:
+        hot = ((11, 1), (12, 0), (12, 2)) if spark_phase == 0 else ((11, 1), (10, 0), (12, 1))
+        a.set(*hot[0], WHITE)
+        a.set(*hot[1], GOLD)
+        a.set(*hot[2], hexc('#ff8a2a'))
+    return a
+
+
+def dynamite_stick():
+    a = Art(16, 16)
+    for y in range(4, 15):
+        for x in range(5, 10):
+            a.set(x, y, RED_L if x == 5 else RED_D if x == 9 else RED)
+    a.hline(5, 9, 4, hexc('#f0d8b0'))
+    a.hline(5, 9, 8, hexc('#d8b880'))
+    a.hline(5, 9, 11, hexc('#d8b880'))
+    a.outline(OUTLINE)
+    for (x, y) in ((8, 3), (9, 2), (10, 2)):
+        a.set(x, y, hexc('#d8c8a0'))
+    a.set(11, 1, WHITE)
+    a.set(12, 0, GOLD)
+    a.set(12, 2, hexc('#ff8a2a'))
+    return a
+
+
+def tonic():
+    """Snake oil: a green bottle with a red-cross label and a cork."""
+    a = Art(16, 16)
+    glass, glass_l, glass_d = hexc('#3e8a52'), hexc('#8ad49a'), hexc('#245a34')
+
+    def fn(x, y):
+        return (6.5 <= x <= 9.5 and 2.5 <= y <= 6) or (4 <= x <= 12 and 6 <= y <= 15) or \
+            (5 <= x <= 11 and 5.4 <= y <= 6.5)
+    body = shape_from_fn(16, 16, fn, glass, glass_l, glass_d, outline=None)
+    a.blit(body, 0, 0)
+    a.rect(7, 1, 2, 2, hexc('#b88a5a'))
+    a.set(7, 1, hexc('#d8aa78'))
+    a.rect(5, 8, 6, 5, CANVAS)
+    a.hline(5, 10, 8, hexc('#fff8e8'))
+    a.vline(7, 9, 11, RED)
+    a.vline(8, 9, 11, RED)
+    a.hline(6, 9, 10, RED)
+    a.set(5, 7, glass_l)
+    a.outline(OUTLINE)
+    return a
+
+
+def carrot():
+    a = Art(16, 16)
+    orange, orange_l, orange_d = hexc('#f08a2a'), hexc('#ffb860'), hexc('#b8561a')
+    ax, ay, bx, by = 3.0, 13.5, 10.5, 5.5
+
+    def fn(x, y):
+        vx, vy = bx - ax, by - ay
+        t = max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy)))
+        cx, cy = ax + vx * t, ay + vy * t
+        return math.hypot(x - cx, y - cy) <= 0.6 + 2.3 * t
+    body = shape_from_fn(16, 16, fn, orange, orange_l, orange_d, outline=None)
+    a.blit(body, 0, 0)
+    for (x, y) in ((6, 9), (8, 8), (5, 11), (9, 6)):
+        a.set(x, y, orange_d)
+    leaf, leaf_l, leaf_d = hexc('#4ea83e'), hexc('#8ad868'), hexc('#2e6a26')
+    for (x, y, c) in ((11, 4, leaf), (12, 3, leaf_l), (13, 2, leaf_l), (12, 5, leaf), (13, 6, leaf_d),
+                      (14, 5, leaf), (10, 3, leaf_d), (11, 2, leaf), (11, 1, leaf_l), (13, 4, leaf)):
+        a.set(x, y, c)
+    a.outline(OUTLINE)
+    return a
+
+
+ROPE = hexc('#d0a868')
+ROPE_L = hexc('#f0d098')
+ROPE_D = hexc('#946a34')
+
+
+def lasso_coil():
+    """A coiled lariat with its knot and a loose end."""
+    a = Art(16, 16)
+    for y in range(16):
+        for x in range(16):
+            u, v = (x + 0.5 - 8) / 6.2, (y + 0.5 - 8.5) / 5.4
+            r = math.sqrt(u * u + v * v)
+            if 0.66 <= r <= 1.0:
+                twist = (x + y) % 3 == 0
+                c = ROPE_D if twist else ROPE_L if (u + v) < -0.4 else ROPE
+                a.set(x, y, c)
+    # a second coil peeking inside
+    for y in range(16):
+        for x in range(16):
+            u, v = (x + 0.5 - 8.5) / 4.1, (y + 0.5 - 9) / 3.3
+            if 0.75 <= math.sqrt(u * u + v * v) <= 1.0 and y > 8:
+                a.set(x, y, ROPE_D if (x + y) % 3 == 0 else ROPE)
+    a.rect(11, 3, 3, 2, ROPE_D)
+    a.set(11, 3, ROPE_L)
+    for (x, y) in ((13, 9), (14, 10), (14, 11), (13, 12), (14, 13)):
+        a.set(x, y, ROPE)
+    a.outline(OUTLINE)
+    return a
+
+
+def cowboy_hat(base=hexc('#c8986a'), light=hexc('#ecc290'), dark=hexc('#8e643e'),
+               band=hexc('#4a2c1a'), spec=True):
+    """A cowboy hat side on: pinched crown, band, brim curling up."""
+    a = Art(16, 16)
+    rows = [
+        '.....##..##.....',
+        '....###.####....',
+        '....########....',
+        '....########....',
+        '....BBBBBBBB....',
+        '#...########...#',
+        '##############.#',
+        '.##############.',
+        '..############..',
+    ]
+    a.grid(0, 3, rows, {'#': base, 'B': band})
+    for y in range(16):
+        for x in range(16):
+            if a.get(x, y) != base:
+                continue
+            if not a.filled(x - 1, y) or not a.filled(x, y - 1):
+                a.put(x, y, light)
+            elif not a.filled(x + 1, y) or not a.filled(x, y + 1):
+                a.put(x, y, dark)
+    a.vline(7, 4, 6, dark)
+    if spec:
+        a.set(5, 4, WHITE)
     a.outline(OUTLINE)
     return a
 
@@ -317,12 +606,13 @@ def heart(base=hexc('#e8413f'), light=hexc('#ff8a80'), dark=hexc('#a8202a'), spe
     return a
 
 
-def star(base, light, dark):
+def sheriff_badge(base, light, dark, empty=False):
+    """Six-pointed tin star with a ball on every point."""
     pts = []
-    for i in range(10):
-        r = 7.4 if i % 2 == 0 else 3.2
-        ang = -math.pi / 2 + i * math.pi / 5
-        pts.append((8 + r * math.cos(ang), 8.6 + r * math.sin(ang)))
+    for i in range(12):
+        r = 6.2 if i % 2 == 0 else 3.3
+        ang = -math.pi / 2 + i * math.pi / 6
+        pts.append((8 + r * math.cos(ang), 8.2 + r * math.sin(ang)))
 
     def inside(x, y):
         c = False
@@ -333,103 +623,123 @@ def star(base, light, dark):
             if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
                 c = not c
             j = i
-        return c
-    return shape_from_fn(16, 16, inside, base, light, dark)
-
-
-def shield(base, light, dark):
-    half = {2: 5, 3: 6, 4: 6, 5: 6, 6: 6, 7: 6, 8: 5, 9: 5, 10: 4, 11: 3, 12: 2, 13: 1}
-
-    def fn(x, y):
-        yi = int(y)
-        return yi in half and abs(x - 8) <= half[yi]
-    a = shape_from_fn(16, 16, fn, base, light, dark)
-    a.vline(8, 4, 11, light)
+        if c:
+            return True
+        for k in range(6):
+            ang = -math.pi / 2 + k * math.pi / 3
+            if math.hypot(x - (8 + 6.4 * math.cos(ang)), y - (8.2 + 6.4 * math.sin(ang))) <= 1.35:
+                return True
+        return False
+    a = shape_from_fn(16, 16, inside, base, light, dark)
+    if not empty:
+        for y in range(16):
+            for x in range(16):
+                d = math.hypot(x + 0.5 - 8, y + 0.5 - 8.2)
+                if 2.0 < d <= 2.9:
+                    a.put(x, y, dark if x + y > 15 else light)
+        a.set(5, 5, WHITE)
     return a
 
 
 def money_bag():
-    tan, tan_l, tan_d = hexc('#c99a5b'), hexc('#ebc58c'), hexc('#8f6532')
+    sack, sack_l, sack_d = hexc('#c9a46b'), hexc('#ead09a'), hexc('#8f6a3a')
 
     def fn(x, y):
         return ((x - 8) ** 2 + (y - 10.2) ** 2 <= 5.3 ** 2 or (5.5 <= x <= 10.5 and 3 <= y <= 6)
                 or (4.5 <= x <= 11.5 and 1.5 <= y <= 3))
-    a = shape_from_fn(16, 16, fn, tan, tan_l, tan_d)
+    a = shape_from_fn(16, 16, fn, sack, sack_l, sack_d)
     a.hline(6, 9, 5, hexc('#5a3a1e'))
-    glyph(a, 6, 7, ['.##.', '#...', '.##.', '...#', '.##.'][:5], hexc('#3e8a3e'))
-    a.vline(7, 6, 12, hexc('#3e8a3e'))
+    glyph(a, 6, 7, ['.##.', '#...', '.##.', '...#', '.##.'], hexc('#6a4220'))
+    a.vline(7, 6, 12, hexc('#6a4220'))
     return a
 
 
-def fuel_can():
-    red, red_l, red_d = hexc('#d83b3b'), hexc('#ff7a6a'), hexc('#8e1c24')
-
-    def fn(x, y):
-        return 3 <= x <= 13 and 4 <= y <= 14.5 or (10 <= x <= 13 and 1.5 <= y <= 4)
-    a = shape_from_fn(16, 16, fn, red, red_l, red_d)
-    a.rect(4, 5, 4, 2, hexc('#1a1c26'))  # handle hole
-    a.line(5, 9, 10, 13, red_d)
-    a.line(10, 9, 5, 13, red_d)
-    a.rect(11, 1, 2, 1, hexc('#c0c5cd'))
-    return a
-
-
-def rocket_icon():
-    a = Art(16, 16)
-    a.rect(7, 3, 3, 9, hexc('#e8ecf2'))
-    a.vline(7, 3, 11, WHITE)
-    a.vline(9, 3, 11, hexc('#a8b0bc'))
-    a.rect(7, 1, 3, 2, hexc('#e8413f'))
-    a.set(8, 0, hexc('#e8413f'))
-    for dx, c in ((5, hexc('#b82830')), (6, hexc('#e8413f')), (10, hexc('#e8413f')), (11, hexc('#b82830'))):
-        a.vline(dx, 10 if dx in (6, 10) else 11, 12, c)
+def canteen():
+    """Stamina: a felt-covered canteen with its cork and strap."""
+    felt, felt_l, felt_d = hexc('#5a82a8'), hexc('#8ab0d0'), hexc('#36587a')
+    a = shape_from_fn(16, 16, lambda x, y: (x - 8) ** 2 + (y - 9.5) ** 2 <= 5.4 ** 2, felt, felt_l, felt_d,
+                      outline=None)
+    for y in range(16):
+        for x in range(16):
+            d = math.hypot(x + 0.5 - 8, y + 0.5 - 9.5)
+            if 4.4 < d <= 5.4:
+                a.put(x, y, hexc('#c8ccd4') if x + y < 17 else hexc('#7a808c'))
+    a.rect(7, 2, 2, 3, hexc('#b88a5a'))
+    a.set(7, 2, hexc('#d8aa78'))
+    a.line(2, 4, 4, 7, LEATHER)
+    a.line(14, 4, 12, 7, LEATHER_D)
+    a.set(6, 7, felt_l)
     a.outline(OUTLINE)
-    a.set(8, 13, GOLD)
-    a.set(8, 14, hexc('#ff8a2a'))
-    a.set(7, 13, hexc('#ff8a2a'))
-    a.set(9, 13, hexc('#ff8a2a'))
     return a
 
 
 def arrow_up():
     def fn(x, y):
         return (6 <= x <= 10 and 7 <= y <= 14) or (y >= 1.5 and y < 8 and abs(x - 8) <= (y - 1.5) + 0.6)
-    return shape_from_fn(16, 16, fn, hexc('#e8ecf2'), WHITE, hexc('#9aa3b3'))
+    return shape_from_fn(16, 16, fn, hexc('#efe0bc'), hexc('#fff8e4'), hexc('#b49a6a'))
 
 
-def gauge():
-    a = shape_from_fn(16, 16, lambda x, y: (x - 8) ** 2 + (y - 8.5) ** 2 <= 6.6 ** 2,
-                      hexc('#e8ecf2'), WHITE, hexc('#8f97a6'))
-    for ang in range(180, 361, 45):
-        r = math.radians(ang)
-        a.set(int(8 + 4.8 * math.cos(r)), int(8.5 + 4.8 * math.sin(r)), hexc('#3a3f4e'))
-    a.line(8, 8, 11, 5, hexc('#e8413f'))
-    a.set(8, 8, hexc('#2a2e3a'))
-    a.hline(6, 10, 12, hexc('#8f97a6'))
-    return a
-
-
-def wrench():
+def horse_head():
+    """Steed upgrade: a horse's head in profile."""
+    rows = [
+        '......mm........',
+        '.....mm#........',
+        '....mm####......',
+        '...mm#o#####....',
+        '..mm#########...',
+        '..m###########..',
+        '..m####...#####.',
+        '.mm###.....###..',
+        '.m####..........',
+        '.m####..........',
+        'mm####..........',
+        'm#####..........',
+    ]
+    base, light, dark, mane = COATS['chestnut']
     a = Art(16, 16)
-    steel, steel_l, steel_d = hexc('#b8c0cc'), hexc('#eef2f6'), hexc('#6f7888')
-    for i in range(8):
-        a.rect(3 + i, 11 - i, 2, 2, steel)
-    a.disc(11.5, 4.5, 3.4, steel)
-    for y in range(1, 5):
-        for x in range(11, 13):
-            a.put(x, y, (0, 0, 0, 0))  # jaw opening
-    a.bevel(steel, steel_l, steel_d)
+    a.grid(0, 2, rows, {'#': base, 'm': mane, 'o': hexc('#1a1010')})
+    for y in range(16):
+        for x in range(16):
+            if a.get(x, y) != base:
+                continue
+            if not a.filled(x, y - 1):
+                a.put(x, y, light)
+            elif not a.filled(x, y + 1) or not a.filled(x + 1, y):
+                a.put(x, y, dark)
+    a.set(14, 8, hexc('#1a1010'))
     a.outline(OUTLINE)
     return a
 
 
-def bolt_icon():
-    a = Art(16, 16)
-    a.grid(4, 2, ['....###', '...###.', '..###..', '.######', '...###.', '..###..', '.###...',
-                  '.##....', '##.....', '#......'][:10],
-           {'#': hexc('#5fe0ff')})
-    a.bevel(hexc('#5fe0ff'), hexc('#d8fbff'), hexc('#2a8fcf'))
+def horseshoe(base=hexc('#9aa0aa'), light=hexc('#dfe3ea'), dark=hexc('#5a606a')):
+    def fn(x, y):
+        d = math.hypot(x - 8, y - 9)
+        ring = 3.4 <= d <= 6.6 and not (y < 9 and abs(x - 8) < 3.6)
+        return ring and y > 2
+    a = shape_from_fn(16, 16, fn, base, light, dark, outline=None)
+    for (x, y) in ((3, 8), (3, 11), (12, 8), (12, 11), (6, 14), (9, 14)):
+        a.set(x, y, dark)
     a.outline(OUTLINE)
+    return a
+
+
+def strongbox():
+    """The stagecoach's strongbox, dropped when the train wrecks the coach."""
+    a = Art(16, 16)
+    green, green_l, green_d = hexc('#2f6a46'), hexc('#5aa070'), hexc('#1c4430')
+    a.rect(2, 7, 12, 7, green)
+    a.rect(2, 3, 12, 4, green_l)
+    a.hline(3, 12, 3, hexc('#8ad0a0'))
+    a.hline(2, 13, 7, green_d)
+    a.vline(13, 7, 13, green_d)
+    for (x, y) in ((2, 3), (13, 3), (2, 13), (13, 13), (2, 7), (13, 7)):
+        a.set(x, y, GOLD)
+    a.rect(7, 7, 2, 3, GOLD)
+    a.set(7, 7, GOLD_L)
+    a.set(8, 9, GOLD_DD)
+    a.hline(2, 13, 10, shade(green, 0.85))
+    a.outline(OUTLINE)
+    a.drop_shadow(1, 1, SHADOW)
     return a
 
 
@@ -440,18 +750,42 @@ def pickup_frames():
     idx['coin'] = len(frames)
     frames += coin_frames()
     idx['repair'] = len(frames)
-    frames.append(token(hexc('#3fbf5f'), hexc('#9af0aa'), hexc('#237a3b'), CROSS))
+    frames.append(tonic())
     idx['nitro'] = len(frames)
-    frames.append(token(hexc('#2f9ee8'), hexc('#9ae0ff'), hexc('#1a5fa8'), BOLT))
+    frames.append(carrot())
     idx['rocket'] = len(frames)
-    frames.append(token(hexc('#f08a24'), hexc('#ffc680'), hexc('#a8520e'), MISSILE))
+    frames.append(lasso_coil())
     idx['bomb'] = len(frames)
-    frames += [bomb(0), bomb(1)]
+    frames += [dynamite_bundle(0), dynamite_bundle(1)]
     idx['life'] = len(frames)
-    frames.append(heart())
+    frames.append(cowboy_hat())
     idx['planted'] = len(frames)
-    frames += [bomb(0, led=True), bomb(1, led=False)]
+    frames += [dynamite_bundle(0), dynamite_bundle(1, lit=False)]
+    idx['railPass'] = len(frames)
+    frames.append(token(hexc('#8a4fd0'), hexc('#b98af0'), hexc('#5a2c94'), TICKET))
+    idx['diamond'] = len(frames)
+    frames.append(strongbox())
     return frames, idx
+
+
+def ticket_icon():
+    a = Art(16, 16)
+    base, light, dark = hexc('#8a4fd0'), hexc('#b98af0'), hexc('#5a2c94')
+    for y in range(4, 13):
+        for x in range(1, 15):
+            if not (x in (1, 14) and y in (7, 8, 9)):
+                a.set(x, y, base)
+    a.hline(2, 13, 4, light)
+    a.vline(1, 4, 6, light)
+    a.hline(2, 13, 12, dark)
+    for y in range(5, 12, 2):
+        a.set(10, y, hexc('#d8c2f8'))
+    for x in range(3, 9):
+        a.set(x, 7, WHITE)
+    for x in range(3, 7):
+        a.set(x, 9, hexc('#d8c2f8'))
+    a.outline(OUTLINE)
+    return a
 
 
 def icon_frames():
@@ -463,80 +797,90 @@ def icon_frames():
         frames.append(art)
     add('coin', coin_full())
     add('bag', money_bag())
+    add('hat', cowboy_hat())
+    add('hatEmpty', cowboy_hat(hexc('#3a2e2a'), hexc('#4e403a'), hexc('#2a201c'), hexc('#241a16'), spec=False))
     add('heart', heart())
-    add('heartEmpty', heart(hexc('#3a3f52'), hexc('#50566e'), hexc('#272a38'), spec=False))
-    add('fuel', fuel_can())
-    add('bomb', bomb(0))
-    add('rocket', rocket_icon())
-    add('shield', shield(hexc('#3fbf5f'), hexc('#9af0aa'), hexc('#237a3b')))
-    add('shieldEmpty', shield(hexc('#3a3f52'), hexc('#50566e'), hexc('#272a38')))
-    add('star', star(GOLD, GOLD_L, GOLD_D))
-    add('starEmpty', star(hexc('#343849'), hexc('#4a4f66'), hexc('#24273a')))
+    add('heartEmpty', heart(hexc('#3e3030'), hexc('#54423e'), hexc('#2a201e'), spec=False))
+    add('stamina', canteen())
+    add('dynamite', dynamite_stick())
+    add('lasso', lasso_coil())
+    add('badge', sheriff_badge(GOLD, GOLD_L, GOLD_D))
+    add('badgeEmpty', sheriff_badge(hexc('#4a3a30'), hexc('#5e4c40'), hexc('#33281f'), empty=True))
     add('arrow', arrow_up())
-    add('gauge', gauge())
-    add('wrench', wrench())
-    add('bolt', bolt_icon())
+    add('horse', horse_head())
+    add('horseshoe', horseshoe())
+    add('carrot', carrot())
+    add('ticket', ticket_icon())
     return frames, idx
 
 
 # --- Props -------------------------------------------------------------------------
 
-def roadblock(vertical_road, phase):
-    """Barricade across the road. vertical_road: the road runs up/down."""
+def _barrel_top(a, cx, cy, r=3.2):
+    a.disc(cx, cy, r, WOOD_D)
+    a.disc(cx, cy, r - 0.9, WOOD)
+    a.disc(cx - 0.6, cy - 0.6, r - 2.0, WOOD_L)
+    for k in range(8):
+        ang = k * math.pi / 4
+        a.set(int(cx + (r - 0.4) * math.cos(ang)), int(cy + (r - 0.4) * math.sin(ang)), IRON)
+
+
+def barricade(vertical_road, phase):
+    """A posse barricade across the street: sawhorse planks painted red and
+    cream, a barrel at each end and two lanterns flickering on the rail."""
     a = Art(32, 32)
-    red, white = hexc('#e03a3a'), hexc('#f2f2f2')
-    # Two striped sawhorse boards spanning the lane
     for by in (11, 18):
-        for x in range(3, 29):
-            c = red if ((x + by) // 3) % 2 == 0 else white
+        for x in range(4, 28):
+            c = RED if ((x + by) // 4) % 2 == 0 else CANVAS
             a.set(x, by, c)
-            a.set(x, by + 1, shade(c, 0.8))
-        for lx in (5, 26):
-            a.set(lx, by + 2, hexc('#5a5f6b'))
-            a.set(lx, by - 1, hexc('#5a5f6b'))
-    # Amber lamps blink alternately
-    on, off = hexc('#ffcf3a'), hexc('#7a5a1a')
-    for i, lx in enumerate((4, 16, 27)):
-        lit = (i % 2 == phase)
-        a.rect(lx - 1, 9, 2, 2, on if lit else off)
-        if lit:
-            a.set(lx - 1, 9, hexc('#fff6c0'))
-    # Cones at the ends
-    for cx in (2, 29):
-        a.rect(cx - 1, 22, 3, 2, hexc('#f07a24'))
-        a.set(cx, 21, hexc('#f07a24'))
-        a.hline(cx - 1, cx + 1, 23, white)
-        a.hline(cx - 2, cx + 2, 24, hexc('#3a3d47'))
+            a.set(x, by + 1, shade(c, 0.78))
+        # crossed sawhorse legs at each end
+        for lx in (6, 25):
+            a.set(lx - 1, by - 1, WOOD_D)
+            a.set(lx + 1, by - 1, WOOD_D)
+            a.set(lx - 1, by + 2, WOOD_DD)
+            a.set(lx + 1, by + 2, WOOD_DD)
+    _barrel_top(a, 3.5, 15.5)
+    _barrel_top(a, 28.5, 15.5)
+    lit, dim = LAMP, hexc('#8a5a1a')
+    for i, lx in enumerate((11, 21)):
+        on = (i % 2 == phase)
+        a.rect(lx, 14, 2, 3, IRON)
+        a.set(lx, 15, lit if on else dim)
+        a.set(lx + 1, 15, GOLD if on else dim)
     a.outline(OUTLINE)
     a.drop_shadow(1, 2, SHADOW)
     return a.rotated(1) if not vertical_road else a
 
 
-def _landmark_building(roof, rim, wall, paint, glyph_rows, awning=None):
+def _frontier_building(roof, roof_d, wall, wall_d, paint, glyph_rows, trim=None):
+    """A one-tile landmark in the town's 3/4 view: a pitched plank roof
+    carrying a painted sign, a clapboard front with a porch underneath."""
     a = Art(32, 32)
     x0, y0, x1, y1 = 3, 2, 28, 28
-    fy = y1 - 7 + 1
-    # facade
-    a.rect(x0, fy, x1 - x0 + 1, 7, wall)
-    a.hline(x0, x1, fy, shade(wall, 0.75))
-    a.hline(x0, x1, y1, shade(wall, 0.6))
-    # roof
-    a.rect(x0, y0, x1 - x0 + 1, fy - y0, roof)
-    a.hline(x0, x1, y0, shade(rim, 1.1))
-    a.vline(x0, y0, fy - 1, shade(rim, 1.05))
-    a.hline(x0, x1, fy - 1, shade(rim, 0.82))
-    a.vline(x1, y0, fy - 1, shade(rim, 0.86))
-    a.hline(x0 + 1, x1 - 1, y0 + 1, shade(roof, 0.8))
+    fy = y1 - 8 + 1
+    # clapboard front
+    for y in range(fy, y1 + 1):
+        a.hline(x0, x1, y, wall if (y - fy) % 2 else wall_d)
+    a.vline(x0, fy, y1, shade(wall, 1.15))
+    a.vline(x1, fy, y1, shade(wall, 0.75))
+    # roof planks run down the slope; ridge across the middle
+    for y in range(y0, fy):
+        for x in range(x0, x1 + 1):
+            c = roof if (x - x0) % 4 else roof_d
+            if (y + (x - x0) // 4 * 3) % 7 == 0:
+                c = shade(c, 0.85)
+            a.put(x, y, c)
+    ridge = (y0 + fy) // 2
+    a.hline(x0, x1, y0, shade(roof, 1.2))
+    a.hline(x0, x1, fy - 1, shade(roof_d, 0.7))
     gw, gh = len(glyph_rows[0]), len(glyph_rows)
     gx = (x0 + x1 + 1) // 2 - gw // 2
-    gy = (y0 + fy) // 2 - gh // 2 + 1
-    a.grid(gx + 1, gy + 1, glyph_rows, {'#': shade(roof, 0.7)})
+    gy = ridge - gh // 2 + 1
+    a.grid(gx + 1, gy + 1, glyph_rows, {'#': shade(roof_d, 0.6)})
     a.grid(gx, gy, glyph_rows, {'#': paint})
-    if awning:
-        for x in range(x0 + 1, x1):
-            c = awning[0] if ((x - x0) // 2) % 2 == 0 else awning[1]
-            a.set(x, fy + 1, c)
-            a.set(x, fy + 2, shade(c, 0.85))
+    if trim:
+        a.hline(x0, x1, fy, trim)
     return a, (x0, y0, x1, y1, fy)
 
 
@@ -546,16 +890,24 @@ BIG_DROP = ['...##...', '...##...', '..####..', '.######.', '########', '#####.#
             '.######.', '..####..']
 
 
-def safehouse():
-    a, (x0, y0, x1, y1, fy) = _landmark_building(
-        hexc('#4a3b35'), hexc('#c8932a'), hexc('#7a4a36'), GOLD, BIG_DOLLAR)
-    # Roller door
-    a.rect(x0 + 6, fy + 2, 14, 5, hexc('#8a8f99'))
-    for y in range(fy + 2, y1 + 1, 2):
-        a.hline(x0 + 6, x0 + 19, y, hexc('#6a6f79'))
-    a.hline(x0 + 6, x0 + 19, fy + 1, hexc('#ffc933'))
-    a.set(x0 + 3, fy + 3, hexc('#ffd66b'))
-    a.set(x1 - 3, fy + 3, hexc('#ffd66b'))
+def hideout():
+    """The outlaw's hideout: a ramshackle plank shack with a gold dollar
+    daubed on the roof, a lantern by the door and loot sacks piled up."""
+    a, (x0, y0, x1, y1, fy) = _frontier_building(
+        hexc('#6e5a48'), hexc('#54443a'), hexc('#8a6a4a'), hexc('#76583c'), GOLD, BIG_DOLLAR,
+        trim=hexc('#4a3a2e'))
+    # dark doorway, boarded window, lantern
+    a.rect(14, fy + 2, 5, 6, hexc('#1e1410'))
+    a.vline(14, fy + 2, y1, WOOD_D)
+    a.rect(x0 + 3, fy + 2, 5, 3, hexc('#2a1e18'))
+    a.line(x0 + 3, fy + 2, x0 + 7, fy + 4, WOOD_L)
+    a.set(x1 - 4, fy + 2, LAMP)
+    a.set(x1 - 4, fy + 3, GOLD_D)
+    # sacks of loot by the door
+    for sx in (20, 23):
+        a.disc(sx + 0.5, y1 - 1.5, 1.8, hexc('#c9a46b'))
+        a.set(sx, y1 - 3, hexc('#8f6a3a'))
+    a.set(21, y1 - 2, GOLD_DD)
     full = Art(32, 32)
     full.blit(a, 0, 0)
     full.outline(OUTLINE)
@@ -563,125 +915,129 @@ def safehouse():
     return full
 
 
-def fuel_station():
-    a, (x0, y0, x1, y1, fy) = _landmark_building(
-        hexc('#e8ecef'), hexc('#3fbf5f'), hexc('#d8dde2'), hexc('#2f9e4a'), BIG_DROP,
-        awning=(hexc('#3fbf5f'), hexc('#f2f2f2')))
-    # pumps under the canopy edge
-    for px in (x0 + 5, x1 - 6):
-        a.rect(px, fy + 3, 3, 4, hexc('#e03a3a'))
-        a.set(px + 1, fy + 4, hexc('#fff6c0'))
-    full = Art(32, 32)
-    full.blit(a, 0, 0)
-    full.outline(OUTLINE)
-    full.drop_shadow(2, 2, SHADOW)
-    return full
+def water_stop():
+    """Where the horse drinks: a plank water tank under a windmill, the
+    trough along the front."""
+    a = Art(32, 32)
+    # trough along the bottom
+    a.rect(4, 22, 24, 6, WOOD_D)
+    a.rect(5, 23, 22, 4, WATER)
+    a.hline(5, 26, 23, WATER_L)
+    for x in (9, 15, 21):
+        a.set(x, 25, WATER_L)
+    a.hline(4, 27, 22, WOOD_L)
+    # round tank: staves and water on top
+    a.disc(11.5, 11.5, 8.5, WOOD_DD)
+    a.disc(11.5, 11.5, 7.6, WOOD)
+    for k in range(16):
+        ang = k * math.pi / 8
+        a.set(int(11.5 + 7.2 * math.cos(ang)), int(11.5 + 7.2 * math.sin(ang)), WOOD_D)
+    a.disc(11.5, 11.5, 6.2, WATER_D)
+    a.disc(11.0, 11.0, 5.2, WATER)
+    a.hline(8, 11, 9, WATER_L)
+    a.hline(12, 14, 12, WATER_L)
+    # windmill wheel on its tower, blades fanned round the hub
+    cx, cy = 24.5, 8.5
+    for k in range(12):
+        ang = k * math.pi / 6
+        for r in range(2, 8):
+            c = CANVAS if k % 2 == 0 else hexc('#c8bca4')
+            a.set(int(cx + r * math.cos(ang)), int(cy + r * math.sin(ang)), c)
+    a.disc(cx, cy, 1.6, IRON)
+    a.line(24, 9, 28, 16, IRON_L)  # tail vane
+    a.rect(27, 15, 3, 3, RED)
+    a.outline(OUTLINE)
+    a.drop_shadow(2, 2, SHADOW)
+    return a
 
 
 def pad(colour, glyph_rows):
-    """Painted bay marking on a road tile."""
+    """Where to stop on the street: corner stakes strung with coloured
+    bunting, and the sign scratched into the dirt."""
     a = Art(32, 32)
     paint = with_alpha(colour, 230)
-    for i in range(4, 28):
-        for t in (4, 5):
-            a.set(i, t, paint)
-            a.set(i, 31 - t, paint)
-            a.set(t, i, paint)
-            a.set(31 - t, i, paint)
-    # hatched corners
-    for k in range(6):
-        for (cx, cy, sx, sy) in ((6, 6, 1, 1), (25, 6, -1, 1), (6, 25, 1, -1), (25, 25, -1, -1)):
-            if k < 4:
-                a.set(cx + sx * k, cy + sy * (3 - k), with_alpha(colour, 150))
-                a.set(cx + sx * k, cy + sy * (2 - k), with_alpha(colour, 150)) if k < 3 else None
+    pale = with_alpha(colour, 150)
+    for i in range(5, 27):
+        if (i // 2) % 2 == 0:
+            for t in (4,):
+                a.set(i, t, paint)
+                a.set(i, 31 - t, paint)
+                a.set(t, i, paint)
+                a.set(31 - t, i, paint)
+        else:
+            a.set(i, 5, pale)
+            a.set(i, 26, pale)
+            a.set(5, i, pale)
+            a.set(26, i, pale)
+    for (cx, cy) in ((4, 4), (27, 4), (4, 27), (27, 27)):
+        a.rect(cx - 1, cy - 1, 2, 2, WOOD_D)
+        a.set(cx - 1, cy - 1, WOOD_L)
     gw, gh = len(glyph_rows[0]), len(glyph_rows)
     a.grid(16 - gw // 2, 16 - gh // 2, glyph_rows, {'#': with_alpha(colour, 170)})
     return a
 
 
-# --- Helicopter ------------------------------------------------------------------------
+# --- The army balloon ------------------------------------------------------------------
 
-def heli_body():
+def balloon(flag):
+    """An army observation balloon in 3/4 view with a limelight on the
+    basket. flag: -1 streams left, 1 right, 0 hangs limp."""
     a = Art(48, 48)
-    navy, navy_l, navy_d = hexc('#2a3650'), hexc('#4a5a7c'), hexc('#1a2236')
-    # skids
-    for sx in (15, 32):
-        a.vline(sx, 12, 30, hexc('#8a919e'))
-        a.set(sx, 11, hexc('#8a919e'))
-    for sy in (16, 26):
-        a.hline(16, 31, sy, hexc('#5a616e'))
-    # tail boom + stabiliser + tail rotor
-    a.rect(22, 28, 4, 14, navy)
-    a.vline(22, 28, 41, navy_l)
-    a.vline(25, 28, 41, navy_d)
-    a.rect(18, 38, 12, 2, navy)
-    a.hline(18, 29, 38, navy_l)
-    a.rect(26, 40, 2, 6, hexc('#9aa3b3'))
-    # cabin
-    a.ellipse(24, 20, 8, 11, navy)
-    b = Art(48, 48)
-    b.ellipse(24, 20, 8, 11, navy)
-    b.bevel(navy, navy_l, navy_d)
-    a.blit(b, 0, 0)
-    # canopy glass
-    for y in range(10, 18):
-        for x in range(16, 33):
-            if ((x + 0.5 - 24) / 7) ** 2 + ((y + 0.5 - 18) / 8.5) ** 2 <= 1 and y < 17:
-                a.set(x, y, GLASS_M if y < 13 else GLASS)
-    a.set(20, 12, GLASS_L)
-    a.set(21, 11, GLASS_L)
-    a.set(19, 13, GLASS_L)
-    # POLICE band
-    a.hline(17, 31, 23, WHITE)
-    a.hline(17, 31, 24, hexc('#c9ced8'))
-    # nav lights
-    a.set(16, 21, hexc('#ff3346'))
-    a.set(31, 21, hexc('#3fdf5f'))
-    a.set(24, 9, hexc('#fff6c0'))
+    cx, cy, rx, ry = 24.0, 17.0, 14.0, 15.0
+    red, red_l, red_d = hexc('#b8382c'), hexc('#e0604c'), hexc('#7a2018')
+    cream, cream_l, cream_d = hexc('#e8dcc0'), hexc('#fff6e2'), hexc('#b0a284')
+    for y in range(48):
+        for x in range(48):
+            v = (y + 0.5 - cy) / ry
+            if abs(v) > 1:
+                continue
+            half = rx * math.sqrt(1 - v * v) * (1 - 0.32 * max(0.0, v))
+            u = (x + 0.5 - cx) / half if half > 0 else 9
+            if abs(u) > 1:
+                continue
+            gore = int((math.asin(u) / math.pi + 0.5) * 8)
+            striped = gore % 2 == 0
+            lit = u < -0.45 or (v < -0.6 and u < 0.2)
+            dark = u > 0.55 or v > 0.7
+            if striped:
+                c = red_l if lit else red_d if dark else red
+            else:
+                c = cream_l if lit else cream_d if dark else cream
+            a.set(x, y, c)
+    # load ring and the rigging down to the basket
+    for x in range(17, 32):
+        a.set(x, 30, hexc('#6a4a2a'))
+    for (sx, ex) in ((18, 21), (24, 24), (30, 27)):
+        a.line(sx, 31, ex, 37, hexc('#8a6a44'))
+    # wicker basket with a limelight on the front
+    a.rect(20, 37, 9, 6, hexc('#b8925a'))
+    for y in range(38, 43):
+        for x in range(20, 29):
+            if (x + y) % 2 == 0:
+                a.set(x, y, hexc('#94703e'))
+    a.hline(20, 28, 37, hexc('#d8b880'))
+    a.rect(23, 41, 3, 2, IRON)
+    a.set(24, 41, WHITE)
+    a.set(24, 42, LAMP)
+    # pennant on top
+    a.vline(24, 0, 2, IRON)
+    if flag:
+        for k in range(5):
+            x = 24 - flag * (k + 1)
+            a.set(x, 0, RED)
+            if k < 3:
+                a.set(x, 1, RED_D)
+    else:
+        a.vline(25, 0, 2, RED)
     a.outline(OUTLINE)
     return a
 
 
-def heli_frames():
-    body = heli_body()
-    frames, shadows = [], []
-    for i in range(8):
-        f = rotsprite(body, -45 * i) if i % 2 else body.rotated((-i // 2) % 4)
-        frames.append(f)
-        s = Art(48, 48)
-        for y in range(48):
-            for x in range(48):
-                if f.filled(x, y):
-                    s.put(x, y, (8, 10, 20, 95))
-        shadows.append(s)
-    return frames, shadows
-
-
-def rotor_frames():
-    frames = []
-    for k in range(4):
-        a = Art(48, 48)
-        # faint motion disc
-        for y in range(48):
-            for x in range(48):
-                d = math.hypot(x + 0.5 - 24, y + 0.5 - 24)
-                if 20.5 < d <= 22 and (x + y) % 2 == 0:
-                    a.set(x, y, (200, 210, 225, 60))
-        for base in (0, 90):
-            ang = math.radians(base + k * 22.5)
-            dx, dy = math.cos(ang), math.sin(ang)
-            for y in range(48):
-                for x in range(48):
-                    px, py = x + 0.5 - 24, y + 0.5 - 24
-                    along = px * dx + py * dy
-                    perp = abs(-px * dy + py * dx)
-                    if abs(along) <= 21.5 and perp <= 0.95:
-                        tip = abs(along) > 18
-                        a.set(x, y, (26, 28, 36, 235) if not tip else (230, 200, 60, 235))
-        a.disc(24, 24, 2.4, hexc('#8a919e'))
-        a.set(23, 23, hexc('#c9ced8'))
-        frames.append(a)
-    return frames
+def balloon_shadow():
+    a = Art(32, 14)
+    a.ellipse(16, 7, 15, 6, (36, 20, 12, 70))
+    a.ellipse(16, 7, 11, 4.2, (36, 20, 12, 40))
+    return a
 
 
 # --- Effects ------------------------------------------------------------------------
@@ -695,7 +1051,7 @@ def _hash(x, y, s):
 def explosion_frames(n=8, size=40):
     """Cartoon fireball: a union of puffs that swell, cool and break apart."""
     ramp = [hexc('#ffffff'), hexc('#fff3a8'), hexc('#ffd23f'), hexc('#ff9a2a'), hexc('#f0521f'),
-            hexc('#b82626'), hexc('#6a5a5a'), hexc('#3e3a40')]
+            hexc('#b82626'), hexc('#6a5248'), hexc('#4a3a34')]
     rng = rng_for('explosion')
     puffs = [(rng.uniform(0, math.tau), rng.uniform(0.2, 1.0), rng.uniform(0.45, 0.75)) for _ in range(8)]
     puffs.append((0, 0, 0.8))
@@ -725,7 +1081,9 @@ def explosion_frames(n=8, size=40):
     return frames
 
 
-def smoke_frames(n=6, size=12):
+def dust_frames(n=6, size=12):
+    """A dust puff that swells and thins out. Light and nearly neutral so the
+    game can tint it (hoof dust, gunsmoke, coal smoke)."""
     frames = []
     for k in range(n):
         t = k / (n - 1)
@@ -738,11 +1096,11 @@ def smoke_frames(n=6, size=12):
                     continue
                 if bayer(x, y) < t * 0.85:
                     continue
-                c = hexc('#9aa0aa')
+                c = hexc('#d6cdbd')
                 if x + y < 10 and d > r - 1.6:
-                    c = hexc('#c5cad2')
+                    c = hexc('#f2ebdf')
                 elif x + y > 12 and d > r - 1.6:
-                    c = hexc('#6a707c')
+                    c = hexc('#ada291')
                 a.set(x, y, c)
         frames.append(a)
     return frames
@@ -780,6 +1138,7 @@ def glow(size=32):
 
 
 def spotlight(r=64):
+    """The balloon's limelight on the ground: warm, with a brighter rim."""
     size = r * 2
     a = Art(size, size)
     for y in range(size):
@@ -794,7 +1153,7 @@ def spotlight(r=64):
                 al = 0.2
             else:
                 al = 0.26 - 0.14 * f + (0.03 if bayer(x, y) < 0.5 and f > 0.7 else 0)
-            a.set(x, y, (255, 246, 200, int(al * 255)))
+            a.set(x, y, (255, 238, 180, int(al * 255)))
     return a
 
 
@@ -810,77 +1169,95 @@ def scorch():
                 al = 150 if d < edge * 0.55 else 95
                 if rng.random() < 0.15:
                     al -= 40
-                a.set(x, y, (20, 18, 22, al))
+                a.set(x, y, (34, 22, 16, al))
     return a
 
 
-def flame_frames():
+def lasso_loop_frames():
+    """The thrown loop in flight, spinning (16x16 frames)."""
     out = []
-    for length in (6, 9, 7):
-        a = Art(8, 12)
-        for y in range(length):
-            half = 2.6 * (1 - y / (length + 1)) + 0.4
-            for x in range(8):
-                dx = abs(x + 0.5 - 4)
-                if dx <= half:
-                    t = dx / half
-                    c = hexc('#f2ffff') if t < 0.35 and y < length * 0.6 else hexc('#5fe0ff') if t < 0.75 else hexc('#2a7fff')
-                    a.set(x, y, c)
+    for k in range(4):
+        a = Art(16, 16)
+        ang = k * math.pi / 4
+        ca, sa = math.cos(ang), math.sin(ang)
+        for y in range(16):
+            for x in range(16):
+                px, py = x + 0.5 - 8, y + 0.5 - 8
+                u = (px * ca + py * sa) / 6.4
+                v = (-px * sa + py * ca) / 4.6
+                r = math.sqrt(u * u + v * v)
+                if 0.72 <= r <= 1.0:
+                    a.set(x, y, ROPE_D if (x + y + k) % 3 == 0 else ROPE_L if u < 0 else ROPE)
+        a.outline(OUTLINE)
         out.append(a)
     return out
 
 
-def rocket_frames():
+def tumbleweed_frames():
+    """A tumbleweed rolling over (16x16 frames)."""
     out = []
-    for phase in range(2):
-        a = Art(16, 8)
-        a.rect(5, 3, 8, 3, hexc('#e8ecf2'))
-        a.hline(5, 12, 3, WHITE)
-        a.hline(5, 12, 5, hexc('#a8b0bc'))
-        a.rect(13, 3, 2, 3, hexc('#e8413f'))
-        a.set(15, 4, hexc('#e8413f'))
-        for x in (5, 6):
-            a.set(x, 2, hexc('#b82830'))
-            a.set(x, 6, hexc('#b82830'))
-        a.outline(OUTLINE)
-        fl = 4 if phase == 0 else 3
-        for x in range(0, fl):
-            a.set(4 - x, 4, GOLD if x < 2 else hexc('#ff8a2a'))
-        a.set(3, 3 + phase, hexc('#ff8a2a'))
-        a.set(4, 4, WHITE)
-        out.append(a)
+    rng = rng_for('tumbleweed')
+    twigs = [(rng.uniform(0, math.tau), rng.uniform(0, math.tau), rng.uniform(2.5, 6.2)) for _ in range(26)]
+    for k in range(4):
+        a = Art(16, 16)
+        a.disc(8, 8, 6.6, hexc('#7a5a34'))
+        a.disc(8, 8, 5.4, (0, 0, 0, 0))
+        spin = k * math.pi / 8
+        for a0, a1, r in twigs:
+            x0 = 8 + r * math.cos(a0 + spin)
+            y0 = 8 + r * 0.92 * math.sin(a0 + spin)
+            x1 = 8 + (r * 0.4) * math.cos(a1 + spin)
+            y1 = 8 + (r * 0.4) * math.sin(a1 + spin)
+            c = hexc('#c8a464') if math.sin(a0 + spin) < 0 else hexc('#9a7a46')
+            a.line(int(x0), int(y0), int(x1), int(y1), c)
+        out_ring = Art(16, 16)
+        for y in range(16):
+            for x in range(16):
+                d = math.hypot(x + 0.5 - 8, y + 0.5 - 8)
+                if d <= 6.8 and a.filled(x, y):
+                    out_ring.put(x, y, a.get(x, y))
+        for y in range(16):
+            for x in range(16):
+                d = math.hypot(x + 0.5 - 8, y + 0.5 - 8)
+                if 5.6 < d <= 6.8 and (x * 3 + y + k) % 4 == 0:
+                    out_ring.put(x, y, hexc('#b08a52'))
+        out_ring.outline(with_alpha(OUTLINE, 200))
+        out.append(out_ring)
     return out
 
 
 def blob_shadow(w=14, h=6):
     a = Art(w, h)
-    a.ellipse(w / 2, h / 2, w / 2, h / 2, (10, 12, 24, 80))
+    a.ellipse(w / 2, h / 2, w / 2, h / 2, (36, 20, 12, 80))
     return a
 
 
 # --- UI -----------------------------------------------------------------------------
 
-def panel(border, border_l, border_d, fill=(20, 23, 34, 238)):
+def panel(border, border_l, border_d, fill=(32, 21, 15, 238)):
+    """9-slice panel: a plank frame with brass nail heads in the corners."""
     a = Art(16, 16)
-    o = hexc('#0a0b11')
+    o = hexc('#120a07')
     for y in range(16):
         for x in range(16):
             edge = min(x, y, 15 - x, 15 - y)
             if edge == 0:
                 c = o
             elif edge == 1:
-                c = border_l if (x < 15 - y and (x == 1 or y == 1)) else border_d if (x == 14 or y == 14) else border_l
-            elif edge in (2, 3):
-                c = border if not (x == 2 or y == 2) else shade(border, 1.15)
+                c = border_d if (x == 14 or y == 14) else border_l
+            elif edge == 2:
+                c = border if not (x == 2 or y == 2) else shade(border, 1.12)
+            elif edge == 3:
+                c = shade(border, 0.86)
             elif edge == 4:
                 c = o
             else:
                 c = fill
             a.put(x, y, c)
-    # corners stay square-ish: knock out the very corner pixels
     for (x, y) in ((0, 0), (15, 0), (0, 15), (15, 15)):
         a.put(x, y, (0, 0, 0, 0))
     for (x, y) in ((2, 2), (13, 2), (2, 13), (13, 13)):
-        a.put(x, y, shade(border_l, 1.2))
+        a.put(x, y, hexc('#ffe9a8'))
+    for (x, y) in ((3, 3), (12, 3), (3, 12), (12, 12)):
+        a.put(x, y, hexc('#8a6420'))
     return a
-

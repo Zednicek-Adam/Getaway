@@ -2,21 +2,27 @@ import Phaser from 'phaser';
 import { TILE_SIZE, DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
 import { TurnQueue, isOpposite } from '../turnQueue';
+import { MOUNTS } from '../art';
 
 export class Car {
     constructor(scene, gridX, gridY, mapManager, options = {}) {
         this.scene = scene;
         this.mapManager = mapManager;
 
-        this.textureKey = options.textureKey ?? 'playerCar';
+        this.textureKey = options.textureKey ?? 'outlaw';
         this.frameByDirection = options.frameByDirection ?? {
             [DIRECTIONS.LEFT]: 0,
             [DIRECTIONS.UP]: 1,
             [DIRECTIONS.RIGHT]: 2,
             [DIRECTIONS.DOWN]: 3,
         };
-        // Vehicle sheets are drawn on a full-tile 64px frame (car + drop shadow)
+        // Mount sheets are drawn on a full-tile 64px frame (mount + drop shadow)
         this.displaySize = options.displaySize ?? TILE_SIZE;
+        // Gallop: the sheet holds one row of direction frames per gait phase,
+        // and a move steps through a whole stride per tile, so the legs keep
+        // time with the speed. Standing still shows phase 0.
+        this.gaitPhases = options.gaitPhases ?? MOUNTS.gaitPhases;
+        this.gaitPhase = 0;
         // AI cars route around roadblocks (getValidMoves excludes blocked tiles);
         // the player is constructed with false so only they can crash into one.
         this.avoidsBlocked = options.avoidsBlocked ?? true;
@@ -29,8 +35,9 @@ export class Car {
         this.passable = options.passable ?? null;
         this.trackFollow = options.trackFollow ?? null;
         this.railPath = options.railPath ?? null;
-        // Frames for the four diagonal headings: UR, DR, DL, UL
-        this.diagonalFrames = options.diagonalFrames ?? null;
+        // First frame of the rail sheet: two pump phases of eight headings
+        // (clockwise from up) for the handcar the player rides the track on
+        this.railFrames = options.railFrames ?? null;
 
         // Grid State
         this.gridX = gridX;
@@ -72,6 +79,7 @@ export class Car {
     }
 
     updatePosition(t) {
+        this.gaitPhase = this.isMoving ? Math.floor(t * this.gaitPhases) % this.gaitPhases : 0;
         const onRail = this.railPath && this.railPath(t, this);
         if (onRail) {
             this.visual.x = onRail.x;
@@ -98,13 +106,16 @@ export class Car {
     }
 
     getFrameForDirection(direction) {
-        return this.frameByDirection?.[direction];
+        const frame = this.frameByDirection?.[direction];
+        return frame === undefined ? undefined : frame + (this.gaitPhase ?? 0) * 4;
     }
 
-    // heading 0-7 clockwise from up; odd headings are the diagonals
+    // heading 0-7 clockwise from up; odd headings are the diagonals. With a
+    // rail sheet the handcar's lever rocks twice a tile.
     applyHeadingFrame(heading) {
-        if (heading % 2 === 1 && this.diagonalFrames) {
-            this.visual.setFrame(this.diagonalFrames[(heading - 1) / 2]);
+        if (this.railFrames !== null) {
+            const pump = Math.floor(this.gaitPhase * 2 / this.gaitPhases);
+            this.visual.setFrame(this.railFrames + pump * 8 + heading);
             return;
         }
         const byHeading = [DIRECTIONS.UP, DIRECTIONS.RIGHT, DIRECTIONS.DOWN, DIRECTIONS.LEFT];
@@ -137,7 +148,9 @@ export class Car {
         //    possible, or we can't continue straight), the queued turn is
         //    STALE — drop it so the buffer never sticks, and try the next one.
         // 3. On a plain straight corridor the turn is KEPT for the next junction.
-        // 4. Otherwise go straight; if that's blocked too, stop.
+        // 4. Otherwise go straight. Where the way bends with only one way on,
+        //    take it (a horse follows the trail round a bend); at a fork or
+        //    a dead end, stop and wait to be steered.
 
         // Don't auto-move if waiting for first input, or braked by the player
         if (this.waitingForInput || this.halted) return;
@@ -170,7 +183,10 @@ export class Car {
 
         if (this.canMove(this.direction)) {
             this.startMove(this.direction);
+            return;
         }
+        const onward = this.getValidMoves().filter(d => !isOpposite(d, this.direction));
+        if (onward.length === 1) this.startMove(onward[0]);
     }
 
     // True when the car could turn onto a road other than straight-ahead or
@@ -306,7 +322,7 @@ export class Car {
         this.visual.setDisplaySize(this.displaySize, this.displaySize);
     }
 
-    // Subclasses with extra display objects (siren glow, sparkles) extend this
+    // Subclasses with extra display objects (the stagecoach's glint) extend this
     destroy() {
         this.visual.destroy();
     }

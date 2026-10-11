@@ -10,27 +10,30 @@ export const ICON = manifest.icons;
 // Train car kinds in train.png order; each kind has 8 frames, clockwise from facing up
 export const TRAIN_CARS = manifest.train.cars;
 
+// Mount sheets: rows of LEFT, UP, RIGHT, DOWN, one row per gait phase. The
+// outlaw's sheet carries the handcar from frame MOUNTS.handcar on: two pump
+// phases of eight headings, clockwise from facing up.
+export const MOUNTS = manifest.mounts;
+
 const BASE = 'art/';
 
 const SHEETS = {
-    playerCar: ['car_player.png', 64, 64],
-    policeCar: ['car_police.png', 64, 64],
-    swatVan: ['van_swat.png', 64, 64],
-    diamondTruck: ['truck_diamond.png', 64, 64],
-    heli: ['heli.png', 96, 96],
-    heliShadow: ['heli_shadow.png', 96, 96],
-    rotor: ['rotor.png', 96, 96],
+    outlaw: ['rider_outlaw.png', 64, 64],
+    deputy: ['rider_deputy.png', 64, 64],
+    marshalWagon: ['wagon_marshal.png', 64, 64],
+    stagecoach: ['stagecoach.png', 64, 64],
+    balloon: ['balloon.png', 96, 96],
     pickups: ['pickups.png', 32, 32],
     icons: ['icons.png', 32, 32],
     explosion: ['explosion.png', 80, 80],
-    smoke: ['smoke.png', 24, 24],
+    dust: ['dust.png', 24, 24],
     spark: ['spark.png', 16, 16],
-    flame: ['flame.png', 16, 24],
-    rocket: ['rocket.png', 32, 16],
-    roadblock: ['roadblock.png', 64, 64],
+    lasso: ['lasso.png', 32, 32],
+    tumbleweed: ['tumbleweed.png', 32, 32],
+    barricade: ['barricade.png', 64, 64],
     train: ['train.png', manifest.train.frameSize, manifest.train.frameSize],
     crossing: ['crossing.png', 64, 64],
-    menuCars: ['menu_cars.png', 208, 80],
+    menuRiders: ['menu_riders.png', manifest.menuRiders.width, manifest.menuRiders.height],
 };
 
 const IMAGES = {
@@ -39,12 +42,13 @@ const IMAGES = {
     spotlight: 'spotlight.png',
     scorch: 'scorch.png',
     shadow: 'shadow.png',
-    safehouse: 'safehouse.png',
-    fuelStation: 'fuelstation.png',
-    padBase: 'pad_base.png',
-    padFuel: 'pad_fuel.png',
-    station: 'station.png',
-    padStation: 'pad_station.png',
+    balloonShadow: 'balloon_shadow.png',
+    hideout: 'hideout.png',
+    waterStop: 'water_stop.png',
+    padHideout: 'pad_hideout.png',
+    padWater: 'pad_water.png',
+    depot: 'depot.png',
+    padDepot: 'pad_depot.png',
     rail: 'rail.png',
     panel: 'panel.png',
     panelGold: 'panel_gold.png',
@@ -56,9 +60,17 @@ const IMAGES = {
     logo: 'logo.png',
 };
 
+// Packed sprites with named frames: [image, frame data]
+const ATLASES = {
+    scenery: ['scenery.png', 'scenery.json'],
+};
+
 export function loadArt(scene) {
     for (const [key, file] of Object.entries(IMAGES)) {
         scene.load.image(key, BASE + file);
+    }
+    for (const [key, [image, data]] of Object.entries(ATLASES)) {
+        scene.load.atlas(key, BASE + image, BASE + data);
     }
     for (const [key, [file, frameWidth, frameHeight]] of Object.entries(SHEETS)) {
         scene.load.spritesheet(key, BASE + file, { frameWidth, frameHeight });
@@ -76,18 +88,18 @@ export function createAnims(scene) {
 
     const p = PICKUP_FRAMES;
     add('coin-spin', 'pickups', p.coin, p.coin + 5, 10);
-    add('bomb-fuse', 'pickups', p.bomb, p.bomb + 1, 8);
+    add('dynamite-fuse', 'pickups', p.bomb, p.bomb + 1, 8);
     add('explode', 'explosion', 0, 7, 22, 0);
-    add('smoke-puff', 'smoke', 0, 5, 12, 0);
+    add('dust-puff', 'dust', 0, 5, 12, 0);
     add('spark-twinkle', 'spark', 0, 3, 18, 0, { yoyo: true });
-    add('flame-flicker', 'flame', 0, 2, 20);
-    add('rocket-fly', 'rocket', 0, 1, 16);
-    add('rotor-spin', 'rotor', 0, 3, 30);
-    add('roadblock-v', 'roadblock', 0, 1, 3);
-    add('roadblock-h', 'roadblock', 2, 3, 3);
-    // Crossing lamps alternate while the barriers are down (frame 0/3 = arms up)
+    add('lasso-spin', 'lasso', 0, 3, 18);
+    add('tumble', 'tumbleweed', 0, 3, 10);
+    add('barricade-v', 'barricade', 0, 1, 4);
+    add('barricade-h', 'barricade', 2, 3, 4);
+    // The crossing keeper waves his flag while the gates are down (frame 0/3 = arms up)
     add('crossing-h', 'crossing', 1, 2, 3);
     add('crossing-v', 'crossing', 4, 5, 3);
-    add('menu-player', 'menuCars', 0, 1, 12);
-    add('menu-police', 'menuCars', 2, 3, 6);
+    const gallop = manifest.menuRiders.frames;
+    add('menu-outlaw', 'menuRiders', 0, gallop - 1, 14);
+    add('menu-deputy', 'menuRiders', gallop, gallop * 2 - 1, 14);
 }

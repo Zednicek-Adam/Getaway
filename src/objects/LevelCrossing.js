@@ -1,6 +1,6 @@
 import { TILE_SIZE } from '../constants';
 
-// Barrier arms and flashing lamps on one level crossing. Purely visual — the
+// Gate arms and the flag-waving keeper at one level crossing. Purely visual — the
 // routing side is MapManager.trainBlocked (set by RailManager). Depth 0.7
 // matches roadblocks: above the road and pickups, below cars.
 export class LevelCrossing {

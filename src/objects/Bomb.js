@@ -2,8 +2,9 @@ import { TILE_SIZE } from '../constants';
 import { CONFIG } from '../config';
 import { PICKUP_FRAMES } from '../art';
 
-// A bomb laid on a road tile. Its LED blinks faster as the fuse runs down; the
-// scene detonates it when a police unit enters the tile (or harmlessly on expiry).
+// A bundle of dynamite laid on a street tile. Its fuse sputters faster as it
+// burns down; the scene sets it off when a police unit enters the tile (or
+// harmlessly when the fuse runs out).
 export class Bomb {
     constructor(scene, gridX, gridY) {
         this.scene = scene;
@@ -12,36 +13,37 @@ export class Bomb {
 
         this.fuseRemaining = CONFIG.BOMB.FUSE_MS;
         this.blinkTimer = 0;
-        this.dotOn = true;
+        this.sparkOn = true;
 
         const cx = gridX * TILE_SIZE + TILE_SIZE / 2;
         const cy = gridY * TILE_SIZE + TILE_SIZE / 2;
 
-        // Depth 0.5/0.6: above roads and collectibles, below cars (1)
+        // Depth 0.5/0.6: above streets and pickups, below riders (1). The
+        // spark's glow sits on the fuse tip, top-right of the bundle.
         this.shadow = scene.add.image(cx, cy + 12, 'shadow').setDepth(0.45);
         this.body = scene.add.sprite(cx, cy, 'pickups', PICKUP_FRAMES.planted).setDepth(0.5);
-        this.dot = scene.add.image(cx, cy + 4, 'glow')
-            .setBlendMode('ADD').setTint(0xff2233).setScale(0.9).setAlpha(0.8).setDepth(0.6);
+        this.spark = scene.add.image(cx + 9, cy - 14, 'glow')
+            .setBlendMode('ADD').setTint(0xff9a2a).setScale(0.8).setAlpha(0.9).setDepth(0.6);
 
-        // Drop onto the road with a little bounce
+        // Drop onto the street with a little bounce
         this.body.setScale(1.6).setAlpha(0);
         scene.tweens.add({ targets: this.body, scale: 1, alpha: 1, duration: 220, ease: 'Bounce.easeOut' });
     }
 
-    // Drains the fuse and drives the blink; returns true once the fuse expired
+    // Burns the fuse and drives the sputter; returns true once the fuse is spent
     update(delta) {
         this.fuseRemaining -= delta;
 
-        // Blink interval shrinks as the fuse runs down (500ms → 100ms)
+        // Sputter interval shrinks as the fuse runs down (500ms → 100ms)
         const fraction = Math.max(0, this.fuseRemaining) / CONFIG.BOMB.FUSE_MS;
         const interval = 100 + 400 * fraction;
 
         this.blinkTimer += delta;
         if (this.blinkTimer >= interval) {
             this.blinkTimer = 0;
-            this.dotOn = !this.dotOn;
-            this.dot.setVisible(this.dotOn);
-            this.body.setFrame(PICKUP_FRAMES.planted + (this.dotOn ? 0 : 1));
+            this.sparkOn = !this.sparkOn;
+            this.spark.setScale(this.sparkOn ? 0.9 : 0.55);
+            this.body.setFrame(PICKUP_FRAMES.planted + (this.sparkOn ? 0 : 1));
         }
 
         return this.fuseRemaining <= 0;
@@ -49,7 +51,7 @@ export class Bomb {
 
     destroy() {
         this.body.destroy();
-        this.dot.destroy();
+        this.spark.destroy();
         this.shadow.destroy();
     }
 }
