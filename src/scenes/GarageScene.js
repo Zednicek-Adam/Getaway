@@ -8,17 +8,21 @@ import { sparkBurst } from '../fx';
 
 // Icon per upgrade track (icons.png)
 const TRACK_ICONS = {
-    engine: 'gauge',
-    fuelTank: 'fuel',
-    armor: 'shield',
-    bombBay: 'bomb',
-    rocketRack: 'rocket',
+    engine: 'horse',
+    fuelTank: 'stamina',
+    armor: 'heart',
+    bombBay: 'dynamite',
+    rocketRack: 'lasso',
     railPass: 'ticket',
 };
 
+const PIP_EMPTY = 0x3a2a20;
+const PIP_EMPTY_SHINE = 0x4a3828;
+
 // Overlay scene over the paused GameScene — mirrors PauseScene: owns its
 // keyboard listeners, closes by resuming + stopping itself. Renders the
-// persistent upgrade shop; purchases mutate this.save and re-derive gameState.
+// general store, where the stash buys upgrades that persist; purchases
+// mutate this.save and re-derive gameState.
 // Below the leveled tracks sit the one-time unlocks (CONFIG.GARAGE.UNLOCKS).
 export class GarageScene extends Phaser.Scene {
     constructor() {
@@ -42,10 +46,10 @@ export class GarageScene extends Phaser.Scene {
         const top = (height - ph) / 2;
         panel(this, left, top, pw, ph);
 
-        // Title flanked by wrenches
-        label(this, width / 2, top + 58, 'GARAGE', { size: 48, color: UI_COLORS.gold }).setOrigin(0.5);
-        icon(this, width / 2 - 200, top + 58, 'wrench').setScale(2);
-        icon(this, width / 2 + 200, top + 58, 'wrench').setScale(2).setFlipX(true);
+        // Title flanked by lucky horseshoes
+        label(this, width / 2, top + 58, 'GENERAL STORE', { size: 40, color: UI_COLORS.gold }).setOrigin(0.5);
+        icon(this, width / 2 - 320, top + 58, 'horseshoe').setScale(2);
+        icon(this, width / 2 + 320, top + 58, 'horseshoe').setScale(2);
 
         // Bank readout (refreshed after purchases)
         icon(this, width / 2 - 110, top + 118, 'coin');
@@ -73,7 +77,7 @@ export class GarageScene extends Phaser.Scene {
             const pipsX = rowLeft + 430;
             for (let p = 0; kind === 'track' && p < CONFIG.GARAGE.MAX_LEVEL; p++) {
                 const px = pipsX + p * 40;
-                this.add.rectangle(px, y - 16, 32, 32, 0x0a0b11).setOrigin(0);
+                this.add.rectangle(px, y - 16, 32, 32, 0x120a07).setOrigin(0);
                 const fill = this.add.rectangle(px + 4, y - 12, 24, 24, 0xffc933).setOrigin(0);
                 const shine = this.add.rectangle(px + 4, y - 12, 24, 6, 0xfff09a).setOrigin(0);
                 pips.push({ fill, shine });
@@ -158,7 +162,7 @@ export class GarageScene extends Phaser.Scene {
         this.gameState.banked = this.save.banked;
         writeSave(this.storage, this.save);
         this.refreshRows();
-        sparkBurst(this, row.price.x - 48, row.y, { count: 10, radius: 56, tint: 0xb98af0 });
+        sparkBurst(this, row.price.x - 48, row.y, { count: 10, radius: 56, tint: 0xc39af0 });
     }
 
     // Brief red flash + a shake on a denied purchase, then restore the correct color.
@@ -173,7 +177,7 @@ export class GarageScene extends Phaser.Scene {
 
     // Fully re-derive every row's texts/pips/colors + the bank readout.
     refreshRows() {
-        this.bankReadout.setText(`BANK ${money(this.save.banked)}`);
+        this.bankReadout.setText(`STASH ${money(this.save.banked)}`);
 
         this.rows.forEach((row) => {
             if (row.kind === 'unlock') {
@@ -186,8 +190,8 @@ export class GarageScene extends Phaser.Scene {
             // Pips — gold for owned levels, dark otherwise
             row.pips.forEach((pip, p) => {
                 const owned = p < level;
-                pip.fill.setFillStyle(owned ? 0xffc933 : 0x2a2e3f);
-                pip.shine.setFillStyle(owned ? 0xfff09a : 0x353a4e);
+                pip.fill.setFillStyle(owned ? 0xffc933 : PIP_EMPTY);
+                pip.shine.setFillStyle(owned ? 0xfff09a : PIP_EMPTY_SHINE);
             });
 
             // Value text: `current > next`, or just current at max
@@ -214,11 +218,11 @@ export class GarageScene extends Phaser.Scene {
     refreshUnlockRow(row) {
         const check = canUnlock(this.save, row.key);
         if (check.reason === 'owned') {
-            row.value.setText('PASSES NOW SPAWN').setColor(UI_COLORS.dim);
+            row.value.setText('PASSES IN TOWN').setColor(UI_COLORS.dim);
             row.price.setText('OWNED').setColor(UI_COLORS.green);
             return;
         }
-        row.value.setText('RIDE THE TRACKS').setColor(UI_COLORS.white);
+        row.value.setText('RIDE THE RAILS').setColor(UI_COLORS.white);
         row.price.setText(money(check.price)).setColor(check.ok ? UI_COLORS.gold : UI_COLORS.faint);
     }
 }

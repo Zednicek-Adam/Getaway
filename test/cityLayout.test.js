@@ -152,12 +152,12 @@ describe('blocks and districts', () => {
     });
 
     it('gives a block at most one of each landmark, splitting lots rather than repeating one', () => {
-        // A 6x6 park carved into nine 2x2 lots: only a pond and a fountain come that size
+        // A 6x6 common carved into nine 2x2 lots: only the watering hole and Boot Hill come that size
         const lots = [];
         for (let y = 0; y < 6; y += 2) for (let x = 0; x < 6; x += 2) lots.push({ x, y, w: 2, h: 2 });
         for (let seed = 1; seed < 15; seed++) {
             const kinds = dressLots(lots, 'park', seeded(seed)).map(lot => lot.piece.name.split('_')[0]);
-            for (const landmark of ['pond', 'fountain', 'playground']) {
+            for (const landmark of ['wateringhole', 'boothill', 'bandstand']) {
                 expect(kinds.filter(k => k === landmark).length).toBeLessThanOrEqual(1);
             }
         }
@@ -191,7 +191,7 @@ describe('zoning a whole map', () => {
             for (const { zone, cells } of zoneCity(size, size, isRoad, isFree, seeded(seed))) {
                 for (const c of cells) {
                     const inside = c.x > 5 && c.x < 10 && c.y > 5 && c.y < 10;
-                    const country = zone === 'forest' || zone === 'farm';
+                    const country = zone === 'desert' || zone === 'ranch';
                     if (inside) expect(country).toBe(false);
                     if (!inside && dist.get(`${c.x},${c.y}`) > 3) expect(country).toBe(true);
                 }

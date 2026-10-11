@@ -1,26 +1,23 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
-import { smokePuff } from '../fx';
 
-// Sprite art faces right; rotate to the fixed heading
-const ANGLE_BY_DIRECTION = {
-    [DIRECTIONS.RIGHT]: 0,
-    [DIRECTIONS.DOWN]: 90,
-    [DIRECTIONS.LEFT]: 180,
-    [DIRECTIONS.UP]: -90,
-};
+const ROPE = 0xd0a868;
+const ROPE_DARK = 0x1e130f;
 
-// A rocket fired down road tiles along a fixed facing. Steps one tile every
-// CONFIG.ROCKET.MS_PER_TILE (leftover timer carries), lerping its visual
-// continuously between tiles so it never teleports. Hit resolution lives in
-// GameScene (mirrors the Bomb split): update() only reports tile stepping.
+// A thrown lasso, flying down road tiles along a fixed facing. Steps one tile
+// every CONFIG.ROCKET.MS_PER_TILE (leftover timer carries), lerping the loop
+// continuously between tiles so it never teleports, the rope paying out
+// behind it back to the rider's hand. Hit resolution lives in GameScene
+// (mirrors the Bomb split): update() only reports tile stepping.
 export class Rocket {
-    constructor(scene, gridX, gridY, direction) {
+    // `anchor` is the thrower's sprite: the rope stays tied to it in flight
+    constructor(scene, gridX, gridY, direction, anchor = null) {
         this.scene = scene;
         this.gridX = gridX;
         this.gridY = gridY;
         this.direction = direction;
+        this.anchor = anchor;
 
         // Fixed heading — same DIRECTIONS switch idiom as Car.startMove
         this.dx = 0;
@@ -34,19 +31,15 @@ export class Rocket {
 
         this.tilesTraveled = 0;
         this.moveTimer = 0;
-        this.trailTimer = 0;
 
-        // Continuous visual position (also read by GameScene for fizzle bursts)
+        // Continuous visual position (also read by GameScene for the miss puff)
         this.visualX = gridX * TILE_SIZE + TILE_SIZE / 2;
         this.visualY = gridY * TILE_SIZE + TILE_SIZE / 2;
 
-        // Depth 2: above cars (1). An additive exhaust glow rides behind it.
-        this.trail = scene.add.image(this.visualX, this.visualY, 'glow')
-            .setBlendMode('ADD').setTint(0xff9a2a).setAlpha(0.85).setDepth(2);
-        this.body = scene.add.sprite(this.visualX, this.visualY, 'rocket', 0)
-            .setAngle(ANGLE_BY_DIRECTION[direction])
-            .setDepth(2.1);
-        this.body.play('rocket-fly');
+        // Depth 2: above riders (1). The rope is drawn under the loop.
+        this.rope = scene.add.graphics().setDepth(1.95);
+        this.body = scene.add.sprite(this.visualX, this.visualY, 'lasso', 0).setDepth(2.1);
+        this.body.play('lasso-spin');
 
         this.updateVisual();
     }
@@ -67,15 +60,6 @@ export class Rocket {
         }
 
         this.updateVisual();
-
-        // Smoke trail
-        this.trailTimer += delta;
-        if (this.trailTimer >= 28) {
-            this.trailTimer = 0;
-            smokePuff(this.scene,
-                this.visualX - this.dx * 18, this.visualY - this.dy * 18,
-                { drift: 6, scale: 0.9, depth: 1.9, tint: 0xd8d8e0 });
-        }
         return stepped ? 'advanced' : null;
     }
 
@@ -94,13 +78,24 @@ export class Rocket {
         this.body.x = this.visualX;
         this.body.y = this.visualY;
 
-        // Exhaust glow lags a fraction of a tile behind the heading
-        this.trail.x = this.visualX - this.dx * TILE_SIZE * 0.25;
-        this.trail.y = this.visualY - this.dy * TILE_SIZE * 0.25;
+        // The rope back to the rider, with a little sag across the throw
+        this.rope.clear();
+        if (!this.anchor) return;
+        const ax = this.anchor.x;
+        const ay = this.anchor.y;
+        const mx = (ax + this.visualX) / 2 + this.dy * 6;
+        const my = (ay + this.visualY) / 2 + Math.abs(this.dx) * 6;
+        const curve = new Phaser.Curves.QuadraticBezier(
+            new Phaser.Math.Vector2(ax, ay), new Phaser.Math.Vector2(mx, my),
+            new Phaser.Math.Vector2(this.visualX - this.dx * 12, this.visualY - this.dy * 12));
+        this.rope.lineStyle(4, ROPE_DARK, 1);
+        curve.draw(this.rope, 16);
+        this.rope.lineStyle(2, ROPE, 1);
+        curve.draw(this.rope, 16);
     }
 
     destroy() {
         this.body.destroy();
-        this.trail.destroy();
+        this.rope.destroy();
     }
 }

@@ -1,20 +1,20 @@
 import { Car } from './Car';
 import { CONFIG } from '../config';
 
-// The diamond delivery truck: an armoured courier that roams the streets.
-// Ramming it awards the diamond (GameScene handles the collision). Police
-// and bombs ignore it entirely — it never joins PoliceManager.units.
+// The stagecoach: roams the streets with a strongbox on the roof. Ramming
+// it robs the coach (GameScene handles the collision). Police and dynamite
+// ignore it entirely — it never joins PoliceManager.units.
 export class DiamondCar extends Car {
     constructor(scene, gridX, gridY, mapManager) {
-        super(scene, gridX, gridY, mapManager, { textureKey: 'diamondTruck' });
+        super(scene, gridX, gridY, mapManager, { textureKey: 'stagecoach' });
 
         this.moveConfig.duration = CONFIG.DIAMOND_CAR.MOVE_DURATION;
 
-        // A cyan glint pops on the truck every so often so it reads as loot
+        // A gold glint pops off the strongbox every so often so it reads as loot
         this.sparkleTimer = 0;
         this.glint = scene.add.sprite(0, 0, 'spark', 0)
             .setDepth(1.1)
-            .setTint(0x9ff6ff)
+            .setTint(0xffe080)
             .setVisible(false);
         this.glint.on('animationcomplete', () => this.glint.setVisible(false));
     }
@@ -25,11 +25,11 @@ export class DiamondCar extends Car {
         this.sparkleTimer += delta;
         if (this.sparkleTimer >= 700) {
             this.sparkleTimer = 0;
-            this.glintOffset = { x: (Math.random() - 0.5) * 24, y: (Math.random() - 0.5) * 24 };
+            this.glintOffset = { x: (Math.random() - 0.5) * 16, y: (Math.random() - 0.5) * 16 };
             this.glint.setVisible(true).play('spark-twinkle');
         }
         if (this.glint.visible) {
-            // Ride along with the truck while the twinkle plays
+            // Ride along with the coach while the twinkle plays
             this.glint.setPosition(this.visual.x + this.glintOffset.x, this.visual.y + this.glintOffset.y);
         }
     }

@@ -32,16 +32,16 @@ const PICKUP_ART = {
     [COLLECTIBLE_TYPES.REPAIR]: { frame: PICKUP_FRAMES.repair },
     [COLLECTIBLE_TYPES.NITRO]: { frame: PICKUP_FRAMES.nitro },
     [COLLECTIBLE_TYPES.ROCKET]: { frame: PICKUP_FRAMES.rocket },
-    [COLLECTIBLE_TYPES.BOMB]: { frame: PICKUP_FRAMES.bomb, anim: 'bomb-fuse' },
+    [COLLECTIBLE_TYPES.BOMB]: { frame: PICKUP_FRAMES.bomb, anim: 'dynamite-fuse' },
     [COLLECTIBLE_TYPES.LIFE]: { frame: PICKUP_FRAMES.life },
     [COLLECTIBLE_TYPES.RAIL_PASS]: { frame: PICKUP_FRAMES.railPass },
-    // Only ever dropped by a diamond truck the train wrecks
+    // The strongbox, only ever dropped by a stagecoach the train smashes
     [COLLECTIBLE_TYPES.DIAMOND]: { frame: PICKUP_FRAMES.diamond },
 };
 
 // Builds a collectible's sprite centred on (0, 0), unpositioned.
 //
-// Shared by the road pickups and the instructions screen so the icons the
+// Shared by the street pickups and the instructions screen so the icons the
 // player is taught are literally the ones they'll see. `size` is the tile
 // size the icon is drawn for: TILE_SIZE gives the in-game 32px sprite, and
 // multiples of it keep the pixel art on whole-pixel scales.
@@ -49,7 +49,7 @@ export function createCollectibleIcon(scene, type, size = TILE_SIZE) {
     const art = PICKUP_ART[type];
     const sprite = art
         ? scene.add.sprite(0, 0, 'pickups', art.frame)
-        : scene.add.sprite(0, 0, 'icons', ICON.fuel); // legacy FUEL pickup
+        : scene.add.sprite(0, 0, 'icons', ICON.stamina); // legacy FUEL pickup
     sprite.setScale(size / TILE_SIZE);
     if (art && art.anim) {
         // Desynchronise so a street full of coins doesn't spin in lockstep
@@ -69,7 +69,7 @@ export class Collectible {
         const cx = gridX * TILE_SIZE + TILE_SIZE / 2;
         const cy = gridY * TILE_SIZE + TILE_SIZE / 2;
 
-        // Contact shadow stays on the road while the pickup floats above it
+        // Contact shadow stays on the street while the pickup floats above it
         this.shadow = scene.add.image(cx, cy + 14, 'shadow').setDepth(0.2);
         this.visual = this.createVisual();
         this.visual.setPosition(cx, cy - 2).setDepth(0.3);

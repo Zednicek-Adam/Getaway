@@ -83,7 +83,7 @@ describe('GameState', () => {
             }
             expect(state.lives).toBe(0);
             expect(state.gameOver).toBe(true);
-            expect(state.gameOverReason).toBe('BUSTED!');
+            expect(state.gameOverReason).toBe('CAUGHT BY THE POSSE!');
         });
     });
 
@@ -372,21 +372,21 @@ describe('GameState', () => {
             expect(state.gameOver).toBe(false);
         });
 
-        it('at 1 life ends the game with the OUT OF FUEL reason', () => {
+        it('at 1 life ends the game with the horse-gave-out reason', () => {
             const state = new GameState();
             state.lives = 1;
             state.onOutOfFuel();
             expect(state.gameOver).toBe(true);
-            expect(state.gameOverReason).toBe('OUT OF FUEL!');
+            expect(state.gameOverReason).toBe('YOUR HORSE GAVE OUT!');
         });
 
-        it('a normal catch chain to 0 lives still reports BUSTED!', () => {
+        it('a normal catch chain to 0 lives still reports the posse catching you', () => {
             const state = new GameState();
             for (let i = 0; i < CONFIG.PLAYER.LIVES; i++) {
                 state.onCaught();
             }
             expect(state.gameOver).toBe(true);
-            expect(state.gameOverReason).toBe('BUSTED!');
+            expect(state.gameOverReason).toBe('CAUGHT BY THE POSSE!');
         });
     });
 });

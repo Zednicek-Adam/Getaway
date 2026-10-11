@@ -64,15 +64,18 @@ def save_tileset(tiles, name, cols=16):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+    # Start clean so a renamed or dropped asset never lingers
+    for old in OUT.glob('*.png'):
+        old.unlink()
     manifest = {}
 
-    # City
+    # Town
     tiles, city = art_city.build_city_tiles()
     city.update(save_tileset(tiles, 'city.png'))
     manifest['city'] = city
 
-    # Railway: track tiles keyed by the loop's local move signature, plus the
-    # rails-over-road overlay for crossings (src/railway.js, MapManager.render)
+    # Railroad: track tiles keyed by the loop's local move signature, plus the
+    # planks-over-street overlay for crossings (src/railway.js, MapManager.render)
     sigs = art_rail.all_signatures()
     rail_tiles = [art_rail.track_tile(sig) for sig in sigs]
     rail = {'tiles': {sig: i for i, sig in enumerate(sigs)}}
@@ -81,77 +84,74 @@ def main():
     rail.update(save_tileset(rail_tiles, 'rail.png', cols=8))
     manifest['rail'] = rail
 
-    # Vehicles: frames ordered LEFT, UP, RIGHT, DOWN (police/SWAT: 3 light rows)
-    # Player: LEFT, UP, RIGHT, DOWN, then the diagonals UR, DR, DL, UL for
-    # riding the rails round the loop's corners
-    player = spr.player_car()
-    save_sheet(spr.direction_frames(player) + art_rail.eight_ways(player)[1::2], 'car_player.png')
-    save_sheet([f for s in range(3) for f in spr.direction_frames(spr.police_car(s))], 'car_police.png', cols=4)
-    save_sheet([f for s in range(3) for f in spr.direction_frames(spr.swat_van(s))], 'van_swat.png', cols=4)
-    save_sheet(spr.direction_frames(spr.diamond_truck()), 'truck_diamond.png')
+    # Mounts: rows of LEFT, UP, RIGHT, DOWN, one row per gait phase. The
+    # outlaw's sheet goes on with the handcar for riding the rails: two pump
+    # phases of eight headings each, clockwise from facing up.
+    handcar = [f for phase in range(2) for f in art_rail.eight_ways(spr.handcar(phase))]
+    save_sheet(spr.gait_rows(spr.outlaw) + handcar, 'rider_outlaw.png', cols=4)
+    save_sheet(spr.gait_rows(spr.deputy), 'rider_deputy.png', cols=4)
+    save_sheet(spr.gait_rows(spr.marshal_wagon), 'wagon_marshal.png', cols=4)
+    save_sheet(spr.gait_rows(spr.stagecoach), 'stagecoach.png', cols=4)
+    manifest['mounts'] = {'gaitPhases': spr.GAIT_PHASES, 'handcar': spr.GAIT_PHASES * 4}
 
-    heli, heli_shadow = spr.heli_frames()
-    save_sheet(heli, 'heli.png')
-    save_sheet(heli_shadow, 'heli_shadow.png')
-    save_sheet(spr.rotor_frames(), 'rotor.png')
+    # The army balloon: pennant streaming left, hanging limp, streaming right
+    save_sheet([spr.balloon(-1), spr.balloon(0), spr.balloon(1)], 'balloon.png')
+    save(spr.balloon_shadow(), 'balloon_shadow.png')
 
     # Pickups + HUD icons
     frames, idx = spr.pickup_frames()
-    idx['railPass'] = len(frames)
-    frames.append(art_rail.rail_pass_token())
-    idx['diamond'] = len(frames)
-    frames.append(art_rail.diamond_pickup())
     save_sheet(frames, 'pickups.png')
     manifest['pickups'] = idx
     frames, idx = spr.icon_frames()
-    idx['ticket'] = len(frames)
-    frames.append(art_rail.ticket_icon())
     save_sheet(frames, 'icons.png')
     manifest['icons'] = idx
 
     # Effects
     save_sheet(spr.explosion_frames(), 'explosion.png')
-    save_sheet(spr.smoke_frames(), 'smoke.png')
+    save_sheet(spr.dust_frames(), 'dust.png')
     save_sheet(spr.spark_frames(), 'spark.png')
-    save_sheet(spr.flame_frames(), 'flame.png')
-    save_sheet(spr.rocket_frames(), 'rocket.png')
+    save_sheet(spr.lasso_loop_frames(), 'lasso.png')
+    save_sheet(spr.tumbleweed_frames(), 'tumbleweed.png')
     save(spr.glow(), 'glow.png')
     save(spr.spotlight(), 'spotlight.png')
     save(spr.scorch(), 'scorch.png')
     save(spr.blob_shadow(), 'shadow.png')
 
-    # Props + landmarks. Roadblock frames: vertical road (2 blink phases), horizontal road (2)
-    save_sheet([spr.roadblock(True, 0), spr.roadblock(True, 1),
-                spr.roadblock(False, 0), spr.roadblock(False, 1)], 'roadblock.png')
-    save(spr.safehouse(), 'safehouse.png')
-    save(spr.fuel_station(), 'fuelstation.png')
-    save(spr.pad(hexc('#ffc933'), spr.BIG_DOLLAR), 'pad_base.png')
-    save(spr.pad(hexc('#3fdf6a'), spr.BIG_DROP), 'pad_fuel.png')
+    # Props + landmarks. Barricade frames: vertical street (2 lantern phases), horizontal street (2)
+    save_sheet([spr.barricade(True, 0), spr.barricade(True, 1),
+                spr.barricade(False, 0), spr.barricade(False, 1)], 'barricade.png')
+    save(spr.hideout(), 'hideout.png')
+    save(spr.water_stop(), 'water_stop.png')
+    save(spr.pad(hexc('#ffc933'), spr.BIG_DOLLAR), 'pad_hideout.png')
+    save(spr.pad(hexc('#4fb0f0'), spr.BIG_DROP), 'pad_water.png')
 
-    # Railway: train cars (8 headings each), crossing barriers, the station
+    # Railroad: train cars (8 headings each), crossing gates, the depot
     save_sheet(art_rail.train_frames(), 'train.png', cols=8)
     manifest['train'] = {'cars': list(art_rail.TRAIN_CARS), 'frameSize': art_rail.FRAME * WORLD}
     save_sheet(art_rail.crossing_frames(), 'crossing.png')
-    save(art_rail.station(), 'station.png')
-    save(art_rail.station_pad(), 'pad_station.png')
+    save(art_rail.station(), 'depot.png')
+    save(art_rail.station_pad(), 'pad_depot.png')
 
-    # UI
-    save(spr.panel(hexc('#454b63'), hexc('#6a7190'), hexc('#2a2e3f')), 'panel.png')
-    save(spr.panel(hexc('#c8932a'), hexc('#ffe07a'), hexc('#7a5214'), fill=(34, 28, 22, 242)), 'panel_gold.png')
-    save(spr.panel(hexc('#9c2a2a'), hexc('#e0605a'), hexc('#5a1414'), fill=(30, 16, 22, 242)), 'panel_red.png')
+    # UI: plank panels with brass nails
+    save(spr.panel(hexc('#8a5a34'), hexc('#b8824c'), hexc('#5a361e')), 'panel.png')
+    save(spr.panel(hexc('#c8932a'), hexc('#ffe07a'), hexc('#7a5214'), fill=(40, 26, 16, 242)), 'panel_gold.png')
+    save(spr.panel(hexc('#9c2a22'), hexc('#d85a48'), hexc('#5a1410'), fill=(36, 14, 12, 242)), 'panel_red.png')
 
     # Title screen
     save(art_menu.sky(), 'menu_sky.png', scale=MENU)
     save(art_menu.far_layer(), 'menu_far.png', scale=MENU)
     save(art_menu.near_layer(), 'menu_near.png', scale=MENU)
     save(art_menu.street_layer(), 'menu_street.png', scale=MENU)
-    save_sheet([art_menu.side_car('player', 0), art_menu.side_car('player', 1),
-                art_menu.side_car('police', 0), art_menu.side_car('police', 1)], 'menu_cars.png', scale=MENU)
+    riders = [art_menu.side_rider(kind, phase) for kind in ('outlaw', 'deputy')
+              for phase in range(len(art_menu.GALLOP))]
+    save_sheet(riders, 'menu_riders.png', cols=len(art_menu.GALLOP), scale=MENU)
+    manifest['menuRiders'] = {'frames': len(art_menu.GALLOP), 'width': riders[0].w * MENU,
+                              'height': riders[0].h * MENU}
     lw, lh = save(art_menu.logo(), 'logo.png', scale=MENU)
     manifest['logo'] = {'width': lw, 'height': lh}
 
-    # Browser tab icon: the getaway car, nose up
-    spr.direction_frames(spr.player_car())[1].scaled(WORLD).save(ROOT / 'public' / 'favicon.png', optimize=True)
+    # Browser tab icon: the outlaw's hat
+    spr.cowboy_hat().scaled(WORLD).save(ROOT / 'public' / 'favicon.png', optimize=True)
 
     MANIFEST.write_text(json.dumps(manifest, indent=1) + '\n', encoding='utf-8')
     print(f'wrote {len(list(OUT.glob("*.png")))} images to {OUT} and {MANIFEST}')

@@ -1,30 +1,26 @@
+import Phaser from 'phaser';
 import { Car } from './Car';
 import { DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
 import { findPath } from '../pathfinding';
+import { gunshot, hoofDust } from '../fx';
 
+// A posse deputy on horseback. While the chase is on he rides hard, kicking
+// up dust, and fires his revolver into the air every few seconds; the shots
+// are only for show.
 export class PoliceCar extends Car {
     constructor(scene, gridX, gridY, mapManager, target, manager = null, options = {}) {
-        super(scene, gridX, gridY, mapManager, { textureKey: 'policeCar', ...options });
+        super(scene, gridX, gridY, mapManager, { textureKey: 'deputy', ...options });
         this.target = target;   // The Player Car
         this.manager = manager; // PoliceManager (null-safe: standalone = permanent roam)
 
         // Baseline speed; PoliceManager re-applies the per-star duration each frame
         this.moveConfig.duration = CONFIG.POLICE.BY_STARS[0].duration;
 
-        // Light bar: car_police.png / van_swat.png have three 4-frame rows —
-        // lights off, red phase, blue phase. While chasing the bar alternates
-        // red/blue and a matching additive glow washes over the road.
-        this.sirenOn = false;
-        this.sirenPhase = 0; // 0 off, 1 red, 2 blue
-        this.sirenBlinkTimer = 0;
-        this.sirenBlinkInterval = 150; // ms
-        this.glow = scene.add.image(this.visual.x, this.visual.y, 'glow')
-            .setBlendMode('ADD')
-            .setDepth(0.9)
-            .setScale(2.6)
-            .setAlpha(0.5)
-            .setVisible(false);
+        // Time to the next warning shot; desynchronised so a posse doesn't
+        // fire in volleys
+        this.shotTimer = Phaser.Math.Between(400, 2600);
+        this.dustTimer = 0;
 
         // Combat state (ramDamage/unitType consumed by later WPs)
         this.stunRemaining = 0;
@@ -34,53 +30,30 @@ export class PoliceCar extends Car {
     }
 
     update(time, delta) {
-        this.updateSiren(delta);
         this.stunRemaining = Math.max(0, this.stunRemaining - delta);
-
         super.update(time, delta);
+        this.updateShots(delta);
 
-        // Keep siren updating even if not moving
-        this.applyDirectionFrame();
-        this.updateGlow();
-    }
-
-    updateGlow() {
-        this.glow.setVisible(this.sirenOn);
-        if (!this.sirenOn) return;
-        this.glow.setPosition(this.visual.x, this.visual.y);
-        this.glow.setTint(this.sirenPhase === 1 ? 0xff2a3a : 0x2a6aff);
-    }
-
-    destroy() {
-        this.glow.destroy();
-        super.destroy();
+        this.dustTimer += delta;
+        if (this.isMoving && this.isChaseActive() && this.dustTimer >= 200) {
+            this.dustTimer = 0;
+            hoofDust(this.scene, this, { scale: this.unitType === 'swat' ? 1.2 : 0.8 });
+        }
     }
 
     isChaseActive() {
         return !!this.manager && this.manager.state.isChasing();
     }
 
-    updateSiren(delta) {
-        if (this.isChaseActive()) {
-            this.sirenBlinkTimer += delta;
-            if (this.sirenBlinkTimer >= this.sirenBlinkInterval || !this.sirenOn) {
-                this.sirenBlinkTimer = 0;
-                this.sirenOn = true;
-                this.sirenPhase = this.sirenPhase === 1 ? 2 : 1;
-            }
-        } else {
-            this.sirenOn = false;
-            this.sirenPhase = 0;
-            this.sirenBlinkTimer = 0;
-        }
-    }
-
-    getFrameForDirection(direction) {
-        const baseFrame = super.getFrameForDirection(direction);
-        if (baseFrame === undefined) return undefined;
-
-        // Row 0: lights off (0-3), row 1: red phase (4-7), row 2: blue phase (8-11)
-        return baseFrame + (this.sirenPhase || 0) * 4; // undefined during super()
+    // Warning shots while chasing, from the rider's gun hand
+    updateShots(delta) {
+        if (!this.isChaseActive() || this.unitType !== 'police') return;
+        this.shotTimer -= delta;
+        if (this.shotTimer > 0) return;
+        this.shotTimer = Phaser.Math.Between(1800, 3600);
+        const side = { [DIRECTIONS.UP]: [12, -6], [DIRECTIONS.DOWN]: [-12, 6],
+            [DIRECTIONS.LEFT]: [-6, -12], [DIRECTIONS.RIGHT]: [6, 12] }[this.direction];
+        gunshot(this.scene, this.visual.x + side[0], this.visual.y + side[1]);
     }
 
     // Override tryMove to evaluate routing at every tile/intersection

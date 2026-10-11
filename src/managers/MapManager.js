@@ -556,12 +556,12 @@ export class MapManager {
     // so landmarks are separate game objects. Must be called after render() and
     // before the cars are created (depth keeps them below cars regardless).
     renderLandmarks() {
-        this.baseMarker = this.createLandmark(this.base, 'safehouse', 'padBase');
+        this.baseMarker = this.createLandmark(this.base, 'hideout', 'padHideout');
         for (const station of this.fuelStations) {
-            this.createLandmark(station, 'fuelStation', 'padFuel');
+            this.createLandmark(station, 'waterStop', 'padWater');
         }
         if (this.rail.station) {
-            this.createLandmark(this.rail.station, 'station', 'padStation');
+            this.createLandmark(this.rail.station, 'depot', 'padDepot');
         }
     }
 
@@ -570,8 +570,8 @@ export class MapManager {
         const by = landmark.building.y * TILE_SIZE + TILE_SIZE / 2;
         const building = this.scene.add.image(bx, by, buildingKey).setDepth(0.12);
 
-        // Painted bay on the pad tile so the player knows where to stop; it
-        // breathes gently so it reads as a place to go, not road decoration
+        // Bunting round the pad tile so the player knows where to stop; it
+        // breathes gently so it reads as a place to go, not street decoration
         const px = landmark.pad.x * TILE_SIZE + TILE_SIZE / 2;
         const py = landmark.pad.y * TILE_SIZE + TILE_SIZE / 2;
         const pad = this.scene.add.image(px, py, padKey).setDepth(0.1);

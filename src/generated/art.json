@@ -151,7 +151,7 @@
   },
   "pieces": [
    {
-    "name": "tower_1x1_blueglass",
+    "name": "front_1x1_saloon",
     "zone": "downtown",
     "w": 1,
     "h": 1,
@@ -160,7 +160,7 @@
     ]
    },
    {
-    "name": "tower_2x1_blueglass",
+    "name": "front_2x1_saloon",
     "zone": "downtown",
     "w": 2,
     "h": 1,
@@ -170,7 +170,7 @@
     ]
    },
    {
-    "name": "tower_1x2_blueglass",
+    "name": "front_1x2_saloon",
     "zone": "downtown",
     "w": 1,
     "h": 2,
@@ -180,7 +180,7 @@
     ]
    },
    {
-    "name": "tower_2x2_blueglass",
+    "name": "front_2x2_saloon",
     "zone": "downtown",
     "w": 2,
     "h": 2,
@@ -192,7 +192,7 @@
     ]
    },
    {
-    "name": "tower_1x1_concrete",
+    "name": "front_1x1_bank",
     "zone": "downtown",
     "w": 1,
     "h": 1,
@@ -201,7 +201,7 @@
     ]
    },
    {
-    "name": "tower_2x1_concrete",
+    "name": "front_2x1_bank",
     "zone": "downtown",
     "w": 2,
     "h": 1,
@@ -211,7 +211,7 @@
     ]
    },
    {
-    "name": "tower_1x2_concrete",
+    "name": "front_1x2_bank",
     "zone": "downtown",
     "w": 1,
     "h": 2,
@@ -221,7 +221,7 @@
     ]
    },
    {
-    "name": "tower_2x2_concrete",
+    "name": "front_2x2_bank",
     "zone": "downtown",
     "w": 2,
     "h": 2,
@@ -233,7 +233,7 @@
     ]
    },
    {
-    "name": "tower_1x1_granite",
+    "name": "front_1x1_hotel",
     "zone": "downtown",
     "w": 1,
     "h": 1,
@@ -242,7 +242,7 @@
     ]
    },
    {
-    "name": "tower_2x1_granite",
+    "name": "front_2x1_hotel",
     "zone": "downtown",
     "w": 2,
     "h": 1,
@@ -252,7 +252,7 @@
     ]
    },
    {
-    "name": "tower_1x2_granite",
+    "name": "front_1x2_hotel",
     "zone": "downtown",
     "w": 1,
     "h": 2,
@@ -262,7 +262,7 @@
     ]
    },
    {
-    "name": "tower_2x2_granite",
+    "name": "front_2x2_hotel",
     "zone": "downtown",
     "w": 2,
     "h": 2,
@@ -274,7 +274,7 @@
     ]
    },
    {
-    "name": "tower_1x1_sandstone",
+    "name": "front_1x1_mercantile",
     "zone": "downtown",
     "w": 1,
     "h": 1,
@@ -283,7 +283,7 @@
     ]
    },
    {
-    "name": "tower_2x1_sandstone",
+    "name": "front_2x1_mercantile",
     "zone": "downtown",
     "w": 2,
     "h": 1,
@@ -293,7 +293,7 @@
     ]
    },
    {
-    "name": "tower_1x2_sandstone",
+    "name": "front_1x2_mercantile",
     "zone": "downtown",
     "w": 1,
     "h": 2,
@@ -303,7 +303,7 @@
     ]
    },
    {
-    "name": "tower_2x2_sandstone",
+    "name": "front_2x2_mercantile",
     "zone": "downtown",
     "w": 2,
     "h": 2,
@@ -333,7 +333,7 @@
     ]
    },
    {
-    "name": "shop_1x1_brick",
+    "name": "trade_1x1_smithy",
     "zone": "commercial",
     "w": 1,
     "h": 1,
@@ -342,7 +342,7 @@
     ]
    },
    {
-    "name": "shop_2x1_brick",
+    "name": "trade_2x1_smithy",
     "zone": "commercial",
     "w": 2,
     "h": 1,
@@ -352,7 +352,7 @@
     ]
    },
    {
-    "name": "shop_1x2_brick",
+    "name": "trade_1x2_smithy",
     "zone": "commercial",
     "w": 1,
     "h": 2,
@@ -362,7 +362,7 @@
     ]
    },
    {
-    "name": "shop_2x2_brick",
+    "name": "trade_2x2_smithy",
     "zone": "commercial",
     "w": 2,
     "h": 2,
@@ -374,7 +374,7 @@
     ]
    },
    {
-    "name": "shop_1x1_sand",
+    "name": "trade_1x1_livery",
     "zone": "commercial",
     "w": 1,
     "h": 1,
@@ -383,7 +383,7 @@
     ]
    },
    {
-    "name": "shop_2x1_sand",
+    "name": "trade_2x1_livery",
     "zone": "commercial",
     "w": 2,
     "h": 1,
@@ -393,7 +393,7 @@
     ]
    },
    {
-    "name": "shop_1x1_rose",
+    "name": "trade_1x1_barber",
     "zone": "commercial",
     "w": 1,
     "h": 1,
@@ -402,7 +402,7 @@
     ]
    },
    {
-    "name": "shop_2x1_rose",
+    "name": "trade_2x1_barber",
     "zone": "commercial",
     "w": 2,
     "h": 1,
@@ -412,7 +412,7 @@
     ]
    },
    {
-    "name": "shop_1x2_rose",
+    "name": "trade_1x2_barber",
     "zone": "commercial",
     "w": 1,
     "h": 2,
@@ -422,7 +422,7 @@
     ]
    },
    {
-    "name": "shop_2x2_rose",
+    "name": "trade_2x2_barber",
     "zone": "commercial",
     "w": 2,
     "h": 2,
@@ -434,7 +434,7 @@
     ]
    },
    {
-    "name": "shop_1x1_teal",
+    "name": "trade_1x1_feed",
     "zone": "commercial",
     "w": 1,
     "h": 1,
@@ -443,7 +443,7 @@
     ]
    },
    {
-    "name": "shop_2x1_teal",
+    "name": "trade_2x1_feed",
     "zone": "commercial",
     "w": 2,
     "h": 1,
@@ -453,7 +453,7 @@
     ]
    },
    {
-    "name": "parking_2x1_0",
+    "name": "wagons_2x1_0",
     "zone": "commercial",
     "w": 2,
     "h": 1,
@@ -463,7 +463,7 @@
     ]
    },
    {
-    "name": "parking_2x1_1",
+    "name": "wagons_2x1_1",
     "zone": "commercial",
     "w": 2,
     "h": 1,
@@ -473,7 +473,7 @@
     ]
    },
    {
-    "name": "parking_2x2",
+    "name": "wagons_2x2",
     "zone": "commercial",
     "w": 2,
     "h": 2,
@@ -649,7 +649,7 @@
     ]
    },
    {
-    "name": "flats_2x2",
+    "name": "boarding_2x2",
     "zone": "residential",
     "w": 2,
     "h": 2,
@@ -681,7 +681,7 @@
     ]
    },
    {
-    "name": "warehouse_2x1_0",
+    "name": "freight_2x1_0",
     "zone": "industrial",
     "w": 2,
     "h": 1,
@@ -691,7 +691,7 @@
     ]
    },
    {
-    "name": "warehouse_1x2_0",
+    "name": "freight_1x2_0",
     "zone": "industrial",
     "w": 1,
     "h": 2,
@@ -701,7 +701,7 @@
     ]
    },
    {
-    "name": "warehouse_2x2_0",
+    "name": "freight_2x2_0",
     "zone": "industrial",
     "w": 2,
     "h": 2,
@@ -713,7 +713,7 @@
     ]
    },
    {
-    "name": "workshop_0",
+    "name": "sawmill_0",
     "zone": "industrial",
     "w": 1,
     "h": 1,
@@ -722,7 +722,7 @@
     ]
    },
    {
-    "name": "yard_1x1_0",
+    "name": "lumber_1x1_0",
     "zone": "industrial",
     "w": 1,
     "h": 1,
@@ -731,7 +731,7 @@
     ]
    },
    {
-    "name": "yard_2x1_0",
+    "name": "lumber_2x1_0",
     "zone": "industrial",
     "w": 2,
     "h": 1,
@@ -741,79 +741,79 @@
     ]
    },
    {
-    "name": "tanks_0",
+    "name": "freight_2x1_1",
     "zone": "industrial",
     "w": 2,
-    "h": 2,
+    "h": 1,
     "tiles": [
      161,
-     162,
+     162
+    ]
+   },
+   {
+    "name": "freight_1x2_1",
+    "zone": "industrial",
+    "w": 1,
+    "h": 2,
+    "tiles": [
      163,
      164
     ]
    },
    {
-    "name": "warehouse_2x1_1",
+    "name": "freight_2x2_1",
     "zone": "industrial",
     "w": 2,
-    "h": 1,
-    "tiles": [
-     165,
-     166
-    ]
-   },
-   {
-    "name": "warehouse_1x2_1",
-    "zone": "industrial",
-    "w": 1,
     "h": 2,
     "tiles": [
+     165,
+     166,
      167,
      168
     ]
    },
    {
-    "name": "warehouse_2x2_1",
+    "name": "sawmill_1",
+    "zone": "industrial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     169
+    ]
+   },
+   {
+    "name": "lumber_1x1_1",
+    "zone": "industrial",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     170
+    ]
+   },
+   {
+    "name": "lumber_2x1_1",
     "zone": "industrial",
     "w": 2,
-    "h": 2,
+    "h": 1,
     "tiles": [
-     169,
-     170,
      171,
      172
     ]
    },
    {
-    "name": "workshop_1",
-    "zone": "industrial",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     173
-    ]
-   },
-   {
-    "name": "yard_1x1_1",
-    "zone": "industrial",
-    "w": 1,
-    "h": 1,
-    "tiles": [
-     174
-    ]
-   },
-   {
-    "name": "yard_2x1_1",
+    "name": "towers_2x2",
     "zone": "industrial",
     "w": 2,
-    "h": 1,
+    "h": 2,
     "tiles": [
+     173,
+     174,
      175,
      176
     ]
    },
    {
-    "name": "tanks_1",
+    "name": "stockyard_2x2",
     "zone": "industrial",
     "w": 2,
     "h": 2,
@@ -825,7 +825,7 @@
     ]
    },
    {
-    "name": "park_1x1_trees",
+    "name": "park_1x1_scrub",
     "zone": "park",
     "w": 1,
     "h": 1,
@@ -834,7 +834,7 @@
     ]
    },
    {
-    "name": "playground",
+    "name": "bandstand",
     "zone": "park",
     "w": 1,
     "h": 1,
@@ -843,7 +843,7 @@
     ]
    },
    {
-    "name": "park_2x1_trees",
+    "name": "park_2x1_scrub",
     "zone": "park",
     "w": 2,
     "h": 1,
@@ -853,7 +853,7 @@
     ]
    },
    {
-    "name": "park_1x2_trees",
+    "name": "park_1x2_scrub",
     "zone": "park",
     "w": 1,
     "h": 2,
@@ -863,7 +863,7 @@
     ]
    },
    {
-    "name": "pond",
+    "name": "wateringhole",
     "zone": "park",
     "w": 2,
     "h": 2,
@@ -875,7 +875,7 @@
     ]
    },
    {
-    "name": "fountain",
+    "name": "boothill",
     "zone": "park",
     "w": 2,
     "h": 2,
@@ -887,8 +887,8 @@
     ]
    },
    {
-    "name": "forest_0",
-    "zone": "forest",
+    "name": "desert_0",
+    "zone": "desert",
     "w": 1,
     "h": 1,
     "tiles": [
@@ -896,8 +896,8 @@
     ]
    },
    {
-    "name": "forest_1",
-    "zone": "forest",
+    "name": "desert_1",
+    "zone": "desert",
     "w": 1,
     "h": 1,
     "tiles": [
@@ -905,8 +905,8 @@
     ]
    },
    {
-    "name": "forest_2",
-    "zone": "forest",
+    "name": "desert_2",
+    "zone": "desert",
     "w": 1,
     "h": 1,
     "tiles": [
@@ -914,8 +914,8 @@
     ]
    },
    {
-    "name": "meadow_0",
-    "zone": "farm",
+    "name": "desert_3",
+    "zone": "desert",
     "w": 1,
     "h": 1,
     "tiles": [
@@ -923,8 +923,8 @@
     ]
    },
    {
-    "name": "meadow_1",
-    "zone": "farm",
+    "name": "desert_4",
+    "zone": "desert",
     "w": 1,
     "h": 1,
     "tiles": [
@@ -932,41 +932,113 @@
     ]
    },
    {
-    "name": "field_2x2_wheat",
-    "zone": "farm",
-    "w": 2,
-    "h": 2,
+    "name": "desert_5",
+    "zone": "desert",
+    "w": 1,
+    "h": 1,
     "tiles": [
-     200,
-     201,
-     202,
+     200
+    ]
+   },
+   {
+    "name": "desert_6",
+    "zone": "desert",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     201
+    ]
+   },
+   {
+    "name": "desert_7",
+    "zone": "desert",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     202
+    ]
+   },
+   {
+    "name": "desert_8",
+    "zone": "desert",
+    "w": 1,
+    "h": 1,
+    "tiles": [
      203
     ]
    },
    {
-    "name": "field_2x2_greens",
-    "zone": "farm",
-    "w": 2,
-    "h": 2,
+    "name": "desert_9",
+    "zone": "desert",
+    "w": 1,
+    "h": 1,
     "tiles": [
-     204,
-     205,
-     206,
+     204
+    ]
+   },
+   {
+    "name": "meadow_0",
+    "zone": "ranch",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     205
+    ]
+   },
+   {
+    "name": "meadow_1",
+    "zone": "ranch",
+    "w": 1,
+    "h": 1,
+    "tiles": [
+     206
+    ]
+   },
+   {
+    "name": "meadow_2",
+    "zone": "ranch",
+    "w": 1,
+    "h": 1,
+    "tiles": [
      207
     ]
    },
    {
+    "name": "field_2x2_wheat",
+    "zone": "ranch",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     208,
+     209,
+     210,
+     211
+    ]
+   },
+   {
+    "name": "field_2x2_corn",
+    "zone": "ranch",
+    "w": 2,
+    "h": 2,
+    "tiles": [
+     212,
+     213,
+     214,
+     215
+    ]
+   },
+   {
     "name": "field_2x1_ploughed",
-    "zone": "farm",
+    "zone": "ranch",
     "w": 2,
     "h": 1,
     "tiles": [
-     208,
-     209
+     216,
+     217
     ]
    }
   ],
-  "ground": 210,
+  "ground": 218,
   "tileSize": 64,
   "margin": 1,
   "spacing": 2
@@ -1014,6 +1086,10 @@
   "margin": 1,
   "spacing": 2
  },
+ "mounts": {
+  "gaitPhases": 4,
+  "handcar": 16
+ },
  "pickups": {
   "coin": 0,
   "repair": 6,
@@ -1028,19 +1104,19 @@
  "icons": {
   "coin": 0,
   "bag": 1,
-  "heart": 2,
-  "heartEmpty": 3,
-  "fuel": 4,
-  "bomb": 5,
-  "rocket": 6,
-  "shield": 7,
-  "shieldEmpty": 8,
-  "star": 9,
-  "starEmpty": 10,
+  "hat": 2,
+  "hatEmpty": 3,
+  "heart": 4,
+  "heartEmpty": 5,
+  "stamina": 6,
+  "dynamite": 7,
+  "lasso": 8,
+  "badge": 9,
+  "badgeEmpty": 10,
   "arrow": 11,
-  "gauge": 12,
-  "wrench": 13,
-  "bolt": 14,
+  "horse": 12,
+  "horseshoe": 13,
+  "carrot": 14,
   "ticket": 15
  },
  "train": {
@@ -1049,13 +1125,18 @@
    "bullion",
    "bullionOpen",
    "boxcar",
-   "flatcar",
-   "tankcar"
+   "lumber",
+   "coach"
   ],
   "frameSize": 80
  },
+ "menuRiders": {
+  "frames": 6,
+  "width": 224,
+  "height": 160
+ },
  "logo": {
-  "width": 736,
-  "height": 196
+  "width": 820,
+  "height": 268
  }
 }

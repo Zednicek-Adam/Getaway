@@ -1,4 +1,4 @@
-"""The railway: track tiles, level crossings, the train and the station.
+"""The railroad: track tiles, plank crossings, the steam train and the depot.
 
 Track tiles are drawn from geometry rather than by hand. The game's loop is a
 cycle of grid cells (src/railway.js) and the rails run through the midpoints
@@ -17,14 +17,14 @@ T = 32
 OUTLINE = spr.OUTLINE
 SHADOW = spr.SHADOW
 
-BALLAST = [hexc('#7d7468'), hexc('#6e665b'), hexc('#8a8174')]
-BALLAST_EDGE = hexc('#5f584f')
-SLEEPER = hexc('#5b3f2c')
-SLEEPER_L = hexc('#74533a')
-RAIL = hexc('#aab1bc')
-RAIL_D = hexc('#5a5d68')
-RUBBER = hexc('#2f3139')
-RUBBER_SEAM = hexc('#26282e')
+BALLAST = [hexc('#9a8268'), hexc('#8a735a'), hexc('#a89074')]
+BALLAST_EDGE = hexc('#7a6650')
+SLEEPER = hexc('#4e3424')
+SLEEPER_L = hexc('#6a4a32')
+RAIL = hexc('#b8bcc4')
+RAIL_D = hexc('#5e5a5a')
+PLANK = hexc('#9a6a3c')
+PLANK_SEAM = hexc('#5e3e24')
 
 STEP = {'U': (0, -1), 'R': (1, 0), 'D': (0, 1), 'L': (-1, 0)}
 
@@ -138,7 +138,8 @@ def track_tile(sig):
 
 
 def crossing_tile(axis):
-    """Rails over a road: drawn over the road tile on a crossing cell.
+    """Rails over a street, planked level with the rails so wagons can
+    roll across: drawn over the street tile on a crossing cell.
 
     axis 'H' is track running left-right (so the road runs up-down)."""
     rng = rng_for('crossing')
@@ -152,7 +153,9 @@ def crossing_tile(axis):
             if on_road:
                 if d > BED:
                     continue
-                c = RUBBER_SEAM if x % 7 == 0 or d > BED - 1 else RUBBER
+                c = PLANK_SEAM if (y + 0.5 - mid + BED) % 4 < 1 or d > BED - 1 else PLANK
+                if x % 9 == 0 and c == PLANK:
+                    c = shade(PLANK, 0.85)
                 if RAIL_IN <= abs(side) < RAIL_OUT:
                     c = RAIL if abs(side) < RAIL_IN + 1 else RAIL_D
                 a.set(x, y, c)
@@ -162,15 +165,20 @@ def crossing_tile(axis):
 
 
 def barrier_frame(axis, down, lamp):
-    """Both barrier arms for one crossing cell. lamp: which red lamp is lit."""
+    """Both gate arms for one crossing cell, each post carrying a crossbuck
+    sign and a lantern. lamp: which lantern is lit."""
     a = Art(T, T)
-    red, white = hexc('#e8413f'), hexc('#f4f6f8')
-    lit, dark = hexc('#ff5a4a'), hexc('#5a1c22')
-    # Two posts on opposite sidewalks; the arms reach across the road towards
-    # each other, one on each side of the track
+    red, white = hexc('#c0392b'), hexc('#efe6cf')
+    lit, dark = hexc('#ffb040'), hexc('#5a2e14')
+    # Two posts on opposite boardwalks; the arms swing across the street
+    # towards each other, one on each side of the track
     for post_x, arm_y, sign in ((2, 3, 1), (T - 4, T - 5, -1)):
-        a.rect(post_x, arm_y - 1, 3, 3, hexc('#2a2c34'))
-        a.set(post_x + 1, arm_y, hexc('#6a6e79'))
+        # crossbuck: an X of white boards over the post
+        for k in range(-2, 3):
+            a.set(post_x + 1 + k, arm_y - 1 + k, white)
+            a.set(post_x + 1 + k, arm_y - 1 - k, white)
+        a.rect(post_x, arm_y - 1, 3, 3, hexc('#4a2e1a'))
+        a.set(post_x + 1, arm_y, hexc('#8a6440'))
         if down:
             for k in range(3, 24):
                 ax = post_x + 1 + sign * k
@@ -178,11 +186,9 @@ def barrier_frame(axis, down, lamp):
                 a.set(ax, arm_y, c)
                 a.set(ax, arm_y + 1, shade(c, 0.78))
         else:
-            # raised arm, seen end-on from above: a short stub
             a.set(post_x + 1 + sign * 2, arm_y, red)
             a.set(post_x + 1 + sign * 3, arm_y, white)
-        a.set(post_x, arm_y - 1, lit if (down and lamp == 0) else dark)
-        a.set(post_x + 2, arm_y - 1, lit if (down and lamp == 1) else dark)
+        a.set(post_x + 1 - sign * 2, arm_y + 1, lit if (down and lamp == (0 if sign > 0 else 1)) else dark)
     a.outline(OUTLINE)
     a.drop_shadow(1, 1, SHADOW)
     return a if axis == 'H' else a.rotated(1)
@@ -198,82 +204,72 @@ def crossing_frames():
 # --- The train ------------------------------------------------------------------------
 
 BASE = {
-    'Y': spr.GOLD, 'y': spr.GOLD_D, 'K': hexc('#22242c'), 'W': spr.HEAD, 'T': spr.TAIL,
-    'g': spr.GLASS, 'G': spr.GLASS_L, 'w': hexc('#8a8f99'), 'c': spr.CHROME,
-    'F': hexc('#1c1e26'), 'f': hexc('#5a5d68'),
+    'Y': spr.GOLD, 'y': spr.GOLD_D, 'W': spr.GOLD_L, 'K': hexc('#221a18'), 'k': hexc('#3a3230'),
 }
 
+# A 4-4-0 tank engine, front at the top: red cowcatcher, brass headlamp,
+# the big balloon stack, the banded boiler with its brass dome, the maroon
+# cab roof and the coal bunker behind
 LOCO = [
-    "..YYYYYYYYYY..",
-    ".YWYYKYYKYYWY.",
-    "YYYYKYYYYKYYYY",
-    "YYYKYYYYYYKYYY",
-    "LBBBBBBBBBBBBD",
-    "LGgggggggggggD",
-    "Lggggggggggggd",
-    "LBBBBBBBBBBBBD",
-    "LBRRRRRRRRRRBD",
-    "LBRrrrrrrrrRBD",
-    "LBRRRRRRRRRRBD",
-    "LwBBBBBBBBBBwD",
-    "LwBFfFfFfFfBwD",
-    "LwBfFfFfFfFBwD",
-    "LwBFfFfFfFfBwD",
-    "LwBBBBBBBBBBwD",
-    "LwBB.FFFF.BBwD",
-    "LwBBFffffFBBwD",
-    "LwBBFfFFfFBBwD",
-    "LwBBFffffFBBwD",
-    "LwBB.FFFF.BBwD",
-    "LwBBBBBBBBBBwD",
-    "LwBBKKBBKKBBwD",
-    "LwBBKKBBKKBBwD",
-    "LwBBBBBBBBBBwD",
-    "LCCCCCCCCCCCCD",
-    "LTBBBBBBBBBBTD",
-    ".DDDDDDDDDDDD.",
+    ".....RRRR.....",
+    "....RrRRrR....",
+    "...RrRrrRrR...",
+    "..RrRrRrrRrR..",
+    "..kkkkkkkkkk..",
+    "..kgYYLLYYgk..",
+    "..gkkKKKKkkg..",
+    "..gkKSSSSKkg..",
+    "..gKSSSSSSKg..",
+    "..gKSSSSSSKg..",
+    "..gkKSSSSKkg..",
+    "RgkHBBBBBBDkgR",
+    "RgkHBBBBBBDkgR",
+    "rgkYYYYYYYYkgr",
+    "RgkHBYYYYBDkgR",
+    "RgkHYYLYYyDkgR",
+    "RgkHByyyyBDkgR",
+    "rgkHBBBBBBDkgr",
+    "RgkYYYYYYYYkgR",
+    "RgkHBBBBBBDkgR",
+    "rgkHBBBBBBDkgr",
+    "MMMMMMMMMMMMMc",
+    "MCCCCCCCCCCCCc",
+    "MCCCCmmmmCCCCc",
+    "MCCCCCCCCCCCCc",
+    "cccccccccccccc",
+    "KOoOOoOOoOOoOK",
+    ".KKKKKKKKKKKK.",
 ]
-LOCO_PAL = {'B': hexc('#2f7a4f'), 'L': hexc('#4fa86a'), 'D': hexc('#1d4f33'),
-            'd': hexc('#1d2a44'), 'R': hexc('#3b8a5c'), 'r': hexc('#2a6643'),
-            'C': hexc('#efe6c8')}
+LOCO_PAL = {'R': hexc('#c0392b'), 'r': hexc('#842218'), 'g': hexc('#6e6a6c'), 'L': hexc('#fff6c0'),
+            'S': hexc('#120c0a'), 'H': hexc('#54504e'), 'B': hexc('#302a28'), 'D': hexc('#1a1514'),
+            'M': hexc('#b0503a'), 'C': hexc('#8a3424'), 'c': hexc('#5a1e14'), 'm': hexc('#a8a4a0'),
+            'O': hexc('#2a2626'), 'o': hexc('#5a5654')}
 
-BOXCAR = ([".LBBBBBBBBBBD.", "LBBBBBBBBBBBBD", "LBwwwwwwwwwwBD", "LBBBBBBBBBBBBD", "LbbbbbbbbbbbbD"]
+# A red boxcar with the brakeman's walkway down the roof
+BOXCAR = ([".LBBBBBBBBBBD.", "LBBBBBBBBBBBBD", "LBBBBBwwBBBBBD", "LBBBBBwwBBBBBD", "LbbbbbwwbbbbbD"]
           + [("LbbbbbwwbbbbbD" if i % 3 == 0 else "LBBBBBwwBBBBBD") for i in range(1, 18)]
-          + ["LbbbbbbbbbbbbD", "LBBBBBBBBBBBBD", "LBwwwwwwwwwwBD", "LBBBBBBBBBBBBD", "LBBBBBBBBBBBBD",
+          + ["LbbbbbwwbbbbbD", "LBBBBBwwBBBBBD", "LBBBBBwwBBBBBD", "LBBBBBBBBBBBBD", "LBBBBBBBBBBBBD",
              ".LBBBBBBBBBBD."])
-BOX_PAL = {'B': hexc('#a0472e'), 'b': hexc('#8a3b26'), 'L': hexc('#c4643f'), 'D': hexc('#5e2618')}
+BOX_PAL = {'B': hexc('#a0472e'), 'b': hexc('#8a3b26'), 'L': hexc('#c4643f'), 'D': hexc('#5e2618'),
+           'w': hexc('#c8a070')}
 
+# A flatcar of logs chained down between stakes, cut ends at both ends
+LUMBER = ([".KKKKKKKKKKKK.", "KddddddddddddK", "KdeEeEeeEeEedK"]
+          + [("s" if i % 7 == 3 else "d") + "LlmDLlmDLlmD" + ("s" if i % 7 == 3 else "d") for i in range(22)]
+          + ["KdeEeEeeEeEedK", "KddddddddddddK", ".KKKKKKKKKKKK."])
+for _row in (9, 18):
+    LUMBER[_row] = "d" + "c" * 12 + "d"
+LUMBER_PAL = {'d': hexc('#6a4426'), 'L': hexc('#b0825a'), 'l': hexc('#8a5a34'), 'm': hexc('#7a4e2c'),
+              'D': hexc('#4e301c'), 'e': hexc('#e0b47a'), 'E': hexc('#c0945a'), 's': hexc('#c8a070'),
+              'c': hexc('#5e5a5a')}
 
-def _container_rows(ch, cl):
-    rows = ["KKKKKKKKKKKKKK", "K" + ch * 12 + "K"]
-    for i in range(9):
-        rows.append("K" + "".join(ch if (j + i) % 2 == 0 else cl for j in range(12)) + "K")
-    rows.append("K" + ch * 12 + "K")
-    return rows
-
-
-FLATCAR = (_container_rows('A', 'a') + ["KKKKKKKKKKKKKK", "KffffffffffffK"]
-           + _container_rows('E', 'e') + ["KKKKKKKKKKKKKK", ".KKKKKKKKKKKK."])
-FLAT_PAL = {'A': hexc('#2f6fb3'), 'a': hexc('#285f9a'), 'E': hexc('#d8892a'), 'e': hexc('#bb7322')}
-
-
-def _tank_rows():
-    rows = ["....KKKKKK....", "..KKssssssKK..", ".KSSSSSSSSSSK.", ".LSSSHSSSSSSD."]
-    for i in range(20):
-        if i in (8, 11):
-            rows.append("LSSSHSSccSSSSD")
-        elif i in (9, 10):
-            rows.append("LSSSHScffcSSSD")
-        elif i in (3, 16):
-            rows.append("LsssHssssssssD")
-        else:
-            rows.append("LSSSHSSSSSSSSD")
-    return rows + [".LSSSHSSSSSSD.", ".KSSSSSSSSSSK.", "..KKssssssKK..", "....KKKKKK...."]
-
-
-TANKCAR = _tank_rows()
-TANK_PAL = {'S': hexc('#3a3d47'), 's': hexc('#30323a'), 'L': hexc('#5a5d68'), 'D': hexc('#22242c'),
-            'H': hexc('#6c707c')}
+# A passenger coach: clerestory roof with its row of vents, an open
+# platform with a railing at each end
+COACH = (["..kkkkkkkkkk..", "..kPPPPPPPPk..", "KKKKKKKKKKKKKK"]
+         + [("KBrrrVllVrrrBK" if i % 4 == 1 else "KBrrrlllLrrrBK") for i in range(22)]
+         + ["KKKKKKKKKKKKKK", "..kPPPPPPPPk..", "..kkkkkkkkkk.."])
+COACH_PAL = {'B': hexc('#7a2a24'), 'r': hexc('#5e4c42'), 'l': hexc('#8a7666'), 'L': hexc('#6a5648'),
+             'V': hexc('#3a2e28'), 'P': hexc('#8a6440')}
 
 BULLION = [
     ".YYYYYYYYYYYY.",
@@ -305,7 +301,9 @@ BULLION = [
     "YSSSSSSSSSSSSy",
     ".yyyyyyyyyyyy.",
 ]
-BULL_PAL = {'S': hexc('#5a6070'), 's': hexc('#4a505c'), 'V': spr.GOLD, 'v': spr.GOLD_D, 'W': spr.GOLD_L}
+# The express car: dark green steel, gold trim, the vault hatch amidships
+BULL_PAL = {'S': hexc('#2f5a40'), 's': hexc('#244a34'), 'c': hexc('#4a7a5a'),
+            'V': spr.GOLD, 'v': spr.GOLD_D, 'W': spr.GOLD_L}
 # Vault open: the hatch slides back on a dark hold stacked with gold bars
 BULL_OPEN_ROWS = {
     11: "YSSSKKKKKKSSSy",
@@ -318,7 +316,7 @@ BULL_OPEN_ROWS = {
     18: "YSSSKKKKKKSSSy",
 }
 BULL_OPEN = [BULL_OPEN_ROWS.get(i, row) for i, row in enumerate(BULLION)]
-BULL_OPEN_PAL = {**BULL_PAL, 'O': hexc('#14151b')}
+BULL_OPEN_PAL = {**BULL_PAL, 'O': hexc('#14100e')}
 
 FRAME = 40  # train frames have room to turn 45 degrees without clipping
 
@@ -332,7 +330,7 @@ def _car(rows, pal):
 
 
 def eight_ways(up_art):
-    """Clockwise from facing up: U, UR, R, DR, D, DL, L, UL (the heli's order)."""
+    """Clockwise from facing up: U, UR, R, DR, D, DL, L, UL."""
     out = []
     for i in range(8):
         f = rotsprite(up_art, -45 * i) if i % 2 else up_art.rotated((-i // 2) % 4)
@@ -342,7 +340,7 @@ def eight_ways(up_art):
 
 
 # Car kinds in sheet order; each takes 8 frames (src/art.js TRAIN_CARS)
-TRAIN_CARS = ('loco', 'bullion', 'bullionOpen', 'boxcar', 'flatcar', 'tankcar')
+TRAIN_CARS = ('loco', 'bullion', 'bullionOpen', 'boxcar', 'lumber', 'coach')
 
 
 def train_frames():
@@ -351,13 +349,13 @@ def train_frames():
         'bullion': _car(BULLION, BULL_PAL),
         'bullionOpen': _car(BULL_OPEN, BULL_OPEN_PAL),
         'boxcar': _car(BOXCAR, BOX_PAL),
-        'flatcar': _car(FLATCAR, FLAT_PAL),
-        'tankcar': _car(TANKCAR, TANK_PAL),
+        'lumber': _car(LUMBER, LUMBER_PAL),
+        'coach': _car(COACH, COACH_PAL),
     }
     return [f for kind in TRAIN_CARS for f in eight_ways(arts[kind])]
 
 
-# --- Station --------------------------------------------------------------------------
+# --- The depot ------------------------------------------------------------------------
 
 BIG_TRAIN = ['..####..', '.######.', '.#....#.', '.#....#.', '.######.', '.##..##.', '.######.',
              '..#..#..', '.##..##.']
@@ -365,14 +363,20 @@ STATION_PURPLE = hexc('#9f6bf0')
 
 
 def station():
-    a, (x0, y0, x1, y1, fy) = spr._landmark_building(
-        hexc('#3f5a48'), hexc('#efe6c8'), hexc('#8a4a3a'), hexc('#efe6c8'), BIG_TRAIN,
-        awning=(hexc('#2f7a4f'), hexc('#efe6c8')))
-    # Clock over the door
-    a.disc(16, fy + 4, 2.2, hexc('#efe6c8'))
-    a.set(16, fy + 3, hexc('#22242c'))
-    a.set(16, fy + 4, hexc('#22242c'))
-    a.set(17, fy + 4, hexc('#22242c'))
+    """The depot: mustard board-and-batten under a green roof, a clock over
+    the door and the station sign on the roof."""
+    a, (x0, y0, x1, y1, fy) = spr._frontier_building(
+        hexc('#5e7a5a'), hexc('#46604a'), hexc('#d8b050'), hexc('#c09a40'), hexc('#efe6cf'), BIG_TRAIN,
+        trim=hexc('#6a4426'))
+    for x in range(x0 + 2, x1, 3):
+        a.vline(x, fy + 1, y1, hexc('#b08a3a'))  # battens
+    a.rect(14, fy + 3, 4, 5, hexc('#3a2418'))
+    a.disc(16, fy + 1.5, 1.8, hexc('#efe6cf'))
+    a.set(16, fy + 1, hexc('#221a18'))
+    a.set(16, fy + 2, hexc('#221a18'))
+    for wx in (x0 + 3, x1 - 6):
+        a.rect(wx, fy + 3, 3, 3, spr.IRON)
+        a.set(wx, fy + 3, hexc('#9ab4c0'))
     full = Art(32, 32)
     full.blit(a, 0, 0)
     full.outline(OUTLINE)
@@ -382,44 +386,3 @@ def station():
 
 def station_pad():
     return spr.pad(STATION_PURPLE, BIG_TRAIN)
-
-
-# --- Pickups and icons ----------------------------------------------------------------
-
-TICKET = ['####.##', '#######', '.###.#.', '#######', '####.##']
-PASS_BASE, PASS_LIGHT, PASS_DARK = hexc('#8a4fd0'), hexc('#b98af0'), hexc('#5a2c94')
-
-
-def rail_pass_token():
-    return spr.token(PASS_BASE, PASS_LIGHT, PASS_DARK, TICKET)
-
-
-def ticket_icon():
-    a = Art(16, 16)
-    for y in range(4, 13):
-        for x in range(1, 15):
-            notch = x in (1, 14) and y in (7, 8, 9)
-            if not notch:
-                a.set(x, y, PASS_BASE)
-    a.hline(2, 13, 4, PASS_LIGHT)
-    a.vline(1, 4, 6, PASS_LIGHT)
-    a.hline(2, 13, 12, PASS_DARK)
-    for y in range(5, 12, 2):
-        a.set(10, y, hexc('#d8c2f8'))
-    for x in range(3, 9):
-        a.set(x, 7, spr.WHITE)
-    for x in range(3, 7):
-        a.set(x, 9, hexc('#d8c2f8'))
-    a.outline(OUTLINE)
-    return a
-
-
-def diamond_pickup():
-    a = Art(16, 16)
-    rows = ['..oooooooo..', '.oWCCcccccco', 'oCCCccccccco', '.occcccccco.', '..occccco...',
-            '...occco....', '....oco.....', '.....o......']
-    pal = {'o': hexc('#1f7f8f'), 'c': hexc('#3fd8e8'), 'C': hexc('#a8f0f8'), 'W': spr.WHITE}
-    a.grid(2, 4, rows, pal)
-    a.outline(OUTLINE)
-    a.drop_shadow(1, 1, SHADOW)
-    return a

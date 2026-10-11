@@ -16,7 +16,7 @@ export class PauseScene extends Phaser.Scene {
         const ph = 520;
         const top = (height - ph) / 2;
         panel(this, (width - pw) / 2, top, pw, ph);
-        label(this, width / 2, top + 64, 'PAUSED', { size: 48 }).setOrigin(0.5);
+        label(this, width / 2, top + 64, 'HOLD YER HORSES', { size: 32, color: UI_COLORS.gold }).setOrigin(0.5);
 
         const resumeAction = () => {
             this.scene.resume('GameScene');
@@ -54,7 +54,7 @@ export class PauseScene extends Phaser.Scene {
             items: [
                 { label: 'RESUME', action: resumeAction },
                 { label: 'RESTART', action: restartAction, tone: 'danger' },
-                { label: 'INSTRUCTIONS', action: instructionsAction },
+                { label: 'HOW TO PLAY', action: instructionsAction },
                 { label: 'MAIN MENU', action: mainMenuAction, tone: 'danger' },
             ],
         });

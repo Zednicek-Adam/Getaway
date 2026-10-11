@@ -1,6 +1,6 @@
 import { TILE_SIZE } from '../constants';
 import { TRAIN_CARS } from '../art';
-import { smokePuff } from '../fx';
+import { dustPuff } from '../fx';
 
 // heading 0-7, clockwise from facing up, from a direction of travel
 export function headingOf(dx, dy) {
@@ -10,7 +10,7 @@ export function headingOf(dx, dy) {
 
 // The train's sprites. All the logic lives in TrainRun (src/railway.js); this
 // just places one sprite per car along the loop each frame. Depth 1.2 keeps
-// the train over cars (1) and under the helicopter (5).
+// the train over riders (1) and under the balloon (5).
 export class Train {
     constructor(scene, run, kinds) {
         this.scene = scene;
@@ -31,13 +31,15 @@ export class Train {
                 .setFrame(TRAIN_CARS.indexOf(shown) * 8 + headingOf(p.dx, p.dy));
         });
 
-        // Exhaust from the locomotive's stacks while it's under way
+        // Coal smoke billowing from the stack while it's under way, a lazy
+        // wisp while it stands at the depot
         this.smokeTimer += delta;
-        if (this.run.moving && this.smokeTimer >= 260) {
+        const every = this.run.moving ? 110 : 480;
+        if (this.smokeTimer >= every) {
             this.smokeTimer = 0;
-            const p = line.pointAtArc(this.run.carArc(0) - 0.2);
-            smokePuff(this.scene, p.x * TILE_SIZE, p.y * TILE_SIZE,
-                { drift: 18, scale: 1.1, depth: 1.25, tint: 0x9a9aa4 });
+            const p = line.pointAtArc(this.run.carArc(0) + 0.2);
+            dustPuff(this.scene, p.x * TILE_SIZE, p.y * TILE_SIZE,
+                { drift: 30, scale: this.run.moving ? 2.2 : 1.4, depth: 1.25, tint: 0x6e666a });
         }
     }
 

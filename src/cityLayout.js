@@ -1,39 +1,41 @@
 import art from './generated/art.json';
 
-// Pure layout for the rendered city — no Phaser, so it is unit-testable.
+// Pure layout for the rendered town — no Phaser, so it is unit-testable.
 //
 // The logic grid only knows "road" and "not road". This module decides what
-// the not-road cells *look* like, roughly the way a real town grows:
-//  - districts ring the centre: downtown towers, then shops, then houses,
-//    with an industrial side of town picked per map;
-//  - a few whole blocks, spread across town, are kept as parks;
+// the not-road cells *look* like, roughly the way a frontier town grows:
+//  - districts ring the centre: Main Street's false fronts (downtown), then
+//    the trades (commercial), then homesteads (residential), with an
+//    industrial side of town (freight, lumber, stockyards) picked per map;
+//  - a few whole blocks, spread across town, are kept as commons (parks);
 //  - buildings need a street, so on the outskirts anything deeper than a lot
-//    or two from the nearest road is countryside (woods and farmland);
+//    or two from the nearest road is open country (desert and ranch land);
 //  - houses face their street, and plots with no street of their own are
 //    back gardens.
 // Each district's land is carved into lots dressed with pieces from its set
-// in the generated tileset (tools/generate_art.py). Road cells get the
-// autotile matching their neighbours, sidewalks included. None of this feeds
-// back into gameplay.
+// in the generated tileset (tools/generate_art.py). Street cells get the
+// autotile matching their neighbours, boardwalks included. None of this
+// feeds back into gameplay.
 
 const U = 1, R = 2, D = 4, L = 8;
 const C_UR = 1, C_DR = 2, C_DL = 4, C_UL = 8;
 
-// Odds of each lot shape per district: towers and warehouses come big,
-// houses mostly one plot at a time, farmland in whole fields
+// Odds of each lot shape per district: Main Street and the freight barns
+// come big, homesteads mostly one plot at a time, ranch land in whole fields
 const SHAPE_WEIGHTS = {
     downtown: { '2x2': 0.35, '2x1': 0.25, '1x2': 0.2, '1x1': 0.2 },
     commercial: { '2x2': 0.12, '2x1': 0.33, '1x2': 0.2, '1x1': 0.35 },
     residential: { '2x2': 0.04, '2x1': 0.1, '1x2': 0.14, '1x1': 0.72 },
     industrial: { '2x2': 0.4, '2x1': 0.3, '1x2': 0.15, '1x1': 0.15 },
     park: { '2x2': 0.3, '2x1': 0.15, '1x2': 0.15, '1x1': 0.4 },
-    forest: { '1x1': 1 },
-    farm: { '2x2': 0.5, '2x1': 0.25, '1x1': 0.25 },
+    desert: { '1x1': 1 },
+    ranch: { '2x2': 0.5, '2x1': 0.25, '1x1': 0.25 },
 };
 
 // Rarer piece kinds within a district (kind = piece name before the first "_")
 const KIND_WEIGHTS = {
-    parking: 0.3, plaza: 0.35, flats: 0.5, tanks: 0.25, yard: 0.45, playground: 0.4, pond: 0.6, fountain: 0.6,
+    wagons: 0.3, plaza: 0.35, boarding: 0.5, towers: 0.25, stockyard: 0.25, lumber: 0.45, bandstand: 0.4,
+    wateringhole: 0.6, boothill: 0.6,
 };
 
 // A lot with streets on several sides prefers to face down: the 3/4 view
@@ -46,14 +48,14 @@ const REPEAT_DECAY = 0.5;
 
 // Landmark kinds that appear at most once per block (per district, where a
 // sprawling block spans several)
-const ONCE_PER_BLOCK = new Set(['plaza', 'tanks', 'playground', 'pond', 'fountain']);
+const ONCE_PER_BLOCK = new Set(['plaza', 'towers', 'stockyard', 'bandstand', 'wateringhole', 'boothill']);
 
-// Straight-road variants: plain, manhole, street lamps, hydrant
-const STRAIGHT_WEIGHTS = [50, 14, 22, 14];
+// Straight-street variants: plain, mud puddle, hitching rails, barrels
+const STRAIGHT_WEIGHTS = [54, 8, 22, 16];
 
 // How far (cells from the nearest road) each district reaches into the
-// outskirts before the countryside takes over: a row of houses, shops with
-// a yard behind, a deeper industrial estate
+// outskirts before open country takes over: a row of homesteads, workshops
+// with a yard behind, a deeper spread of freight and stock pens
 const BUILT_DEPTH = { downtown: 3, commercial: 2, residential: 1, industrial: 2 };
 
 // Parks are whole blocks of PARK_MIN..PARK_MAX cells, about PARK_SHARE of the
@@ -66,7 +68,7 @@ export function roadMask(isRoad, x, y) {
         (isRoad(x, y + 1) ? D : 0) | (isRoad(x - 1, y) ? L : 0);
 }
 
-// Corners where the sidewalk wraps round: both sides around the corner are
+// Corners where the boardwalk wraps round: both sides around the corner are
 // road but the diagonal cell between them is a block
 export function cornerMask(isRoad, x, y) {
     const up = isRoad(x, y - 1), down = isRoad(x, y + 1);
@@ -190,9 +192,9 @@ export function districtAt(x, y, map) {
     return roll < 0.78 ? 'residential' : 'commercial';
 }
 
-// Past the last street: patches of woodland between the farms
+// Past the last street: stretches of desert between the ranches
 export function countrysideAt(x, y, map) {
-    return chunkRoll(x, y, map.seed, 3) < 0.45 ? 'forest' : 'farm';
+    return chunkRoll(x, y, map.seed, 3) < 0.45 ? 'desert' : 'ranch';
 }
 
 export function districtMap(width, height, rand = Math.random) {
@@ -265,8 +267,8 @@ export function pickParks(blocks, map, width, height, rand = Math.random) {
     return parks;
 }
 
-// All the free land as [{ zone, cells }] groups: parks, districts, and the
-// countryside beyond the town's reach on the outskirts
+// All the free land as [{ zone, cells }] groups: commons, districts, and the
+// open country beyond the town's reach on the outskirts
 export function zoneCity(width, height, isRoad, isFree, rand = Math.random) {
     const map = districtMap(width, height, rand);
     const dist = roadDistance(width, height, isRoad, isFree);
