@@ -4,7 +4,7 @@ import { TrainRun } from '../railway';
 import { Train, headingOf } from '../objects/Train';
 import { LevelCrossing } from '../objects/LevelCrossing';
 
-const WAGON_KINDS = ['boxcar', 'flatcar', 'tankcar'];
+const WAGON_KINDS = ['boxcar', 'lumber', 'coach'];
 
 const DIRECTION_STEP = {
     [DIRECTIONS.UP]: [0, -1],
@@ -50,13 +50,15 @@ export class RailManager {
         this.occupied = this.run.occupied();
     }
 
-    // Returns the TrainRun events ('arrived', 'departed', 'bullionLap')
+    // Returns the TrainRun events ('arrived', 'departed', 'bullionLap'),
+    // plus 'warning' when a crossing's gates start to come down
     update(delta) {
         const events = this.run.tick(delta);
         this.occupied = this.run.occupied();
         this.crossingIndices.forEach((i, k) => {
             const closed = this.isCrossingIndexClosed(i);
             const { x, y } = this.line.cells[i];
+            if (closed && !this.crossings[k].closed) events.push('warning');
             this.crossings[k].setClosed(closed);
             this.map.setTrainBlocked(x, y, closed);
         });

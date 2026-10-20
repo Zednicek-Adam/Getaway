@@ -1,24 +1,24 @@
 import { ICON } from '../art';
 import { bindPad } from '../gamepad';
 
-// Shared look for every screen: pixel text, 9-slice panels, icons and the
-// button list used by the menus. Font sizes stay on multiples of 8 so Press
+// Shared look for every screen: pixel text, 9-slice plank panels, icons and
+// the button list used by the menus. Font sizes stay on multiples of 8 so Press
 // Start 2P's glyphs land on whole pixels.
 
 export const FONT = '"Press Start 2P"';
 
-export const INK = '#0a0b11';
+export const INK = '#120a07';
 export const UI_COLORS = {
     gold: '#ffc933',
     goldLight: '#fff09a',
-    red: '#ff4d5a',
-    white: '#f4f6f8',
-    dim: '#8a90a6',
-    faint: '#4a5068',
-    cyan: '#5fe0ff',
-    green: '#6fe08a',
+    red: '#ff5a4a',
+    white: '#f6efe0',
+    dim: '#bba27c',
+    faint: '#6e5846',
+    cyan: '#8ad0f0',
+    green: '#9ad86a',
     orange: '#ff9a3c',
-    purple: '#b98af0',
+    purple: '#c39af0',
 };
 
 const PANEL_KEYS = { steel: 'panel', gold: 'panelGold', red: 'panelRed' };
@@ -55,7 +55,7 @@ export function money(n) {
 // A dimmed full-screen backdrop for overlays
 export function dim(scene, alpha = 0.72) {
     const { width, height } = scene.scale;
-    return scene.add.rectangle(0, 0, width, height, 0x05060c, alpha).setOrigin(0).setScrollFactor(0);
+    return scene.add.rectangle(0, 0, width, height, 0x0c0604, alpha).setOrigin(0).setScrollFactor(0);
 }
 
 // Vertical list of pixel buttons with a gold selection state and bouncing
@@ -117,9 +117,9 @@ export function createMenu(scene, { x, y, items, width = 400, height = 56, spaci
     return menu;
 }
 
-// Parallax night-city backdrop shared by the title and instructions screens.
-// Returns the layers so the caller can scroll them.
-export function cityBackdrop(scene, container) {
+// Parallax desert-sunset backdrop shared by the title and instructions
+// screens. Returns the layers so the caller can scroll them.
+export function townBackdrop(scene, container) {
     const { width, height } = scene.scale;
     const layers = {
         sky: scene.add.image(0, 0, 'menuSky').setOrigin(0),

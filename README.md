@@ -1,8 +1,9 @@
 # The Getaway
 
-A pixel-art arcade getaway game. You drive a car through a procedurally
-generated city, grab money off the streets, and bank it at your safehouse
-before the police shut you down.
+A pixel-art Wild West getaway game. You ride an outlaw's paint horse through a
+procedurally generated railroad cow town and the open range around it, with its
+river, mountains, mesas, desert and prairie. You grab gold along the streets and
+trails and stash it at your hideout before the posse runs you down.
 
 Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 
@@ -10,46 +11,53 @@ Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 
 | | |
 | --- | --- |
-| ![Title screen](docs/screenshots/title.png) | ![A five-star chase](docs/screenshots/chase.png) |
-| ![The garage](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
+| ![Title screen](docs/screenshots/title.png) | ![A five-badge chase](docs/screenshots/chase.png) |
+| ![The general store](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
 
 ## The loop
 
-Money you pick up is **carried**, not earned. Carried money is lost when the
-police catch you — it only counts once you drive it back to the safehouse (the
-gold `$` pad) and deposit it.
+Gold you pick up is **loot** in your saddlebags, not money earned. Loot is lost
+when the posse catches you. It only counts once you ride it back to your
+hideout (the gold `$` pad) and stash it.
 
-Every pickup raises your **heat**, and heat buys the police stars:
+Every pickup raises your **heat**, and heat earns you sheriff's badges on the
+WANTED poster:
 
-| Stars | Response |
-| ----- | -------- |
-| 0 | One patrol roaming aimlessly |
-| 1–2 | Patrols actively home in on you |
-| 3 | Three cars driving straight at you |
-| 4 | SWAT van joins; roadblocks start dropping ahead of you |
-| 5 | Second SWAT van and a helicopter that slows you from overhead |
+| Badges | Response |
+| ------ | -------- |
+| 0 | Nobody's looking for you |
+| 1–2 | Deputies ride you down when you're close, otherwise head for where you were last seen |
+| 3 | Three deputies riding straight at you |
+| 4 | The marshals' prison wagon joins; barricades go up ahead of you |
+| 5 | A second wagon and an army observation balloon that pins you in its limelight and slows you down |
 
-Depositing ends the chase immediately. Otherwise the chase runs on a 20-second
-countdown that refuses to tick below 25% while a patrol can see you — you have
-to actually break line of sight, not just outlast it. Once the chase ends, stars
-decay one every five seconds.
+Stashing your loot ends the chase immediately. Otherwise the chase runs on a
+20-second countdown that refuses to tick below 25% while a deputy can see you.
+You have to actually break line of sight, not just outlast it. Once the chase
+ends, badges fade one every five seconds. The posse fires warning shots into
+the air while they ride; the shots are only for show.
 
-Banked money persists between runs in `localStorage` and is spent in the garage.
+Your stash persists between runs in `localStorage` and is spent at the general
+store.
 
 ### Losing
 
-You have three lives. You lose one by taking a full damage bar (three rams by
-default) or by running the tank dry. Either way, carried money is gone.
+You have three lives (the spare hats on the HUD). You lose one when the posse
+tackles you down to your last heart of **grit** (three tackles by default) or
+when your horse runs out of **stamina**. Either way, your loot is gone.
+
+Your horse tires as it runs. Rein in anywhere and it slowly gets its wind back;
+stop at a water trough (the blue pads) and it drinks its fill in a few seconds.
 
 ## Controls
 
 | Key | Gamepad | Action |
 | --- | ------- | ------ |
 | Arrows / WASD | D-pad / left stick | Steer (queues up to 2 turns ahead) |
-| `F` | A | Brake — hold position, and refuel when parked on a station pad |
-| `Space` | B / LT | Drop a bomb (10s fuse, destroys police) |
-| `E` | X / RT | Fire a rocket along your facing, up to 8 tiles |
-| `G` | Y | Open the garage (only while parked on the safehouse pad) |
+| `F` | A | Rein in: hold position and rest, or drink when parked at a trough |
+| `Space` | B / LT | Light a bundle of dynamite (10s fuse, blows up the posse) |
+| `E` | X / RT | Throw a lasso along your facing, up to 6 tiles |
+| `G` | Y | Open the general store (only while parked on the hideout pad) |
 | `Esc` | Start | Pause |
 
 Gamepad buttons follow the Xbox layout; on a PlayStation pad A is Cross, B
@@ -59,13 +67,15 @@ the standard Gamepad API works, and the browser only reveals it after a button
 press, so press one first if it doesn't respond. On-screen prompts switch to pad
 buttons once a controller is connected.
 
-Touch devices can swipe to steer. An INSTRUCTIONS page shows this same summary
-in-game, reachable from both the main menu and the pause menu; opening it from
-pause leaves the run paused and returns you there. The pause menu can also drop
-you back to the main menu.
+Touch devices can swipe to steer. A HOW TO PLAY page shows this same summary
+in-game, reachable from both the title screen and the pause menu; opening it
+from pause leaves the run paused and returns you there. The pause menu can also
+drop you back to the title screen.
 
-The car drives itself forward; you only choose turns. Because turns are buffered,
-you can line up a sequence through an intersection before you reach it.
+Your horse runs on its own and follows the trail round a bend; you only pick
+the way at forks. It stops at a fork (or the hideout) until you steer. Because
+turns are buffered, you can line up a sequence through a junction before you
+reach it.
 
 ## Language
 
@@ -78,70 +88,79 @@ are kept.
 
 ## Pickups
 
-Money is the bulk of what spawns; the rest is weighted rarer.
+Gold is the bulk of what turns up on the streets and trails; the rest is rarer.
 
 | Sprite | Pickup | Effect |
 | ------ | ------ | ------ |
-| spinning gold `$` coin | Money | +$100 carried, +1 heat |
-| green `+` token | Repair | Removes one point of damage |
-| blue lightning token | Nitro | ~1.5× speed for 4 seconds |
-| orange missile token | Rocket | +1 rocket |
-| black bomb, lit fuse | Bomb | +1 bomb |
-| red heart | Extra life | +1 life, capped at 5 |
-| purple ticket token | Rail pass | Ride the train tracks once (only spawns after the garage unlock) |
+| spinning gold `$` coin | Gold | +$100 loot, +1 heat |
+| green bottle, red cross | Snake oil | Heals one heart of grit |
+| carrot | Carrot | Your horse gallops ~1.5× faster for 4 seconds |
+| coiled rope | Lasso | +1 lasso |
+| red sticks, lit fuse | Dynamite | +1 bundle |
+| cowboy hat | Stetson | +1 life, capped at 5 |
+| purple ticket token | Rail pass | Ride the rails on a handcar once (only appears after the store unlock) |
 
-There is also a **diamond truck** (a silver armoured courier with a cyan gem on
-the roof) roaming the map. Ram it to steal a $1,000 diamond — but it costs you
-two stars instantly.
+There is also a **stagecoach** (red and gold, a strongbox on its roof) rolling
+around the map. Ride into it to rob it of $1,000, but it costs you two badges on
+the spot.
 
-## The railway
+A lasso that catches a deputy yanks him out of the saddle (his hat goes flying)
+and he's out of the chase until a replacement rides in. The marshals' wagon
+shrugs off the first rope. A lasso that lands on a barricade pulls it apart.
 
-A railway loops around the city, about nine tiles in from the map edges, and one
-train drives it nonstop at twice the base speed of your car. The corners are cut
-at 45 degrees, so the loop is an octagon. Downtown and the safehouse sit inside
-it and the outskirts outside it.
+## The railroad
 
-Roads only cross the track at **level crossings**. Three seconds before the train
-reaches a crossing, the lamps flash and the barriers drop. They stay down until
-the last wagon has cleared. Anything the moving train runs into is wrecked:
+A railroad loops around the map, about nine tiles in from the edges, and one
+steam train runs it nonstop at twice the base speed of your horse. The corners
+are cut at 45 degrees, so the loop is an octagon. The town stands inside it,
+against the bottom of the loop. Its Front Street runs along the tracks and the
+depot faces it. The river runs over the loop on two timber trestles.
+
+Roads only cross the track at **planked crossings**, each marked with a
+crossbuck sign. There are no signal lamps; it's the 1880s. Three seconds before
+the train reaches a crossing, the engineer blows the whistle, the crossing
+keeper runs out waving his red flag, and the gates swing down. They stay down
+until the last car has cleared. Anything the moving train runs into is wrecked:
 
 | Hit | Result |
 | --- | ------ |
-| You | A life and your carried money, whatever your armor |
-| Police / SWAT | Destroyed, replaced after the usual respawn delay |
-| Diamond truck | Destroyed; the diamond is left on the road for you to grab |
+| You | A life and your loot, whatever your grit |
+| Deputies / marshals' wagon | Out of the chase, replaced after the usual delay |
+| Stagecoach | Smashed; the strongbox is left on the road for you to grab |
 
-Police never drive through lowered barriers, and while they're held on the other
-side of the loop they can't see you. Cross just before the train and the chase
-timer keeps running down while the cops wait or look for another way round.
+The posse never rides through lowered gates, and while they're held on the
+other side of the loop they can't see you. Cross just before the train and the
+chase countdown keeps running down while they wait or look for another way
+round.
 
-**Rail pass.** A one-time garage unlock ($3,000) adds rail passes to the pickups.
-With one in hand, turn off a crossing onto the track: the pass is spent, the car
-follows the rails on its own, and no police car can follow you. Turn onto the
-road at any crossing to get off. Getting back on takes another pass. The train
-is on the same loop, so watch the loop map in the top-right corner. Police wait
-for you beside the crossings ahead.
+**Rail pass.** A one-time store unlock ($3,000) adds rail passes to the pickups.
+With one in hand, turn off a crossing onto the track: the pass is spent, the
+outlaw jumps onto a pump handcar that follows the rails on its own, and no one
+in the posse can follow you. Turn onto the road at any crossing to get off.
+Getting back on takes another pass. The train is on the same loop, so watch the
+loop map in the top-right corner. The posse waits for you beside the crossings
+ahead.
 
-**Bullion heist.** The train stops at the station (the purple pad beside the
-track) every lap. Every third lap the vault on its gold car is open for eight
-seconds. Park on the platform pad and each second pays $250 carried and adds 1
-heat. Staying the whole eight seconds is $2,000 and three stars.
+**Express car heist.** The train stops at the depot (the purple pad beside the
+track) every lap. Every third lap the vault in its green express car is open for
+eight seconds. Park on the platform pad and each second pays $250 loot and adds
+1 heat. Staying the whole eight seconds is $2,000 and three badges.
 
-## The garage
+## The general store
 
-Park on the safehouse pad and press `G`. Five upgrade tracks, three levels each,
-costing $500 / $1,500 / $4,000 out of banked money:
+Park on the hideout pad and press `G`. Five upgrade tracks, three levels each,
+costing $500 / $1,500 / $4,000 out of your stash:
 
 | Track | Level 0 → 3 |
 | ----- | ----------- |
-| Engine | 300ms → 225ms per tile |
-| Fuel tank | 100 → 200 |
-| Armor | 3 → 6 hits |
-| Bomb bay | 3 → 6 bombs |
-| Rockets | 2 → 5 rockets |
+| Steed | 300ms → 225ms per tile |
+| Stamina | 100 → 200 |
+| Grit | 3 → 6 hearts |
+| Dynamite | 3 → 6 bundles |
+| Lassos | 2 → 5 lassos |
 
 Upgrades apply mid-run and persist across runs. Below the tracks is the one-time
-**rail pass** unlock ($3,000), which makes rail passes spawn on the streets.
+**rail pass** unlock ($3,000), which makes rail passes turn up on the roads.
 
 ## Running it locally
 
@@ -161,33 +180,55 @@ full URL on startup.
 
 ## How the map is built
 
-The railway loop is laid out first, with a few crossing points picked on each
-straight side. `NetworkGenerator` treats the rest of the track as a wall and
-seeds every crossing as a short road stub straight through it. Then it grows a
-road network outward from the player's spawn using a growing-tree walk, rather
-than stamping a grid. It guarantees full connectivity,
-balanced growth across all four quadrants, intersections at least 3 tiles apart,
-and no dead ends except the spawn tile — so every road you can turn onto actually
-goes somewhere. Crossings the network never connected on both sides are pruned
-back to track. `MapManager` then places the safehouse, the station (beside a
-straight stretch of track, clear of crossings) and three fuel stations on
-reachable, well-spaced pads and auto-tiles the roads.
+`FrontierGenerator` lays the map out in order, on top of the railroad loop:
 
-Generation retries (up to 50 attempts) if a layout fails its reachability check
-or keeps fewer than five crossings.
+1. **The town**, a surveyed grid against the bottom of the loop. Front Street
+   runs along the tracks, the way Dodge City faced the Santa Fe, with parallel
+   streets up the hill and cross streets between them. The hideout is a dead-end
+   lane off the top street.
+2. **The river** runs from one map edge to another. It passes over the loop on
+   two trestles, bends north of town, and is routed by A* over a noise field so
+   it meanders.
+3. **Level crossings.** The town's cross streets carry on over the tracks, and
+   each other side of the loop gets a few crossings, clear of the trestles.
+4. **Mountain ranges** along one or two map edges, with the big peaks in the
+   middle of the range and one kind of rock per range. **Mesas and buttes**
+   stand alone out on the range.
+5. **Wagon trails.** Waypoints go on a jittered grid over the open range, and a
+   Gabriel graph links them with the town's gates and the crossings: the spanning
+   edges first, so everything is reached, then most of the rest for loops. Each
+   edge is routed by A* that winds round rough ground and mountain feet, never
+   runs alongside another trail, and crosses the river only on a bridge, square
+   to the current. Trails that came to nothing are pruned, so the hideout lane
+   is the only dead end.
 
-The logic grid only knows *road* and *not road*. `cityLayout.js` decides what
-that looks like. Road cells pick one of 47 autotiles from their neighbours, and
-the streets carry their own sidewalks (lamps and hydrants included), so the
-buildings behind them pack wall to wall. Each block of non-road cells becomes a
-district: downtown towers in the middle, shops around them, then houses in
-fenced gardens, with an industrial quarter of warehouses and container yards on
-one side of town. A few whole blocks, spread across town, are parks. Buildings
-need a street, so on the outskirts the town only reaches a lot or two back from
-the road and the rest is woods and farmland. Blocks are carved into 1×1 / 2×1 /
-1×2 / 2×2 lots and dressed from that district's pieces: houses turn to face
-their street, and plots with no street of their own become back gardens. It is
-purely cosmetic and never feeds back into gameplay.
+`MapManager` then places the hideout, the depot (on Front Street, beside a
+straight stretch of track clear of crossings) and three water troughs on
+reachable, well-spaced pads. A roll that keeps fewer than five crossings is
+re-rolled, up to 50 times.
+
+The logic grid only knows *road* and *not road*. Two Phaser-free modules decide
+what it looks like:
+
+- `cityLayout.js` dresses the town. Street cells pick one of 47 autotiles from
+  their neighbours, boardwalks included, so the buildings behind them pack wall
+  to wall. The blocks between Front Street and Main Street are false fronts:
+  saloon, bank, hotel, jail, barber, gunsmith, opera house and the rest, each
+  business with its own lettered sign and one bank or jail to a town. Stock pens
+  and freight sheds stand at the ends by the railroad. The next blocks up hold
+  the trades (smithy, livery, feed store, wagon yards), then homesteads, a
+  church and the schoolhouse up the hill, with one block kept as the town
+  common.
+- `landLayout.js` draws everything past the edge of town. The ground is sand or
+  dry grass, chosen per tile *corner* from a broad noise field, so desert and
+  prairie drift across the map in natural shapes; the river keeps its banks
+  green. Over it lie the trails, the bridges, homesteads and ranches beside the
+  trails (a mine at a mountain's foot, Boot Hill near town, an adobe mission in
+  the desert), and a scatter of saguaros, prickly pear, sagebrush, cottonwoods
+  and boulders. Mountains and mesas are sprites standing on the footprints the
+  generator kept clear.
+
+It is all purely cosmetic and never feeds back into gameplay.
 
 ## Art
 
@@ -211,10 +252,42 @@ scaled with nearest-neighbour: 2× for the world (a 32px art tile is the game's
 | Module | Draws |
 | ------ | ----- |
 | `pixelkit.py` | canvas helpers: shapes, outlines, bevels, dithering, RotSprite rotation |
-| `art_city.py` | the city tileset: streets with sidewalks, and lot pieces for each district |
-| `art_sprites.py` | vehicles, helicopter, pickups, props, effects, HUD icons, UI panels |
-| `art_menu.py` | title-screen parallax skyline, side-view chase cars, the logo |
-| `art_rail.py` | track tiles drawn from the loop's geometry, crossings, the train, the station |
+| `art_city.py` | the town tileset: dirt streets with boardwalks, homesteads, freight and stock pens, the commons |
+| `art_town.py` | Main Street's false fronts with lettered signs, the church, the schoolhouse, the water tower |
+| `art_land.py` | the open range: terrain blends, the river, trails and bridges, cacti and scrub, ranches and homesteads, mountain and mesa sprites |
+| `art_sprites.py` | riders with a four-phase gallop, wagons, the handcar, the balloon, pickups, props, effects, HUD icons, UI panels |
+| `art_menu.py` | the title screen's sunset parallax (sky, mesas, town, trail), side-on galloping riders, the logo |
+| `art_rail.py` | track tiles drawn from the loop's geometry, trestles, crossings with their gates and keeper, the steam train, the depot |
+
+Mount sheets hold one row of LEFT / UP / RIGHT / DOWN frames per gait phase, and
+a move steps through a whole stride per tile, so the legs keep time with the
+speed. The outlaw's sheet also carries the handcar: two pump phases of eight
+headings.
+
+## Names in the code
+
+The rules kept the names they were written with, so save files from before the
+Western overhaul still load and the tests still read the same. On screen:
+
+| In the code | In the game |
+| ----------- | ----------- |
+| `Car`, `playerCar` | the outlaw on horseback (a handcar on the rails) |
+| `PoliceCar`, police | a deputy of the posse |
+| `SwatVan`, SWAT | the marshals' prison wagon |
+| `Helicopter` | the army observation balloon and its limelight |
+| `DiamondCar`, diamond | the stagecoach and its strongbox |
+| `Roadblock` | a posse barricade |
+| `Bomb`, bombs, `bombBay` | dynamite |
+| `Rocket`, rockets, `rocketRack` | lassos |
+| nitro | a carrot gallop |
+| fuel, `fuelTank`, fuel stations | stamina, water troughs |
+| armor, damage | grit (hearts) |
+| engine | steed |
+| banked / carried | stash / loot |
+| stars | sheriff's badges |
+| safehouse, base | the hideout |
+| station, bullion | the depot, the express car |
+| `GarageScene` | the general store |
 
 ## Layout
 
@@ -223,22 +296,23 @@ src/
   config.js         all gameplay tunables in one object
   constants.js      tile size, map dimensions, tile/direction enums
   art.js            asset keys, frame indices and shared animations
-  cityLayout.js     cosmetic city dressing: road autotiles, districts, lots
-  fx.js             one-shot effects (explosions, smoke, sparks, popups)
+  cityLayout.js     cosmetic town dressing: street autotiles, districts, lots
+  landLayout.js     cosmetic open range: terrain, river, trails, scrub, homesteads, mountains
+  fx.js             one-shot effects (explosions, dust, gunsmoke, popups) and tumbleweeds
   gamepad.js        Gamepad API polling, edge detection and per-scene bindings
   i18n.js           every on-screen string in English and Spanish, language switch
-  GameState.js      pure run state — money, lives, fuel, stars, damage
+  GameState.js      pure run state — money, lives, stamina, badges, grit
   garage.js         upgrade pricing and derived-stat math
   storage.js        versioned localStorage save with sanitising loader
-  pathfinding.js    BFS used by police AI
+  pathfinding.js    BFS used by the posse AI
   railway.js        the loop's geometry and the train's schedule and occupancy
   turnQueue.js      the buffered-turn queue
-  generators/       NetworkGenerator — procedural road layout
+  generators/       FrontierGenerator: town, river, mountains, crossings, trails
   managers/         Input, Map, Police, Rail, UI
   objects/          Car, PoliceCar, SwatVan, Helicopter, DiamondCar,
                     Collectible, Bomb, Rocket, Roadblock, Train, LevelCrossing
   scenes/           Boot, Menu, Game, Pause, Garage, Instructions
-  ui/               shared look: pixel text, 9-slice panels, button menus
+  ui/               shared look: pixel text, 9-slice plank panels, button menus
   generated/        art.json manifest written by tools/generate_art.py
 test/               vitest suites for the Phaser-free modules
 tools/              the pixel-art generator (Python)
@@ -246,7 +320,7 @@ tools/              the pixel-art generator (Python)
 
 The design splits Phaser-dependent rendering from plain-JS game logic. Anything
 holding rules — `GameState`, `garage`, `storage`, `i18n`, `pathfinding`, `turnQueue`, `railway`,
-gamepad polling, the collectible weight table, map reachability, city layout — imports no Phaser and
+gamepad polling, the collectible weight table, map generation and reachability, town and land layout — imports no Phaser and
 is unit tested directly.
 
 ## Deployment

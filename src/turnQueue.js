@@ -79,8 +79,9 @@ export class TurnQueue {
 //   - Only when straight ahead is closed as well (the car would stop) is an
 //     untakeable turn discarded, so a stale press can't swallow the next key;
 //     the following queued turn is then tried.
-//   - A turn that now points back the way the car came (the rails steered it
-//     round since the press) is discarded too: reversing takes a direct press.
+//   - A turn that now points back the way the car came (the rails or a trail
+//     bend swung it round since the press) is discarded too: reversing takes
+//     a direct press.
 // Returns the direction to move, or null to stay put. Mutates `queue`.
 export function pickMove(queue, direction, canMove) {
     while (queue.length > 0) {

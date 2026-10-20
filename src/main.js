@@ -13,7 +13,7 @@ const config = {
   type: Phaser.AUTO,
   width: VIEWPORT_WIDTH * TILE_SIZE,
   height: VIEWPORT_HEIGHT * TILE_SIZE,
-  backgroundColor: '#0b0c14',
+  backgroundColor: '#120a07',
   parent: 'app',
   // Nearest-neighbour sampling + whole-pixel rendering keeps every sprite crisp
   pixelArt: true,

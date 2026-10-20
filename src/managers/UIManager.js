@@ -7,7 +7,10 @@ import { t } from '../i18n';
 
 const HUD_DEPTH = 100;
 
-// Fuel bar colour by fill level
+const INK_FILL = 0x120a07;
+const TRACK_FILL = 0x3a2a20;
+
+// Stamina bar colour by fill level
 const FUEL_COLOURS = [
     [0.5, 0x6fe08a],
     [0.2, 0xffc933],
@@ -37,44 +40,45 @@ export class UIManager {
         this.fix(label(scene, 68, 74, t('hud.carry'), { color: UI_COLORS.dim }));
         this.carryText = this.fix(label(scene, 340, 74, '$0').setOrigin(1, 0));
 
-        // Life hearts — built to MAX_LIVES so the extra-life pickup has slots
+        // Lives are spare hats — built to MAX_LIVES so the extra-life pickup has slots
         this.hearts = [];
         for (let i = 0; i < CONFIG.PLAYER.MAX_LIVES; i++) {
-            this.hearts.push(this.fix(icon(scene, 44 + i * 34, 122, 'heart')));
+            this.hearts.push(this.fix(icon(scene, 44 + i * 34, 122, 'hat')));
         }
 
-        // Armour pips show REMAINING hits. Pool sized to the highest armor
+        // Grit hearts show REMAINING tackles. Pool sized to the highest armor
         // level so upgrades have slots; only the first maxDamage are shown.
         this.shields = [];
         const maxShields = Math.max(...CONFIG.GARAGE.TRACKS.armor.values);
         for (let i = 0; i < maxShields; i++) {
-            this.shields.push(this.fix(icon(scene, 44 + i * 30, 158, 'shield')));
+            this.shields.push(this.fix(icon(scene, 44 + i * 30, 158, 'heart')));
         }
 
-        // Fuel gauge: segmented bar
-        this.fix(icon(scene, 44, 194, 'fuel'));
+        // Stamina gauge: segmented bar
+        this.fix(icon(scene, 44, 194, 'stamina'));
         this.gauge = { x: 68, y: 186, w: 192, h: 16 };
         const g = this.gauge;
-        this.fix(scene.add.rectangle(g.x - 4, g.y - 4, g.w + 8, g.h + 8, 0x0a0b11).setOrigin(0));
-        this.fix(scene.add.rectangle(g.x, g.y, g.w, g.h, 0x2a2e3f).setOrigin(0));
+        this.fix(scene.add.rectangle(g.x - 4, g.y - 4, g.w + 8, g.h + 8, INK_FILL).setOrigin(0));
+        this.fix(scene.add.rectangle(g.x, g.y, g.w, g.h, TRACK_FILL).setOrigin(0));
         this.fuelFill = this.fix(scene.add.rectangle(g.x, g.y, g.w, g.h, 0x6fe08a).setOrigin(0));
         this.fuelShine = this.fix(scene.add.rectangle(g.x, g.y, g.w, 4, 0xffffff, 0.35).setOrigin(0));
         for (let sx = g.x + 16; sx < g.x + g.w; sx += 16) {
-            this.fix(scene.add.rectangle(sx - 1, g.y, 2, g.h, 0x0a0b11, 0.55).setOrigin(0));
+            this.fix(scene.add.rectangle(sx - 1, g.y, 2, g.h, INK_FILL, 0.55).setOrigin(0));
         }
         this.fuelPercentText = this.fix(label(scene, 340, 186, '100%', { color: UI_COLORS.green }).setOrigin(1, 0));
 
-        // --- Arsenal panel (under the status panel) ---------------------------
+        // --- Saddlebag panel (under the status panel) -------------------------
         this.fix(panel(scene, 16, 228, 344, 56));
-        this.fix(icon(scene, 44, 256, 'bomb'));
+        this.fix(icon(scene, 44, 256, 'dynamite'));
         this.bombText = this.fix(label(scene, 66, 248, 'x0'));
-        this.fix(icon(scene, 128, 256, 'rocket'));
+        this.fix(icon(scene, 128, 256, 'lasso'));
         this.rocketText = this.fix(label(scene, 150, 248, 'x0', { color: UI_COLORS.orange }));
-        this.nitroIcon = this.fix(icon(scene, 212, 256, 'bolt'));
-        this.nitroText = this.fix(label(scene, 234, 248, t('hud.nitro'), { color: UI_COLORS.cyan }));
+        // Carrot gallop: lit while the horse runs flat out
+        this.nitroIcon = this.fix(icon(scene, 212, 256, 'carrot'));
+        this.nitroText = this.fix(label(scene, 234, 248, t('hud.nitro'), { color: UI_COLORS.orange }));
         this.renderNitro(false);
         // Rail pass: lit while held, blinking while it's being ridden
-        this.ticketIcon = this.fix(icon(scene, 318, 256, 'ticket'));
+        this.ticketIcon = this.fix(icon(scene, 332, 256, 'ticket'));
         this.ticketTween = null;
         this.renderTicket(0, false);
 
@@ -85,11 +89,11 @@ export class UIManager {
         this.fix(label(scene, wx + wantedW / 2, 28, t('hud.wanted'), { color: UI_COLORS.dim }).setOrigin(0.5, 0));
         this.stars = [];
         for (let i = 0; i < 5; i++) {
-            this.stars.push(this.fix(icon(scene, wx + 38 + i * 40, 66, 'starEmpty')));
+            this.stars.push(this.fix(icon(scene, wx + 38 + i * 40, 66, 'badgeEmpty')));
         }
         this.chaseBar = { x: wx + 18, y: 88, w: wantedW - 36, h: 8 };
         const c = this.chaseBar;
-        this.chaseBarBg = this.fix(scene.add.rectangle(c.x, c.y, c.w, c.h, 0x2a2e3f).setOrigin(0).setVisible(false));
+        this.chaseBarBg = this.fix(scene.add.rectangle(c.x, c.y, c.w, c.h, TRACK_FILL).setOrigin(0).setVisible(false));
         this.chaseBarFill = this.fix(scene.add.rectangle(c.x, c.y, c.w, c.h, 0xff4d5a).setOrigin(0).setVisible(false));
 
         // --- Turn queue (bottom-centre) ----------------------------------------
@@ -139,9 +143,9 @@ export class UIManager {
         }
 
         if (this.changed('lives', `${hud.lives}/${hud.maxLives}`)) {
-            this.hearts.forEach((heart, i) => {
-                heart.setVisible(i < hud.maxLives);
-                heart.setFrame(i < hud.lives ? ICON.heart : ICON.heartEmpty);
+            this.hearts.forEach((hat, i) => {
+                hat.setVisible(i < hud.maxLives);
+                hat.setFrame(i < hud.lives ? ICON.hat : ICON.hatEmpty);
             });
         }
 
@@ -183,16 +187,16 @@ export class UIManager {
         this.renderChaseBar(hud.chaseCountdown, hud.chaseCountdownMax);
     }
 
-    // Shields show remaining hits: lit while intact, hollow once spent
+    // Grit hearts show remaining tackles: red while intact, dark once spent
     renderDamage(damage, maxDamage) {
         const remaining = maxDamage - damage;
         this.shields.forEach((s, i) => {
             s.setVisible(i < maxDamage);
-            s.setFrame(i < remaining ? ICON.shield : ICON.shieldEmpty);
+            s.setFrame(i < remaining ? ICON.heart : ICON.heartEmpty);
         });
     }
 
-    // Nitro reads as dim/hollow until active, then flashes
+    // The carrot reads as dim until the gallop is on, then flashes
     renderNitro(active) {
         if (this.nitroTween) {
             this.nitroTween.stop();
@@ -220,7 +224,7 @@ export class UIManager {
         }
     }
 
-    // Railway map (top-right, under the wanted panel): the loop, its
+    // Railroad map (top-right, under the wanted panel): the loop, its
     // crossings and station drawn once, the train and the player each frame
     initLoopMap(line, crossings, station) {
         const { width } = this.scene.scale;
@@ -235,7 +239,7 @@ export class UIManager {
 
         const g = this.fix(this.scene.add.graphics());
         const pts = line.mids.map(at);
-        for (const [w, colour] of [[5, 0x0a0b11], [3, 0x8a8f99]]) {
+        for (const [w, colour] of [[5, INK_FILL], [3, 0x9a8a74]]) {
             g.lineStyle(w, colour);
             g.beginPath();
             g.moveTo(pts[0].x, pts[0].y);
@@ -249,8 +253,8 @@ export class UIManager {
         }
         if (station) {
             const c = at({ x: station.pad.x + 0.5, y: station.pad.y + 0.5 });
-            g.fillStyle(0x0a0b11).fillRect(Math.round(c.x) - 4, Math.round(c.y) - 4, 8, 8);
-            g.fillStyle(0xb98af0).fillRect(Math.round(c.x) - 3, Math.round(c.y) - 3, 6, 6);
+            g.fillStyle(INK_FILL).fillRect(Math.round(c.x) - 4, Math.round(c.y) - 4, 8, 8);
+            g.fillStyle(0xc39af0).fillRect(Math.round(c.x) - 3, Math.round(c.y) - 3, 6, 6);
         }
         this.loopDots = this.fix(this.scene.add.graphics());
     }
@@ -261,13 +265,13 @@ export class UIManager {
         const { x, y, scale } = this.loopMap;
         const g = this.loopDots.clear();
         rail.train.forEach((p, k) => {
-            const colour = k === 0 ? 0x6fe08a : k === 1 && rail.bullion ? 0xffc933 : 0x2f7a4f;
+            const colour = k === 0 ? 0xfff0c0 : k === 1 && rail.bullion ? 0xffc933 : 0x9a6a3c;
             g.fillStyle(colour).fillRect(Math.round(x + p.x * scale) - 2, Math.round(y + p.y * scale) - 2, 4, 4);
         });
         const px = Math.round(x + rail.player.x * scale);
         const py = Math.round(y + rail.player.y * scale);
-        g.fillStyle(0x0a0b11).fillRect(px - 4, py - 4, 8, 8);
-        g.fillStyle(0xff4d5a).fillRect(px - 3, py - 3, 6, 6);
+        g.fillStyle(INK_FILL).fillRect(px - 4, py - 4, 8, 8);
+        g.fillStyle(0xff5a4a).fillRect(px - 3, py - 3, 6, 6);
     }
 
     renderStars(stars) {
@@ -276,11 +280,11 @@ export class UIManager {
             this.starTween = null;
         }
         this.stars.forEach((s, i) => {
-            s.setAlpha(1).setFrame(i < stars ? ICON.star : ICON.starEmpty);
+            s.setAlpha(1).setFrame(i < stars ? ICON.badge : ICON.badgeEmpty);
             if (i === stars - 1) this.punch(s);
         });
         if (stars > 0) {
-            // Earned stars flash like a light bar
+            // Earned badges glint
             this.starTween = this.scene.tweens.add({
                 targets: this.stars.slice(0, stars), alpha: 0.45, duration: 280, yoyo: true, repeat: -1,
             });
@@ -331,7 +335,7 @@ export class UIManager {
         const css = `#${colour.toString(16).padStart(6, '0')}`;
         this.fuelPercentText.setText(`${Math.floor(fraction * 100)}%`).setColor(css);
 
-        // Low fuel: the gauge blinks
+        // A tired horse: the gauge blinks
         const low = fraction < 0.2;
         if (low && !this.fuelTween) {
             this.fuelTween = this.scene.tweens.add({
@@ -377,13 +381,15 @@ export class UIManager {
         const box = scene.add.container(width / 2, height / 2).setScrollFactor(0).setDepth(195);
         box.add(panel(scene, -pw / 2, -ph / 2, pw, ph, 'red'));
 
-        // Hazard stripes along the top edge
-        for (let x = -pw / 2 + 20; x < pw / 2 - 30; x += 32) {
-            box.add(scene.add.rectangle(x, -ph / 2 + 22, 16, 8, 0xffc933).setOrigin(0));
+        // A rope strung along the top edge, knotted at intervals
+        for (let x = -pw / 2 + 24, k = 0; x < pw / 2 - 24; x += 12, k++) {
+            box.add(scene.add.rectangle(x, -ph / 2 + 24, 10, 4, 0xd0a868).setOrigin(0));
+            if (k % 8 === 4) box.add(scene.add.rectangle(x + 2, -ph / 2 + 22, 6, 8, 0x946a34).setOrigin(0));
         }
 
-        box.add(label(scene, 0, -100, t('gameOver.title'), { size: 48, color: UI_COLORS.red }).setOrigin(0.5));
-        box.add(label(scene, 0, -24, t(`gameOver.${reason}`), { size: 24, color: UI_COLORS.gold }).setOrigin(0.5));
+        box.add(label(scene, 0, -110, t('gameOver.title'), { size: 48, color: UI_COLORS.red }).setOrigin(0.5));
+        box.add(label(scene, 0, -40, t(`gameOver.${reason}`), { size: 24, color: UI_COLORS.gold }).setOrigin(0.5));
+        box.add(label(scene, 0, 8, t('gameOver.theEnd'), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
 
         // Drop-in entrance
         box.y = -ph;

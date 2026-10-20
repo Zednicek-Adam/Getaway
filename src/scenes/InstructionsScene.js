@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { TILE_SIZE } from '../constants';
 import { COLLECTIBLE_TYPES, createCollectibleIcon } from '../objects/Collectible';
-import { label, panel, dim, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
+import { label, panel, dim, UI_COLORS, createMenu, townBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
 import { t } from '../i18n';
 
@@ -27,10 +27,10 @@ export class InstructionsScene extends Phaser.Scene {
         const { width, height } = this.scale;
         const centre = width / 2;
 
-        // The title screen's city, dimmed behind a big panel
-        cityBackdrop(this);
+        // The title screen's desert sunset, dimmed behind a big panel
+        townBackdrop(this);
         dim(this, 0.55);
-        panel(this, 40, 104, width - 80, height - 224);
+        panel(this, 40, 104, width - 80, height - 200);
 
         label(this, centre, 56, t('help.title'), { size: 40, color: UI_COLORS.gold }).setOrigin(0.5);
 
@@ -68,13 +68,13 @@ export class InstructionsScene extends Phaser.Scene {
             [COLLECTIBLE_TYPES.MONEY, t('help.cash'), t('help.cashEffect')],
             [COLLECTIBLE_TYPES.REPAIR, t('help.repair'), t('help.repairEffect')],
             [COLLECTIBLE_TYPES.NITRO, t('help.nitro'), t('help.nitroEffect')],
-            [COLLECTIBLE_TYPES.ROCKET, t('help.rocketName'), t('help.ammoEffect')],
-            [COLLECTIBLE_TYPES.BOMB, t('help.bombName'), t('help.ammoEffect')],
+            [COLLECTIBLE_TYPES.ROCKET, t('help.rocketName'), t('help.rocketEffect')],
+            [COLLECTIBLE_TYPES.BOMB, t('help.bombName'), t('help.bombEffect')],
             [COLLECTIBLE_TYPES.LIFE, t('help.life'), t('help.lifeEffect')],
             [COLLECTIBLE_TYPES.RAIL_PASS, t('help.railPass'), t('help.railPassEffect')],
         ];
         pickups.forEach(([type, name, effect], i) => {
-            const y = 346 + i * 40;
+            const y = 346 + i * 38;
             const pickup = createCollectibleIcon(this, type, TILE_SIZE);
             pickup.setPosition(770, y);
             this.body(806, y, name, UI_COLORS.white);
@@ -87,16 +87,17 @@ export class InstructionsScene extends Phaser.Scene {
             [t('help.note2'), UI_COLORS.white],
             [t('help.note3'), UI_COLORS.white],
             [t('help.note4'), UI_COLORS.white],
-            [t('help.note5'), UI_COLORS.purple],
+            [t('help.note5'), UI_COLORS.white],
+            [t('help.note6'), UI_COLORS.purple],
         ];
         notes.forEach(([line, colour], i) => {
-            this.body(centre, 616 + i * 26, line, colour).setOrigin(0.5);
+            this.body(centre, 614 + i * 25, line, colour).setOrigin(0.5);
         });
 
         // --- Wanted level ----------------------------------------------------
-        this.heading(centre, 758, t('help.heat'));
-        this.body(centre, 792, t('help.heat1'), UI_COLORS.white).setOrigin(0.5);
-        this.body(centre, 820, t('help.heat2'), UI_COLORS.red)
+        this.heading(centre, 776, t('help.heat'));
+        this.body(centre, 808, t('help.heat1'), UI_COLORS.white).setOrigin(0.5);
+        this.body(centre, 834, t('help.heat2'), UI_COLORS.red)
             .setOrigin(0.5);
 
         this.createBackButton(centre, height - 60);

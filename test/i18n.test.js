@@ -67,18 +67,18 @@ describe('i18n', () => {
 
     describe('t', () => {
         it('returns the string for the current language', () => {
-            expect(t('menu.start')).toBe('START');
+            expect(t('menu.start')).toBe('SADDLE UP');
             setLanguage(memoryStorage(), 'es');
-            expect(t('menu.start')).toBe('JUGAR');
+            expect(t('menu.start')).toBe('¡A CABALLO!');
         });
 
         it('fills placeholders', () => {
             setLanguage(memoryStorage(), 'es');
-            expect(t('toast.banked', { amount: '$300' })).toBe('+$300 AL BANCO');
+            expect(t('toast.banked', { amount: '$300' })).toBe('+$300 AL ALIJO');
         });
 
         it('leaves a placeholder alone when its param is missing', () => {
-            expect(t('toast.banked', {})).toBe('+{amount} BANKED');
+            expect(t('toast.banked', {})).toBe('+{amount} STASHED');
         });
 
         it('falls back to the key for an unknown string', () => {

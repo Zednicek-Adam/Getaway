@@ -15,25 +15,29 @@ import { GameState } from '../GameState';
 import { collectibleWeights } from '../garage';
 import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
-import { explosion, sparkBurst, smokePuff, floatText, CarTrail } from '../fx';
+import { explosion, sparkBurst, dustPuff, floatText, lassoed, CarTrail, Tumbleweeds, DUST_TINT } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
 import { bindPad, hasGamepad } from '../gamepad';
 import { t } from '../i18n';
+import { MOUNTS } from '../art';
 
 // Pickup feedback: popup text + spark tint per collectible type. Text is a
 // function so it reads the language at pickup time, not at import.
 const PICKUP_FEEDBACK = {
     [COLLECTIBLE_TYPES.MONEY]: { text: () => `+${money(CONFIG.ECONOMY.MONEY_VALUE)}`, color: UI_COLORS.gold, tint: 0xffd040 },
-    [COLLECTIBLE_TYPES.BOMB]: { text: () => t('pickup.bomb'), color: UI_COLORS.white, tint: 0xffffff },
-    [COLLECTIBLE_TYPES.REPAIR]: { text: () => t('pickup.repair'), color: UI_COLORS.green, tint: 0x6fe08a },
-    [COLLECTIBLE_TYPES.LIFE]: { text: () => t('pickup.life'), color: UI_COLORS.red, tint: 0xff6070 },
-    [COLLECTIBLE_TYPES.NITRO]: { text: () => t('pickup.nitro'), color: UI_COLORS.cyan, tint: 0x5fe0ff },
-    [COLLECTIBLE_TYPES.ROCKET]: { text: () => t('pickup.rocket'), color: UI_COLORS.orange, tint: 0xff9a3c },
-    [COLLECTIBLE_TYPES.RAIL_PASS]: { text: () => t('pickup.railPass'), color: UI_COLORS.purple, tint: 0xb98af0 },
+    [COLLECTIBLE_TYPES.BOMB]: { text: () => t('pickup.bomb'), color: UI_COLORS.red, tint: 0xff7050 },
+    [COLLECTIBLE_TYPES.REPAIR]: { text: () => t('pickup.repair'), color: UI_COLORS.green, tint: 0x9ad86a },
+    [COLLECTIBLE_TYPES.LIFE]: { text: () => t('pickup.life'), color: UI_COLORS.goldLight, tint: 0xecc290 },
+    [COLLECTIBLE_TYPES.NITRO]: { text: () => t('pickup.nitro'), color: UI_COLORS.orange, tint: 0xffa040 },
+    [COLLECTIBLE_TYPES.ROCKET]: { text: () => t('pickup.rocket'), color: UI_COLORS.orange, tint: 0xf0d098 },
+    [COLLECTIBLE_TYPES.RAIL_PASS]: { text: () => t('pickup.railPass'), color: UI_COLORS.purple, tint: 0xc39af0 },
     [COLLECTIBLE_TYPES.DIAMOND]: {
-        text: () => `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, color: UI_COLORS.cyan, tint: 0x9ff6ff,
+        text: () => `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, color: UI_COLORS.gold, tint: 0xffe080,
     },
 };
+
+// The engineer leans on the whistle at most this often (ms)
+const WHISTLE_EVERY = 4000;
 
 export class GameScene extends Phaser.Scene {
 
@@ -73,15 +77,15 @@ export class GameScene extends Phaser.Scene {
         // Car Spawn - Start at center (Generation Seed) to guarantee Road
         const spawnPoint = this.mapManager.playerSpawnPoint || { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
 
-        // avoidsBlocked:false — only the player can drive into a roadblock (and
-        // crash) or run a lowered crossing barrier. The rail hooks let a rail
-        // pass take the car onto the track (see railPassable).
+        // avoidsBlocked:false — only the player can ride into a barricade (and
+        // crash) or run a lowered crossing gate. The rail hooks let a rail
+        // pass put the outlaw on a handcar on the track (see railPassable).
         this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager, {
             avoidsBlocked: false,
             passable: (x, y, car) => this.railPassable(x, y, car),
             trackFollow: (car) => this.railManager.trackDirection(car),
             railPath: (t, car) => this.railManager.railPose(car, t),
-            diagonalFrames: [4, 5, 6, 7],
+            railFrames: MOUNTS.handcar,
         });
         // Force player to face UP (towards the dead end) as requested
         this.playerCar.direction = DIRECTIONS.UP;
@@ -89,6 +93,8 @@ export class GameScene extends Phaser.Scene {
         this.playerCar.waitingForInput = true; // Don't auto-move until player presses a key
         this.playerCar.updatePosition(0);
         this.carTrail = new CarTrail(this, this.playerCar);
+        this.tumbleweeds = new Tumbleweeds(this);
+        this.lastWhistle = -WHISTLE_EVERY;
 
         // Police fleet — 0 units at 0 stars; the manager reconciles the
         // count/speed/AI to the star table every frame
@@ -167,7 +173,9 @@ export class GameScene extends Phaser.Scene {
             nitro: this.state.isNitroActive(),
             damage: this.state.damage,
             maxDamage: this.state.maxDamage,
+            onRails: this.state.onRails,
         });
+        this.tumbleweeds.update(delta);
 
         // Roadblock crash — checked the frame the player starts moving into a
         // blocked tile. The bounce (performUturn, which also clears the queue)
@@ -196,7 +204,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         // (a2) The train: barriers, station stops, and anything in its way
-        this.onTrainEvents(this.railManager.update(delta));
+        this.onTrainEvents(this.railManager.update(delta), time);
         this.checkTrainHits();
         if (this.gameOver) return;
 
@@ -221,10 +229,12 @@ export class GameScene extends Phaser.Scene {
             this.pulseBaseMarker();
         }
 
-        // (c) Refuel while stopped on a station pad
-        if (!this.playerCar.isMoving &&
-            this.mapManager.getFuelStationAt(this.playerCar.gridX, this.playerCar.gridY)) {
-            this.state.addFuel(CONFIG.FUEL.REFUEL_PER_SEC * (delta / 1000));
+        // (c) Standing still the horse gets its wind back: a long drink at a
+        // trough, or a slow breather anywhere else
+        if (!this.playerCar.isMoving) {
+            const trough = this.mapManager.getFuelStationAt(this.playerCar.gridX, this.playerCar.gridY);
+            const rate = trough ? CONFIG.FUEL.REFUEL_PER_SEC : CONFIG.FUEL.REST_PER_SEC;
+            this.state.addFuel(rate * (delta / 1000));
         }
 
         // (c2) Bullion heist — parked on the platform while the vault is open
@@ -342,7 +352,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.state.useRocket()) return;
 
         this.rockets.push(new Rocket(
-            this, this.playerCar.gridX, this.playerCar.gridY, this.playerCar.direction));
+            this, this.playerCar.gridX, this.playerCar.gridY, this.playerCar.direction, this.playerCar.visual));
     }
 
     // Rockets fly a tile at a time; hits resolve ONLY on frames where the
@@ -354,47 +364,57 @@ export class GameScene extends Phaser.Scene {
             const advanced = r.update(delta) === 'advanced';
             if (!advanced) continue;
 
-            // (0) The train soaks it up
+            // (0) The loop snags on the train and the rope snaps
             if (this.railManager.isTrainAt(r.gridX, r.gridY)) {
-                this.explodeAt(r.gridX, r.gridY);
+                this.lassoMiss(r, t('fx.snap'));
                 r.destroy();
                 this.rockets.splice(i, 1);
                 continue;
             }
 
-            // (1) Off-road (first off-road step) or out of range → harmless fizzle
+            // (1) Off the street (first off-street step) or out of reach → it falls short
             if (!this.mapManager.isRoad(r.gridX, r.gridY) ||
                 r.tilesTraveled > CONFIG.ROCKET.RANGE_TILES) {
-                sparkBurst(this, r.visualX, r.visualY, { count: 5, radius: TILE_SIZE * 0.6, tint: 0xffb060 });
-                smokePuff(this, r.visualX, r.visualY, { scale: 1.4, depth: 2 });
+                this.lassoMiss(r);
                 r.destroy();
                 this.rockets.splice(i, 1);
                 continue;
             }
 
-            // (2) Roadblock — a rocket clears it (frees the blocked tile)
+            // (2) Barricade — the lasso yanks it apart (frees the blocked tile)
             const rb = this.policeManager.getRoadblockAt(r.gridX, r.gridY);
             if (rb) {
                 this.policeManager.destroyRoadblock(rb);
-                this.explodeAt(r.gridX, r.gridY);
+                sparkBurst(this, r.visualX, r.visualY, { count: 9, radius: TILE_SIZE * 0.9, tint: 0xc08a52 });
+                dustPuff(this, r.visualX, r.visualY, { drift: 24, scale: 1.8, depth: 2, tint: DUST_TINT });
+                floatText(this, r.visualX, r.visualY, t('fx.yanked'), UI_COLORS.orange);
+                this.cameras.main.shake(120, 0.004);
                 r.destroy();
                 this.rockets.splice(i, 1);
                 continue;
             }
 
-            // (3) Police/SWAT on the tile, or mid-move INTO it (the target-tile
-            // clause prevents tunneling past a unit that's entering the tile).
+            // (3) Posse on the tile, or mid-move INTO it (the target-tile
+            // clause prevents tunneling past a rider who's entering the tile).
             const unit = this.policeManager.units.find(u =>
                 (u.gridX === r.gridX && u.gridY === r.gridY) ||
                 (u.isMoving && u.targetX === r.gridX && u.targetY === r.gridY));
             if (unit) {
-                this.policeManager.damageUnit(unit, 1); // 1 hp; SWAT survives the first hit
-                this.explodeAt(r.gridX, r.gridY);
-                this.state.onPoliceBombed(); // +1 star, chase refresh (same as bombs)
+                const { x, y } = unit.visual;
+                // 1 hp; the marshals' wagon shrugs off the first rope
+                const roped = this.policeManager.damageUnit(unit, 1);
+                lassoed(this, x, y, roped);
+                this.state.onPoliceBombed(); // +1 star, chase refresh (same as dynamite)
                 r.destroy();
                 this.rockets.splice(i, 1);
             }
         }
+    }
+
+    // The lasso falls short (or snaps): a puff of dust where it drops
+    lassoMiss(rope, text = null) {
+        dustPuff(this, rope.visualX, rope.visualY, { drift: 10, scale: 1.2, depth: 2, tint: DUST_TINT });
+        if (text) floatText(this, rope.visualX, rope.visualY, text, UI_COLORS.dim);
     }
 
     // Fireball, debris, scorch mark + a small camera shake
@@ -416,10 +436,10 @@ export class GameScene extends Phaser.Scene {
     collectDiamondCar() {
         this.state.pickupDiamond(); // +$1000 carried, +2 stars, chase refresh
         this.policeManager.onChaseEvent();
-        this.uiManager.showToast(t('toast.diamond', { amount: money(CONFIG.ECONOMY.DIAMOND_VALUE) }));
-        sparkBurst(this, this.diamondCar.visual.x, this.diamondCar.visual.y, { count: 12, tint: 0x9ff6ff });
+        this.uiManager.showToast(t('toast.diamond'));
+        sparkBurst(this, this.diamondCar.visual.x, this.diamondCar.visual.y, { count: 12, tint: 0xffe080 });
         floatText(this, this.diamondCar.visual.x, this.diamondCar.visual.y,
-            `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, UI_COLORS.cyan);
+            `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, UI_COLORS.gold);
 
         this.diamondCar.destroy();
         this.diamondCar = null;
@@ -455,12 +475,13 @@ export class GameScene extends Phaser.Scene {
         if (toTrack && !map.isRoad(car.targetX, car.targetY) && !this.state.onRails) {
             this.state.boardRails();
             this.uiManager.showToast(t('toast.onRails'));
+            dustPuff(this, car.visual.x, car.visual.y, { drift: 16, scale: 1.6, depth: 1.5, tint: DUST_TINT });
         } else if (!toTrack && this.state.onRails) {
             this.state.leaveRails();
         }
     }
 
-    onTrainEvents(events) {
+    onTrainEvents(events, time) {
         if (events.includes('bullionLap')) {
             this.uiManager.showToast(t('toast.bullionTrain'));
         }
@@ -468,6 +489,14 @@ export class GameScene extends Phaser.Scene {
             this.uiManager.showToast(t('toast.vaultOpen'));
             const { x, y } = this.railManager.train.carPosition(1);
             sparkBurst(this, x, y, { count: 10, tint: 0xffd040 });
+        }
+        // The engineer whistles for every crossing, if you're close enough to hear
+        if (events.includes('warning') && time - this.lastWhistle >= WHISTLE_EVERY) {
+            const { x, y } = this.railManager.train.carPosition(0);
+            if (Phaser.Geom.Rectangle.Contains(this.cameras.main.worldView, x, y)) {
+                this.lastWhistle = time;
+                floatText(this, x, y - 24, t('fx.toot'), UI_COLORS.white);
+            }
         }
     }
 
@@ -498,7 +527,7 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    // The train totals the diamond truck: the diamond is left lying on the road
+    // The train smashes the stagecoach: its strongbox is left lying on the street
     wreckDiamondCar() {
         const { gridX: x, gridY: y, visual } = this.diamondCar;
         explosion(this, visual.x, visual.y);
@@ -543,7 +572,7 @@ export class GameScene extends Phaser.Scene {
         const { x, y } = this.playerCar.visual;
         sparkBurst(this, x, y, { count: 8, tint: 0xff6040 });
         for (let i = 0; i < 3; i++) {
-            smokePuff(this, x + (i - 1) * 12, y, { drift: 26, scale: 1.5, depth: 2, tint: 0x606068 });
+            dustPuff(this, x + (i - 1) * 12, y, { drift: 26, scale: 1.6, depth: 2, tint: DUST_TINT });
         }
 
         if (this.state.gameOver) {
@@ -669,10 +698,10 @@ export class GameScene extends Phaser.Scene {
             if (!this.state.pickupRailPass()) return;
             this.uiManager.showToast(t('toast.railPass'));
         } else if (item.type === COLLECTIBLE_TYPES.DIAMOND) {
-            // Left behind by a diamond truck the train wrecked
+            // Left behind by a stagecoach the train smashed
             this.state.pickupDiamond();
             this.policeManager.onChaseEvent();
-            this.uiManager.showToast(t('toast.diamond', { amount: money(CONFIG.ECONOMY.DIAMOND_VALUE) }));
+            this.uiManager.showToast(t('toast.strongbox'));
         }
 
         const feedback = PICKUP_FEEDBACK[item.type];

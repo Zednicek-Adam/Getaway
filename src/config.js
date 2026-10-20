@@ -1,5 +1,11 @@
 // Central game configuration — all tunables live here.
 // Keys not yet consumed by the game are reserved for upcoming work packages.
+//
+// The keys keep the names the rules were written with (and the save file
+// still uses): fuel is the horse's stamina, a bomb is a bundle of dynamite,
+// a rocket is a lasso, nitro is a carrot gallop, police are the posse, SWAT
+// the marshals' wagon, the helicopter an army balloon and the garage the
+// general store. The README has the full glossary.
 export const CONFIG = {
     PLAYER: {
         MOVE_DURATION: 300,   // ms per tile
@@ -20,7 +26,8 @@ export const CONFIG = {
         MAX: 100,
         DRAIN_PER_SEC: 1,     // % per second while moving
         PICKUP_AMOUNT: 35,    // fuel collectible refill
-        REFUEL_PER_SEC: 25,   // station refuel rate
+        REFUEL_PER_SEC: 25,   // drinking at a water trough
+        REST_PER_SEC: 2,      // reined in anywhere else, the horse gets its wind back slowly
     },
 
     ECONOMY: {
@@ -85,8 +92,8 @@ export const CONFIG = {
 
     ROCKET: {
         MAX_CARRY: 2,
-        RANGE_TILES: 8,
-        MS_PER_TILE: 60,
+        RANGE_TILES: 6,       // a lariat's reach
+        MS_PER_TILE: 70,
     },
 
     ROADBLOCK: {
@@ -112,7 +119,7 @@ export const CONFIG = {
         MIN_CROSSINGS: 5,         // fewer surviving generation means a re-roll
         MS_PER_TILE: 150,
         WAGONS: [4, 5],           // behind the locomotive and the bullion car
-        WARNING_MS: 3000,         // lights + barriers before the locomotive reaches a crossing
+        WARNING_MS: 3000,         // gates down and the keeper out with his flag before the locomotive arrives
         STATION_DWELL_MS: 3000,
         BULLION_EVERY: 3,         // every Nth lap stops with the vault open
         BULLION_DWELL_MS: 8000,
