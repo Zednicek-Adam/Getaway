@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { loadSave, getBrowserStorage } from '../storage';
 import { label, panel, icon, money, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
+import { t, setLanguage, nextLanguage } from '../i18n';
 
 // Parallax speeds in texture pixels per millisecond
 const SCROLL = { far: 0.012, near: 0.035, street: 0.3 };
@@ -9,6 +10,13 @@ const SCROLL = { far: 0.012, near: 0.035, street: 0.3 };
 export class MenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MenuScene' });
+    }
+
+    // Switching language restarts this scene so every label is rebuilt; the
+    // restart carries the menu selection over so the cursor stays on the
+    // language button.
+    init(data) {
+        this.initialSelection = (data && data.selected) || 0;
     }
 
     create() {
@@ -26,12 +34,12 @@ export class MenuScene extends Phaser.Scene {
         this.menuContainer.add(logo);
         this.tweens.add({ targets: logo, y: 168, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-        const subtitle = label(this, width / 2, 290, 'PIXEL REMAKE', { color: UI_COLORS.white }).setOrigin(0.5);
+        const subtitle = label(this, width / 2, 290, t('menu.subtitle'), { color: UI_COLORS.white }).setOrigin(0.5);
         this.menuContainer.add(subtitle);
 
         // Persistent bank readout — shows $0 fine when empty
         const banked = loadSave(getBrowserStorage()).banked;
-        const bankLabel = label(this, 0, 0, `BANK ${money(banked)}`, { color: UI_COLORS.gold }).setOrigin(0, 0.5);
+        const bankLabel = label(this, 0, 0, t('menu.bank', { amount: money(banked) }), { color: UI_COLORS.gold }).setOrigin(0, 0.5);
         const bankW = Math.ceil((bankLabel.width + 72) / 2) * 2;
         const bankX = width / 2 - bankW / 2;
         const bankPanel = panel(this, bankX, 598, bankW, 52);
@@ -71,15 +79,24 @@ export class MenuScene extends Phaser.Scene {
             this.scene.start('InstructionsScene', { returnTo: 'MenuScene' });
         };
 
+        const switchLanguage = () => {
+            if (this.isTransitioning) return;
+            document.documentElement.lang = setLanguage(getBrowserStorage(), nextLanguage());
+            this.scene.restart({ selected: this.menu.selected });
+        };
+
         this.menu = createMenu(this, {
             x: width / 2,
             y: 410,
+            width: 440,
             items: [
-                { label: 'START', action: startGame },
-                { label: 'INSTRUCTIONS', action: showInstructions },
+                { label: t('menu.start'), action: startGame },
+                { label: t('menu.instructions'), action: showInstructions },
+                { label: t('menu.language', { name: t('lang.name') }), action: switchLanguage },
             ],
             container: this.menuContainer,
         });
+        this.menu.select(this.initialSelection);
 
         // Held keys repeat, and the repeat can land on the scene we just
         // switched to — holding ENTER on the instructions page would otherwise

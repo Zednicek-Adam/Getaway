@@ -118,7 +118,7 @@ export class GameState {
     // A train costs a life outright, armor or not
     onTrainHit() {
         this.onCaught();
-        if (this.gameOver) this.gameOverReason = 'HIT BY A TRAIN!';
+        if (this.gameOver) this.gameOverReason = 'hitByTrain';
     }
 
     // Repair one point of damage; false (leave the pickup) when undamaged.
@@ -184,7 +184,7 @@ export class GameState {
         this.invulnRemaining = CONFIG.PLAYER.INVULN_MS;
         if (this.lives <= 0) {
             this.gameOver = true;
-            this.gameOverReason = 'BUSTED!';
+            this.gameOverReason = 'busted';
         }
     }
 
@@ -247,7 +247,7 @@ export class GameState {
     onOutOfFuel() {
         this.onCaught();          // lose carried, a life, stars/heat reset, invuln, maybe gameOver
         this.fuel = this.maxFuel; // full tank on respawn; prevents immediate re-trigger
-        if (this.gameOver) this.gameOverReason = 'OUT OF FUEL!';
+        if (this.gameOver) this.gameOverReason = 'outOfFuel';
     }
 
     addStars(count) {

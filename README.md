@@ -45,7 +45,7 @@ default) or by running the tank dry. Either way, carried money is gone.
 
 | Key | Gamepad | Action |
 | --- | ------- | ------ |
-| Arrows / WASD | D-pad / left stick | Steer (queues up to 3 turns ahead) |
+| Arrows / WASD | D-pad / left stick | Steer (queues up to 2 turns ahead) |
 | `F` | A | Brake — hold position, and refuel when parked on a station pad |
 | `Space` | B / LT | Drop a bomb (10s fuse, destroys police) |
 | `E` | X / RT | Fire a rocket along your facing, up to 8 tiles |
@@ -66,6 +66,15 @@ you back to the main menu.
 
 The car drives itself forward; you only choose turns. Because turns are buffered,
 you can line up a sequence through an intersection before you reach it.
+
+## Language
+
+The game is in English and Spanish. The LANG / IDIOMA button on the title screen
+switches between them. The choice is saved in `localStorage`; on a first visit
+the game picks Spanish if the browser's language is Spanish. All on-screen text
+lives in `src/i18n.js`. Spanish drops the accent on capital vowels (Á, É, Í, Ó,
+Ú), because the pixel font's accented capitals look like lower case. Ñ, ¡ and ¿
+are kept.
 
 ## Pickups
 
@@ -217,6 +226,7 @@ src/
   cityLayout.js     cosmetic city dressing: road autotiles, districts, lots
   fx.js             one-shot effects (explosions, smoke, sparks, popups)
   gamepad.js        Gamepad API polling, edge detection and per-scene bindings
+  i18n.js           every on-screen string in English and Spanish, language switch
   GameState.js      pure run state — money, lives, fuel, stars, damage
   garage.js         upgrade pricing and derived-stat math
   storage.js        versioned localStorage save with sanitising loader
@@ -235,8 +245,8 @@ tools/              the pixel-art generator (Python)
 ```
 
 The design splits Phaser-dependent rendering from plain-JS game logic. Anything
-holding rules — `GameState`, `garage`, `storage`, `pathfinding`, `turnQueue`, `railway`, gamepad
-polling, the collectible weight table, map reachability, city layout — imports no Phaser and
+holding rules — `GameState`, `garage`, `storage`, `i18n`, `pathfinding`, `turnQueue`, `railway`,
+gamepad polling, the collectible weight table, map reachability, city layout — imports no Phaser and
 is unit tested directly.
 
 ## Deployment

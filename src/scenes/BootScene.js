@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { loadArt, createAnims } from '../art';
 import { FONT } from '../ui/ui';
+import { t } from '../i18n';
 
 // Loads every texture once (with a pixel progress bar), registers the shared
 // animations, then hands over to the title screen.
@@ -16,7 +17,7 @@ export class BootScene extends Phaser.Scene {
         const x = (width - barW) / 2;
         const y = height / 2;
 
-        this.add.text(width / 2, y - 48, 'LOADING', {
+        this.add.text(width / 2, y - 48, t('boot.loading'), {
             fontFamily: FONT, fontSize: '16px', color: '#ffc933',
         }).setOrigin(0.5);
         this.add.rectangle(x - 6, y - 6, barW + 12, barH + 12, 0x0a0b11).setOrigin(0);

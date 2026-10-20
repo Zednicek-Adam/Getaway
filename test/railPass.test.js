@@ -55,7 +55,7 @@ describe('GameState railway', () => {
         state.lives = 1;
         state.onTrainHit();
         expect(state.gameOver).toBe(true);
-        expect(state.gameOverReason).toBe('HIT BY A TRAIN!');
+        expect(state.gameOverReason).toBe('hitByTrain');
     });
 
     it('pays the heist once per full second, adding heat and refreshing the chase', () => {

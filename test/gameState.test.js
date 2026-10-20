@@ -83,7 +83,7 @@ describe('GameState', () => {
             }
             expect(state.lives).toBe(0);
             expect(state.gameOver).toBe(true);
-            expect(state.gameOverReason).toBe('BUSTED!');
+            expect(state.gameOverReason).toBe('busted');
         });
     });
 
@@ -372,21 +372,21 @@ describe('GameState', () => {
             expect(state.gameOver).toBe(false);
         });
 
-        it('at 1 life ends the game with the OUT OF FUEL reason', () => {
+        it('at 1 life ends the game with the outOfFuel reason', () => {
             const state = new GameState();
             state.lives = 1;
             state.onOutOfFuel();
             expect(state.gameOver).toBe(true);
-            expect(state.gameOverReason).toBe('OUT OF FUEL!');
+            expect(state.gameOverReason).toBe('outOfFuel');
         });
 
-        it('a normal catch chain to 0 lives still reports BUSTED!', () => {
+        it('a normal catch chain to 0 lives still reports busted', () => {
             const state = new GameState();
             for (let i = 0; i < CONFIG.PLAYER.LIVES; i++) {
                 state.onCaught();
             }
             expect(state.gameOver).toBe(true);
-            expect(state.gameOverReason).toBe('BUSTED!');
+            expect(state.gameOverReason).toBe('busted');
         });
     });
 });

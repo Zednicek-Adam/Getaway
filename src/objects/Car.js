@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
-import { TurnQueue, isOpposite } from '../turnQueue';
+import { TurnQueue, isOpposite, pickMove } from '../turnQueue';
 
 export class Car {
     constructor(scene, gridX, gridY, mapManager, options = {}) {
@@ -131,14 +131,6 @@ export class Car {
     }
 
     tryMove() {
-        // Logic:
-        // 1. A queued turn fires as soon as it's legal (consume it).
-        // 2. If it isn't legal here AND this is a decision point (a turn was
-        //    possible, or we can't continue straight), the queued turn is
-        //    STALE — drop it so the buffer never sticks, and try the next one.
-        // 3. On a plain straight corridor the turn is KEPT for the next junction.
-        // 4. Otherwise go straight; if that's blocked too, stop.
-
         // Don't auto-move if waiting for first input, or braked by the player
         if (this.waitingForInput || this.halted) return;
 
@@ -149,35 +141,11 @@ export class Car {
             return;
         }
 
-        while (this.turnQueue.length > 0) {
-            const front = this.turnQueue.peek();
-            if (this.canMove(front)) {
-                this.turnQueue.shift(); // Turn consumed
-                this.startMove(front);
-                return;
-            }
-
-            // Front turn isn't possible here. Drop it if we're at a genuine
-            // decision point (some other turn exists, or straight is blocked);
-            // keep it on a corridor so an early press survives to the junction.
-            const atDecisionPoint = this.hasTurnOption() || !this.canMove(this.direction);
-            if (atDecisionPoint) {
-                this.turnQueue.shift(); // Stale — discard and re-evaluate
-                continue;
-            }
-            break; // Corridor — keep the queued turn, continue straight
+        // Queued turns fire at the first junction that allows them (see pickMove)
+        const dir = pickMove(this.turnQueue, this.direction, (d) => this.canMove(d));
+        if (dir !== null) {
+            this.startMove(dir);
         }
-
-        if (this.canMove(this.direction)) {
-            this.startMove(this.direction);
-        }
-    }
-
-    // True when the car could turn onto a road other than straight-ahead or
-    // its reverse — i.e. it's sitting on a real intersection / forced bend.
-    hasTurnOption() {
-        return this.getValidMoves().some(
-            (d) => d !== this.direction && !isOpposite(d, this.direction));
     }
 
     canMove(dir) {

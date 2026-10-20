@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { label, panel, dim, UI_COLORS, createMenu } from '../ui/ui';
 import { bindPad, hasGamepad } from '../gamepad';
+import { t } from '../i18n';
 
 export class PauseScene extends Phaser.Scene {
     constructor() {
@@ -16,7 +17,7 @@ export class PauseScene extends Phaser.Scene {
         const ph = 520;
         const top = (height - ph) / 2;
         panel(this, (width - pw) / 2, top, pw, ph);
-        label(this, width / 2, top + 64, 'PAUSED', { size: 48 }).setOrigin(0.5);
+        label(this, width / 2, top + 64, t('pause.title'), { size: 48 }).setOrigin(0.5);
 
         const resumeAction = () => {
             this.scene.resume('GameScene');
@@ -52,14 +53,14 @@ export class PauseScene extends Phaser.Scene {
             width: 420,
             spacing: 76,
             items: [
-                { label: 'RESUME', action: resumeAction },
-                { label: 'RESTART', action: restartAction, tone: 'danger' },
-                { label: 'INSTRUCTIONS', action: instructionsAction },
-                { label: 'MAIN MENU', action: mainMenuAction, tone: 'danger' },
+                { label: t('pause.resume'), action: resumeAction },
+                { label: t('pause.restart'), action: restartAction, tone: 'danger' },
+                { label: t('menu.instructions'), action: instructionsAction },
+                { label: t('pause.mainMenu'), action: mainMenuAction, tone: 'danger' },
             ],
         });
 
-        label(this, width / 2, top + ph - 36, hasGamepad() ? 'START TO RESUME' : 'ESC TO RESUME', { color: UI_COLORS.dim }).setOrigin(0.5);
+        label(this, width / 2, top + ph - 36, t(hasGamepad() ? 'pause.hintPad' : 'pause.hintKeys'), { color: UI_COLORS.dim }).setOrigin(0.5);
 
         // A held key repeats, and the repeat lands on whichever scene was just
         // switched to — without this, holding ENTER on INSTRUCTIONS would
