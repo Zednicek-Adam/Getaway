@@ -3,13 +3,14 @@ import { TILE_SIZE } from '../constants';
 import { COLLECTIBLE_TYPES, createCollectibleIcon } from '../objects/Collectible';
 import { label, panel, dim, UI_COLORS, createMenu, townBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
+import { t } from '../i18n';
 
 // Static "how to play" page reached from the main menu.
 //
 // The pickup legend is drawn with createCollectibleIcon — the same factory the
 // road pickups use — so the icons taught here can never drift from the icons in
-// play. Text is kept to plain ASCII: the Press Start 2P webfont has no glyphs
-// for em dashes or arrows, which would render as blank boxes.
+// play. Text comes from i18n.js, which keeps it inside the glyphs Press Start
+// 2P actually has.
 export class InstructionsScene extends Phaser.Scene {
     constructor() {
         super({ key: 'InstructionsScene' });
@@ -31,32 +32,28 @@ export class InstructionsScene extends Phaser.Scene {
         dim(this, 0.55);
         panel(this, 40, 104, width - 80, height - 200);
 
-        label(this, centre, 56, 'HOW TO PLAY', { size: 40, color: UI_COLORS.gold }).setOrigin(0.5);
+        label(this, centre, 56, t('help.title'), { size: 40, color: UI_COLORS.gold }).setOrigin(0.5);
 
         // --- The goal -------------------------------------------------------
-        this.heading(centre, 146, 'THE JOB');
+        this.heading(centre, 146, t('help.job'));
 
-        const goal = [
-            'GRAB GOLD ALONG THE TRAILS AND STASH IT AT YOUR HIDEOUT',
-            'LOOT IN YOUR SADDLEBAGS IS LOST IF THE POSSE CATCHES YOU',
-            '3 LIVES. LOSE ONE TO 3 TACKLES OR A WORN-OUT HORSE',
-        ];
+        const goal = [t('help.goal1'), t('help.goal2'), t('help.goal3')];
         goal.forEach((line, i) => {
             this.body(centre, 186 + i * 30, line, UI_COLORS.white).setOrigin(0.5);
         });
 
         // --- Controls (left column) ----------------------------------------
-        this.heading(330, 300, 'CONTROLS');
+        this.heading(330, 300, t('help.controls'));
 
         // Keyboard / gamepad. A D-pad or stick steers too; that one needs no
         // keycap.
         const controls = [
-            ['ARROWS/WASD', 'STEER'],
-            ['F / A', 'REIN IN/DRINK'],
-            ['SPACE / B', 'LIGHT DYNAMITE'],
-            ['E / X', 'THROW LASSO'],
-            ['G / Y', 'STORE (HIDEOUT)'],
-            ['ESC / START', 'PAUSE'],
+            [t('help.keySteer'), t('help.steer')],
+            ['F / A', t('help.brake')],
+            [t('help.keyBomb'), t('help.bomb')],
+            ['E / X', t('help.rocket')],
+            ['G / Y', t('help.garage')],
+            ['ESC / START', t('help.pause')],
         ];
         controls.forEach(([key, action], i) => {
             const y = 346 + i * 44;
@@ -65,16 +62,16 @@ export class InstructionsScene extends Phaser.Scene {
         });
 
         // --- Pickups (right column) -----------------------------------------
-        this.heading(940, 300, 'PICKUPS');
+        this.heading(940, 300, t('help.pickups'));
 
         const pickups = [
-            [COLLECTIBLE_TYPES.MONEY, 'GOLD COIN', '+$100'],
-            [COLLECTIBLE_TYPES.REPAIR, 'SNAKE OIL', '+1 GRIT'],
-            [COLLECTIBLE_TYPES.NITRO, 'CARROT', '4S GALLOP'],
-            [COLLECTIBLE_TYPES.ROCKET, 'LASSO', '+1 ROPE'],
-            [COLLECTIBLE_TYPES.BOMB, 'DYNAMITE', '+1 BUNDLE'],
-            [COLLECTIBLE_TYPES.LIFE, 'STETSON', '+1 LIFE'],
-            [COLLECTIBLE_TYPES.RAIL_PASS, 'RAIL PASS', 'HANDCAR'],
+            [COLLECTIBLE_TYPES.MONEY, t('help.cash'), t('help.cashEffect')],
+            [COLLECTIBLE_TYPES.REPAIR, t('help.repair'), t('help.repairEffect')],
+            [COLLECTIBLE_TYPES.NITRO, t('help.nitro'), t('help.nitroEffect')],
+            [COLLECTIBLE_TYPES.ROCKET, t('help.rocketName'), t('help.rocketEffect')],
+            [COLLECTIBLE_TYPES.BOMB, t('help.bombName'), t('help.bombEffect')],
+            [COLLECTIBLE_TYPES.LIFE, t('help.life'), t('help.lifeEffect')],
+            [COLLECTIBLE_TYPES.RAIL_PASS, t('help.railPass'), t('help.railPassEffect')],
         ];
         pickups.forEach(([type, name, effect], i) => {
             const y = 346 + i * 38;
@@ -86,21 +83,21 @@ export class InstructionsScene extends Phaser.Scene {
 
         // --- Things that are not obvious from playing ------------------------
         const notes = [
-            ['YOUR HORSE FOLLOWS THE TRAIL - YOU ONLY PICK THE FORKS', UI_COLORS.cyan],
-            ['TURNS QUEUE UP TO 3 AHEAD, SO LINE UP JUNCTIONS EARLY', UI_COLORS.white],
-            ['REIN IN TO REST YOUR HORSE - A TROUGH REFILLS IT FAST', UI_COLORS.white],
-            ['ROB THE STAGECOACH FOR $1000 - IT COSTS YOU 2 BADGES', UI_COLORS.white],
-            ['THE POSSE WAITS AT CROSSING GATES - BEAT THE TRAIN', UI_COLORS.white],
-            ['RAIL PASS (STORE UNLOCK): TURN AT A CROSSING TO RIDE', UI_COLORS.purple],
+            [t('help.note1'), UI_COLORS.cyan],
+            [t('help.note2'), UI_COLORS.white],
+            [t('help.note3'), UI_COLORS.white],
+            [t('help.note4'), UI_COLORS.white],
+            [t('help.note5'), UI_COLORS.white],
+            [t('help.note6'), UI_COLORS.purple],
         ];
         notes.forEach(([line, colour], i) => {
             this.body(centre, 614 + i * 25, line, colour).setOrigin(0.5);
         });
 
         // --- Wanted level ----------------------------------------------------
-        this.heading(centre, 776, 'HEAT');
-        this.body(centre, 808, 'EVERY PICKUP RAISES YOUR WANTED BADGES', UI_COLORS.white).setOrigin(0.5);
-        this.body(centre, 834, '1-3 DEPUTIES   4 MARSHALS + BARRICADES   5 BALLOON', UI_COLORS.red)
+        this.heading(centre, 776, t('help.heat'));
+        this.body(centre, 808, t('help.heat1'), UI_COLORS.white).setOrigin(0.5);
+        this.body(centre, 834, t('help.heat2'), UI_COLORS.red)
             .setOrigin(0.5);
 
         this.createBackButton(centre, height - 60);
@@ -135,7 +132,7 @@ export class InstructionsScene extends Phaser.Scene {
             this.scene.start(this.returnTo);
         };
 
-        createMenu(this, { x, y, width: 280, items: [{ label: 'BACK', action: goBack }] });
+        createMenu(this, { x, y, width: 280, items: [{ label: t('help.back'), action: goBack }] });
 
         this.input.keyboard.on('keydown-ESC', goBack);
         this.input.keyboard.on('keydown-ENTER', goBack);

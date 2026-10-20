@@ -18,19 +18,21 @@ import { oppositeOf } from '../turnQueue';
 import { explosion, sparkBurst, dustPuff, floatText, lassoed, CarTrail, Tumbleweeds, DUST_TINT } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
 import { bindPad, hasGamepad } from '../gamepad';
+import { t } from '../i18n';
 import { MOUNTS } from '../art';
 
-// Pickup feedback: popup text + spark tint per collectible type
+// Pickup feedback: popup text + spark tint per collectible type. Text is a
+// function so it reads the language at pickup time, not at import.
 const PICKUP_FEEDBACK = {
-    [COLLECTIBLE_TYPES.MONEY]: { text: `+${money(CONFIG.ECONOMY.MONEY_VALUE)}`, color: UI_COLORS.gold, tint: 0xffd040 },
-    [COLLECTIBLE_TYPES.BOMB]: { text: '+1 DYNAMITE', color: UI_COLORS.red, tint: 0xff7050 },
-    [COLLECTIBLE_TYPES.REPAIR]: { text: 'PATCHED UP', color: UI_COLORS.green, tint: 0x9ad86a },
-    [COLLECTIBLE_TYPES.LIFE]: { text: '+1 LIFE', color: UI_COLORS.goldLight, tint: 0xecc290 },
-    [COLLECTIBLE_TYPES.NITRO]: { text: 'GIDDY UP!', color: UI_COLORS.orange, tint: 0xffa040 },
-    [COLLECTIBLE_TYPES.ROCKET]: { text: '+1 LASSO', color: UI_COLORS.orange, tint: 0xf0d098 },
-    [COLLECTIBLE_TYPES.RAIL_PASS]: { text: 'RAIL PASS', color: UI_COLORS.purple, tint: 0xc39af0 },
+    [COLLECTIBLE_TYPES.MONEY]: { text: () => `+${money(CONFIG.ECONOMY.MONEY_VALUE)}`, color: UI_COLORS.gold, tint: 0xffd040 },
+    [COLLECTIBLE_TYPES.BOMB]: { text: () => t('pickup.bomb'), color: UI_COLORS.red, tint: 0xff7050 },
+    [COLLECTIBLE_TYPES.REPAIR]: { text: () => t('pickup.repair'), color: UI_COLORS.green, tint: 0x9ad86a },
+    [COLLECTIBLE_TYPES.LIFE]: { text: () => t('pickup.life'), color: UI_COLORS.goldLight, tint: 0xecc290 },
+    [COLLECTIBLE_TYPES.NITRO]: { text: () => t('pickup.nitro'), color: UI_COLORS.orange, tint: 0xffa040 },
+    [COLLECTIBLE_TYPES.ROCKET]: { text: () => t('pickup.rocket'), color: UI_COLORS.orange, tint: 0xf0d098 },
+    [COLLECTIBLE_TYPES.RAIL_PASS]: { text: () => t('pickup.railPass'), color: UI_COLORS.purple, tint: 0xc39af0 },
     [COLLECTIBLE_TYPES.DIAMOND]: {
-        text: `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, color: UI_COLORS.gold, tint: 0xffe080,
+        text: () => `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, color: UI_COLORS.gold, tint: 0xffe080,
     },
 };
 
@@ -210,7 +212,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.garageHintShown &&
             this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) {
             this.garageHintShown = true;
-            this.uiManager.showToast(hasGamepad() ? 'PRESS Y FOR THE STORE' : 'PRESS G FOR THE STORE');
+            this.uiManager.showToast(t(hasGamepad() ? 'toast.garagePad' : 'toast.garageKeys'));
         }
 
         // (b) Deposit — ordered before the catch check so a catch on the base
@@ -219,7 +221,7 @@ export class GameScene extends Phaser.Scene {
             const amount = this.state.deposit();
             this.save.banked = this.state.banked;
             writeSave(this.storage, this.save);
-            this.uiManager.showToast(`+${money(amount)} STASHED`);
+            this.uiManager.showToast(t('toast.banked', { amount: money(amount) }));
             floatText(this, this.playerCar.visual.x, this.playerCar.visual.y, `+${money(amount)}`, UI_COLORS.gold);
             sparkBurst(this, this.playerCar.visual.x, this.playerCar.visual.y, { count: 12, tint: 0xffd040 });
             // deposit() zeroed the countdown — stars decay via tick() and the
@@ -364,7 +366,7 @@ export class GameScene extends Phaser.Scene {
 
             // (0) The loop snags on the train and the rope snaps
             if (this.railManager.isTrainAt(r.gridX, r.gridY)) {
-                this.lassoMiss(r, 'SNAP!');
+                this.lassoMiss(r, t('fx.snap'));
                 r.destroy();
                 this.rockets.splice(i, 1);
                 continue;
@@ -385,7 +387,7 @@ export class GameScene extends Phaser.Scene {
                 this.policeManager.destroyRoadblock(rb);
                 sparkBurst(this, r.visualX, r.visualY, { count: 9, radius: TILE_SIZE * 0.9, tint: 0xc08a52 });
                 dustPuff(this, r.visualX, r.visualY, { drift: 24, scale: 1.8, depth: 2, tint: DUST_TINT });
-                floatText(this, r.visualX, r.visualY, 'YANKED!', UI_COLORS.orange);
+                floatText(this, r.visualX, r.visualY, t('fx.yanked'), UI_COLORS.orange);
                 this.cameras.main.shake(120, 0.004);
                 r.destroy();
                 this.rockets.splice(i, 1);
@@ -434,7 +436,7 @@ export class GameScene extends Phaser.Scene {
     collectDiamondCar() {
         this.state.pickupDiamond(); // +$1000 carried, +2 stars, chase refresh
         this.policeManager.onChaseEvent();
-        this.uiManager.showToast('STAGECOACH ROBBED!');
+        this.uiManager.showToast(t('toast.diamond'));
         sparkBurst(this, this.diamondCar.visual.x, this.diamondCar.visual.y, { count: 12, tint: 0xffe080 });
         floatText(this, this.diamondCar.visual.x, this.diamondCar.visual.y,
             `+${money(CONFIG.ECONOMY.DIAMOND_VALUE)}`, UI_COLORS.gold);
@@ -472,7 +474,7 @@ export class GameScene extends Phaser.Scene {
         const toTrack = map.isRail(car.targetX, car.targetY);
         if (toTrack && !map.isRoad(car.targetX, car.targetY) && !this.state.onRails) {
             this.state.boardRails();
-            this.uiManager.showToast('ALL ABOARD THE HANDCAR!');
+            this.uiManager.showToast(t('toast.onRails'));
             dustPuff(this, car.visual.x, car.visual.y, { drift: 16, scale: 1.6, depth: 1.5, tint: DUST_TINT });
         } else if (!toTrack && this.state.onRails) {
             this.state.leaveRails();
@@ -481,10 +483,10 @@ export class GameScene extends Phaser.Scene {
 
     onTrainEvents(events, time) {
         if (events.includes('bullionLap')) {
-            this.uiManager.showToast("GOLD TRAIN COMIN' ROUND!");
+            this.uiManager.showToast(t('toast.bullionTrain'));
         }
         if (events.includes('arrived') && this.railManager.vaultOpen) {
-            this.uiManager.showToast('EXPRESS CAR OPEN AT THE DEPOT');
+            this.uiManager.showToast(t('toast.vaultOpen'));
             const { x, y } = this.railManager.train.carPosition(1);
             sparkBurst(this, x, y, { count: 10, tint: 0xffd040 });
         }
@@ -493,7 +495,7 @@ export class GameScene extends Phaser.Scene {
             const { x, y } = this.railManager.train.carPosition(0);
             if (Phaser.Geom.Rectangle.Contains(this.cameras.main.worldView, x, y)) {
                 this.lastWhistle = time;
-                floatText(this, x, y - 24, 'TOOT TOOT!', UI_COLORS.white);
+                floatText(this, x, y - 24, t('fx.toot'), UI_COLORS.white);
             }
         }
     }
@@ -519,7 +521,7 @@ export class GameScene extends Phaser.Scene {
         if (hit(this.playerCar)) {
             explosion(this, this.playerCar.visual.x, this.playerCar.visual.y);
             this.cameras.main.shake(300, 0.012);
-            this.uiManager.showToast('RUN DOWN BY THE TRAIN');
+            this.uiManager.showToast(t('toast.hitByTrain'));
             this.state.onTrainHit();
             this.handleCaught();
         }
@@ -574,7 +576,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (this.state.gameOver) {
-            this.handleGameOver(this.state.gameOverReason || "CAUGHT BY THE POSSE!");
+            this.handleGameOver(this.state.gameOverReason || 'busted');
             return;
         }
 
@@ -684,28 +686,28 @@ export class GameScene extends Phaser.Scene {
         } else if (item.type === COLLECTIBLE_TYPES.LIFE) {
             // At max lives — leave the extra life on the road
             if (!this.state.addLife()) return;
-            this.uiManager.showToast('+1 LIFE');
+            this.uiManager.showToast(t('toast.life'));
         } else if (item.type === COLLECTIBLE_TYPES.NITRO) {
             this.state.pickupNitro(); // Refresh-to-full speed boost
-            this.uiManager.showToast('GIDDY UP!');
+            this.uiManager.showToast(t('toast.nitro'));
         } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
             // Inventory full — leave the rocket on the road for later
             if (!this.state.pickupRocket()) return;
         } else if (item.type === COLLECTIBLE_TYPES.RAIL_PASS) {
             // Already holding one — leave it for after the ride
             if (!this.state.pickupRailPass()) return;
-            this.uiManager.showToast('TURN AT A CROSSING TO RIDE');
+            this.uiManager.showToast(t('toast.railPass'));
         } else if (item.type === COLLECTIBLE_TYPES.DIAMOND) {
             // Left behind by a stagecoach the train smashed
             this.state.pickupDiamond();
             this.policeManager.onChaseEvent();
-            this.uiManager.showToast('STRONGBOX!');
+            this.uiManager.showToast(t('toast.strongbox'));
         }
 
         const feedback = PICKUP_FEEDBACK[item.type];
         if (feedback) {
             sparkBurst(this, item.visual.x, item.visual.y, { count: 6, radius: TILE_SIZE * 0.7, tint: feedback.tint });
-            floatText(this, item.visual.x, item.visual.y, feedback.text, feedback.color);
+            floatText(this, item.visual.x, item.visual.y, feedback.text(), feedback.color);
         }
 
         this.mapManager.removeCollectible(item);

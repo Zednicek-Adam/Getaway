@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { TILE_SIZE, DIRECTIONS } from './constants';
 import { label, UI_COLORS } from './ui/ui';
 import { ICON } from './art';
+import { t } from './i18n';
 
 // One-shot visual effects. Everything here is cosmetic and self-destructs.
 
@@ -110,10 +111,10 @@ export function lassoed(scene, x, y, roped) {
     sparkBurst(scene, x, y, { count: 6, radius: TILE_SIZE * 0.8, tint: 0xf0d098 });
     scene.cameras.main.shake(140, 0.005);
     if (!roped) {
-        floatText(scene, x, y, 'WHOA!', UI_COLORS.goldLight);
+        floatText(scene, x, y, t('fx.whoa'), UI_COLORS.goldLight);
         return;
     }
-    floatText(scene, x, y, 'ROPED!', UI_COLORS.gold);
+    floatText(scene, x, y, t('fx.roped'), UI_COLORS.gold);
     const hat = scene.add.image(x, y, 'icons', ICON.hat).setDepth(FX_DEPTH + 2);
     const dir = Math.random() < 0.5 ? -1 : 1;
     scene.tweens.add({ targets: hat, x: x + dir * 70, duration: 800, ease: 'Sine.easeOut' });

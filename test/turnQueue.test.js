@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TurnQueue, isOpposite, oppositeOf } from '../src/turnQueue';
+import { TurnQueue, isOpposite, oppositeOf, pickMove } from '../src/turnQueue';
 import { DIRECTIONS } from '../src/constants';
 
 describe('isOpposite', () => {
@@ -98,5 +98,62 @@ describe('TurnQueue', () => {
         const arr = q.toArray();
         arr.push(DIRECTIONS.DOWN);
         expect(q.length).toBe(1);
+    });
+});
+
+describe('pickMove', () => {
+    const { UP, DOWN, LEFT, RIGHT } = DIRECTIONS;
+    const queueOf = (...dirs) => {
+        const q = new TurnQueue(3);
+        dirs.forEach((d) => q.push(d));
+        return q;
+    };
+    // canMove for a tile whose open neighbours are `open`
+    const roads = (...open) => (dir) => open.includes(dir);
+
+    it('takes a queued turn as soon as the road allows it', () => {
+        const q = queueOf(UP);
+        expect(pickMove(q, RIGHT, roads(UP, LEFT, RIGHT))).toBe(UP);
+        expect(q.length).toBe(0);
+    });
+
+    it('keeps the turn and goes straight on a plain corridor', () => {
+        const q = queueOf(UP);
+        expect(pickMove(q, RIGHT, roads(LEFT, RIGHT))).toBe(RIGHT);
+        expect(q.toArray()).toEqual([UP]);
+    });
+
+    it('keeps the turn past a junction that only branches the other way', () => {
+        const q = queueOf(UP);
+        expect(pickMove(q, RIGHT, roads(DOWN, LEFT, RIGHT))).toBe(RIGHT);
+        expect(q.toArray()).toEqual([UP]);
+
+        // ...and still takes it at the next junction that has the road
+        expect(pickMove(q, RIGHT, roads(UP, DOWN, LEFT, RIGHT))).toBe(UP);
+        expect(q.length).toBe(0);
+    });
+
+    it('drops an untakeable turn where straight ahead is closed, then stops', () => {
+        const q = queueOf(UP);
+        expect(pickMove(q, RIGHT, roads(DOWN, LEFT))).toBeNull();
+        expect(q.length).toBe(0);
+    });
+
+    it('falls through to the next queued turn when the front one is dropped', () => {
+        const q = queueOf(UP, RIGHT, DOWN);
+        expect(pickMove(q, RIGHT, roads(DOWN, LEFT))).toBe(DOWN);
+        expect(q.length).toBe(0);
+    });
+
+    it('drops a queued turn that has become a reversal', () => {
+        // UP was queued riding RIGHT; the rails since swung the car round to DOWN
+        const q = queueOf(UP, LEFT);
+        expect(pickMove(q, DOWN, roads(UP, DOWN, LEFT, RIGHT))).toBe(LEFT);
+        expect(q.length).toBe(0);
+    });
+
+    it('goes straight with an empty queue, or stays put if it cannot', () => {
+        expect(pickMove(queueOf(), RIGHT, roads(LEFT, RIGHT))).toBe(RIGHT);
+        expect(pickMove(queueOf(), RIGHT, roads(LEFT))).toBeNull();
     });
 });

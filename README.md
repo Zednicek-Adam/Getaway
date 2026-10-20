@@ -53,7 +53,7 @@ stop at a water trough (the blue pads) and it drinks its fill in a few seconds.
 
 | Key | Gamepad | Action |
 | --- | ------- | ------ |
-| Arrows / WASD | D-pad / left stick | Steer (queues up to 3 turns ahead) |
+| Arrows / WASD | D-pad / left stick | Steer (queues up to 2 turns ahead) |
 | `F` | A | Rein in: hold position and rest, or drink when parked at a trough |
 | `Space` | B / LT | Light a bundle of dynamite (10s fuse, blows up the posse) |
 | `E` | X / RT | Throw a lasso along your facing, up to 6 tiles |
@@ -76,6 +76,15 @@ Your horse runs on its own and follows the trail round a bend; you only pick
 the way at forks. It stops at a fork (or the hideout) until you steer. Because
 turns are buffered, you can line up a sequence through a junction before you
 reach it.
+
+## Language
+
+The game is in English and Spanish. The LANG / IDIOMA button on the title screen
+switches between them. The choice is saved in `localStorage`; on a first visit
+the game picks Spanish if the browser's language is Spanish. All on-screen text
+lives in `src/i18n.js`. Spanish drops the accent on capital vowels (Á, É, Í, Ó,
+Ú), because the pixel font's accented capitals look like lower case. Ñ, ¡ and ¿
+are kept.
 
 ## Pickups
 
@@ -291,6 +300,7 @@ src/
   landLayout.js     cosmetic open range: terrain, river, trails, scrub, homesteads, mountains
   fx.js             one-shot effects (explosions, dust, gunsmoke, popups) and tumbleweeds
   gamepad.js        Gamepad API polling, edge detection and per-scene bindings
+  i18n.js           every on-screen string in English and Spanish, language switch
   GameState.js      pure run state — money, lives, stamina, badges, grit
   garage.js         upgrade pricing and derived-stat math
   storage.js        versioned localStorage save with sanitising loader
@@ -309,8 +319,8 @@ tools/              the pixel-art generator (Python)
 ```
 
 The design splits Phaser-dependent rendering from plain-JS game logic. Anything
-holding rules — `GameState`, `garage`, `storage`, `pathfinding`, `turnQueue`, `railway`, gamepad
-polling, the collectible weight table, map generation and reachability, town and land layout — imports no Phaser and
+holding rules — `GameState`, `garage`, `storage`, `i18n`, `pathfinding`, `turnQueue`, `railway`,
+gamepad polling, the collectible weight table, map generation and reachability, town and land layout — imports no Phaser and
 is unit tested directly.
 
 ## Deployment

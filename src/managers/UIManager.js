@@ -3,6 +3,7 @@ import { DIRECTIONS, MAP_WIDTH, MAP_HEIGHT } from '../constants';
 import { ICON } from '../art';
 import { label, panel, icon, money, UI_COLORS, dim, createMenu } from '../ui/ui';
 import { hasGamepad } from '../gamepad';
+import { t } from '../i18n';
 
 const HUD_DEPTH = 100;
 
@@ -32,11 +33,11 @@ export class UIManager {
         this.fix(panel(scene, 16, 16, 344, 204));
 
         this.fix(icon(scene, 44, 46, 'coin'));
-        this.fix(label(scene, 68, 38, 'STASH', { color: UI_COLORS.dim }));
+        this.fix(label(scene, 68, 38, t('hud.bank'), { color: UI_COLORS.dim }));
         this.bankText = this.fix(label(scene, 340, 38, '$0', { color: UI_COLORS.gold }).setOrigin(1, 0));
 
         this.fix(icon(scene, 44, 82, 'bag'));
-        this.fix(label(scene, 68, 74, 'LOOT', { color: UI_COLORS.dim }));
+        this.fix(label(scene, 68, 74, t('hud.carry'), { color: UI_COLORS.dim }));
         this.carryText = this.fix(label(scene, 340, 74, '$0').setOrigin(1, 0));
 
         // Lives are spare hats — built to MAX_LIVES so the extra-life pickup has slots
@@ -74,10 +75,10 @@ export class UIManager {
         this.rocketText = this.fix(label(scene, 150, 248, 'x0', { color: UI_COLORS.orange }));
         // Carrot gallop: lit while the horse runs flat out
         this.nitroIcon = this.fix(icon(scene, 212, 256, 'carrot'));
-        this.nitroText = this.fix(label(scene, 234, 248, 'RUN', { color: UI_COLORS.orange }));
+        this.nitroText = this.fix(label(scene, 234, 248, t('hud.nitro'), { color: UI_COLORS.orange }));
         this.renderNitro(false);
         // Rail pass: lit while held, blinking while it's being ridden
-        this.ticketIcon = this.fix(icon(scene, 318, 256, 'ticket'));
+        this.ticketIcon = this.fix(icon(scene, 332, 256, 'ticket'));
         this.ticketTween = null;
         this.renderTicket(0, false);
 
@@ -85,7 +86,7 @@ export class UIManager {
         const wantedW = 5 * 40 + 36;
         const wx = width - 16 - wantedW;
         this.fix(panel(scene, wx, 16, wantedW, 96));
-        this.fix(label(scene, wx + wantedW / 2, 28, 'WANTED', { color: UI_COLORS.dim }).setOrigin(0.5, 0));
+        this.fix(label(scene, wx + wantedW / 2, 28, t('hud.wanted'), { color: UI_COLORS.dim }).setOrigin(0.5, 0));
         this.stars = [];
         for (let i = 0; i < 5; i++) {
             this.stars.push(this.fix(icon(scene, wx + 38 + i * 40, 66, 'badgeEmpty')));
@@ -100,7 +101,7 @@ export class UIManager {
         const qx = (width - qW) / 2;
         const qy = height - 16 - 56;
         this.fix(panel(scene, qx, qy, qW, 56));
-        this.fix(label(scene, qx + 18, qy + 20, 'NEXT', { color: UI_COLORS.dim }));
+        this.fix(label(scene, qx + 18, qy + 20, t('hud.next'), { color: UI_COLORS.dim }));
         this.queueArrows = [];
         for (let i = 0; i < CONFIG.PLAYER.QUEUE_MAX; i++) {
             this.queueArrows.push(this.fix(icon(scene, qx + 118 + i * 44, qy + 28, 'arrow').setAlpha(0.15)));
@@ -368,6 +369,7 @@ export class UIManager {
         });
     }
 
+    // `reason` is a GameState code: 'busted', 'outOfFuel' or 'hitByTrain'
     showGameOver(reason) {
         const scene = this.scene;
         const { width, height } = scene.scale;
@@ -385,9 +387,9 @@ export class UIManager {
             if (k % 8 === 4) box.add(scene.add.rectangle(x + 2, -ph / 2 + 22, 6, 8, 0x946a34).setOrigin(0));
         }
 
-        box.add(label(scene, 0, -110, 'GAME OVER', { size: 48, color: UI_COLORS.red }).setOrigin(0.5));
-        box.add(label(scene, 0, -40, reason, { size: 24, color: UI_COLORS.gold }).setOrigin(0.5));
-        box.add(label(scene, 0, 8, 'THE END', { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
+        box.add(label(scene, 0, -110, t('gameOver.title'), { size: 48, color: UI_COLORS.red }).setOrigin(0.5));
+        box.add(label(scene, 0, -40, t(`gameOver.${reason}`), { size: 24, color: UI_COLORS.gold }).setOrigin(0.5));
+        box.add(label(scene, 0, 8, t('gameOver.theEnd'), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
 
         // Drop-in entrance
         box.y = -ph;
@@ -397,9 +399,9 @@ export class UIManager {
         // click, ENTER or pad A/START, so the button itself must not restart a
         // second time.
         createMenu(scene, {
-            x: 0, y: 86, width: 320, items: [{ label: 'RESTART', action: () => {} }],
+            x: 0, y: 86, width: 320, items: [{ label: t('gameOver.restart'), action: () => {} }],
             container: box,
         });
-        box.add(label(scene, 0, 150, hasGamepad() ? 'PRESS A' : 'PRESS ENTER', { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
+        box.add(label(scene, 0, 150, t(hasGamepad() ? 'gameOver.hintPad' : 'gameOver.hintKeys'), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
     }
 }
