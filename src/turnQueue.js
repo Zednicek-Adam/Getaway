@@ -69,3 +69,26 @@ export class TurnQueue {
         return this.items.slice();
     }
 }
+
+// Direction a car takes when it stands on a tile boundary. `canMove(dir)`
+// reports whether the neighbouring tile that way is open.
+//   - The front queued turn fires as soon as the road allows it (consumed).
+//   - If it can't be taken here but straight ahead is open, the car carries
+//     on and the turn waits for a junction that has that road — side roads
+//     going the other way don't cancel it.
+//   - Only when straight ahead is closed as well (the car would stop) is an
+//     untakeable turn discarded, so a stale press can't swallow the next key;
+//     the following queued turn is then tried.
+// Returns the direction to move, or null to stay put. Mutates `queue`.
+export function pickMove(queue, direction, canMove) {
+    while (queue.length > 0) {
+        const front = queue.peek();
+        if (canMove(front)) {
+            queue.shift();
+            return front;
+        }
+        if (canMove(direction)) return direction;
+        queue.shift();
+    }
+    return canMove(direction) ? direction : null;
+}
