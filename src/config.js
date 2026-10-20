@@ -6,7 +6,7 @@ export const CONFIG = {
         LIVES: 3,
         INVULN_MS: 3000,      // invulnerability after being caught
         MAX_BOMBS: 3,
-        QUEUE_MAX: 3,         // max buffered turns
+        QUEUE_MAX: 2,         // max buffered turns
         MAX_LIVES: 5,         // reserved for WP2 (extra-life pickup cap)
     },
 

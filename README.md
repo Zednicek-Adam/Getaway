@@ -45,7 +45,7 @@ default) or by running the tank dry. Either way, carried money is gone.
 
 | Key | Gamepad | Action |
 | --- | ------- | ------ |
-| Arrows / WASD | D-pad / left stick | Steer (queues up to 3 turns ahead) |
+| Arrows / WASD | D-pad / left stick | Steer (queues up to 2 turns ahead) |
 | `F` | A | Brake — hold position, and refuel when parked on a station pad |
 | `Space` | B / LT | Drop a bomb (10s fuse, destroys police) |
 | `E` | X / RT | Fire a rocket along your facing, up to 8 tiles |
