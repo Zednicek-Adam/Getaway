@@ -121,16 +121,20 @@ export class UIManager {
     // { banked, carried, lives, fuel, fuelMax, bombs, rockets, damage, maxDamage,
     //   nitroActive, queue, stars, chaseCountdown, chaseCountdownMax }
     update(hud) {
+        // Punch only on gains: the pump drains these a dollar at a time, and
+        // a punch per dollar would just shake
+        const prevBanked = this.last.banked;
         if (this.changed('banked', hud.banked)) {
             this.bankText.setText(money(hud.banked));
-            if (hud.banked > 0) this.punch(this.bankText);
+            if (hud.banked > (prevBanked ?? 0)) this.punch(this.bankText);
         }
 
+        const prevCarried = this.last.carried;
         if (this.changed('carried', hud.carried)) {
             this.carryText.setText(money(hud.carried));
             // Brighter while money is at risk
             this.carryText.setColor(hud.carried > 0 ? UI_COLORS.white : UI_COLORS.faint);
-            if (hud.carried > 0) this.punch(this.carryText);
+            if (hud.carried > (prevCarried ?? 0)) this.punch(this.carryText);
         }
 
         if (this.changed('lives', `${hud.lives}/${hud.maxLives}`)) {
@@ -291,7 +295,8 @@ export class UIManager {
         });
     }
 
-    // `reason` is a GameState code: 'busted' or 'outOfFuel'
+    // `reason` is a GameState code (only 'busted' since an empty tank stopped
+    // costing a life)
     showGameOver(reason) {
         const scene = this.scene;
         const { width, height } = scene.scale;

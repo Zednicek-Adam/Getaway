@@ -32,6 +32,10 @@ export class Car {
         this.turnQueue = new TurnQueue(CONFIG.PLAYER.QUEUE_MAX); // Buffered turns (FIFO)
         this.isMoving = false;
         this.halted = false; // Player brake toggle (stop to refuel / wait)
+        this.stalled = false; // Player out of fuel and not being pushed (set by GameScene)
+        // Optional (x, y) => bool, asked on arriving at each tile: true brakes
+        // there (sets halted). GameScene uses it to stop a dry car at a pump.
+        this.brakeAt = options.brakeAt ?? null;
         this.moveConfig = {
             duration: CONFIG.PLAYER.MOVE_DURATION, // ms to cross one tile (Speed)
         };
@@ -95,13 +99,20 @@ export class Car {
         this.isMoving = false;
         this.moveTimer = 0;
 
+        if (this.brakeAt && this.brakeAt(this.gridX, this.gridY)) {
+            this.halted = true;
+            return;
+        }
+
         // Check if we should continue moving
         this.tryMove();
     }
 
     tryMove() {
-        // Don't auto-move if waiting for first input, or braked by the player
-        if (this.waitingForInput || this.halted) return;
+        // Don't auto-move if waiting for first input, braked by the player, or
+        // stalled on an empty tank. Checked only between tiles, so a stall
+        // finishes the current tile first.
+        if (this.waitingForInput || this.halted || this.stalled) return;
 
         // Queued turns fire at the first junction that allows them (see pickMove)
         const dir = pickMove(this.turnQueue, this.direction, (d) => this.canMove(d));

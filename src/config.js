@@ -21,6 +21,17 @@ export const CONFIG = {
         DRAIN_PER_SEC: 1,     // % per second while moving
         PICKUP_AMOUNT: 35,    // fuel collectible refill
         REFUEL_PER_SEC: 25,   // station refuel rate
+        PRICE: 1,             // $ per fuel unit; carried cash pays first, then the bank. No cash, no gas.
+    },
+
+    // Tap the push key to squeeze out extra speed; it burns extra fuel. With
+    // an empty tank, pushing is the only way to move (at a crawl).
+    PUSH: {
+        PER_PRESS: 0.25,      // push meter gained per tap (meter is 0..1)
+        DECAY_PER_SEC: 1.2,   // meter lost per second; ~5 taps/s holds it full
+        SPEED_FACTOR: 0.85,   // move-duration multiplier at a full meter (nitro is 0.65; they don't stack)
+        FUEL_PER_SEC: 2,      // extra fuel burned per second at a full meter while moving
+        DRY_SPEED_FACTOR: 3,  // empty tank: pushing crawls at 3x the move duration
     },
 
     ECONOMY: {

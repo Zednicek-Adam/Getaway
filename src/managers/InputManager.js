@@ -18,6 +18,10 @@ export class InputManager {
         // Brake/stop toggle state (F) — consumed by GameScene
         this.stopToggled = false;
 
+        // Push taps (Q) since the last drain — a count, since mashing can land
+        // two taps in one frame
+        this.pushPresses = 0;
+
         // Keyboard Keys
         this.cursors = this.scene.input.keyboard.createCursorKeys();
         this.wasd = {
@@ -29,11 +33,14 @@ export class InputManager {
         this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.rocketKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.stopKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+        // Q, not SHIFT: five quick SHIFT taps open Windows' Sticky Keys prompt
+        this.pushKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
 
         // Gamepad: D-pad or left stick steers. Rocket and bomb sit on both the
         // face buttons and the triggers, so either grip works.
         const fireRocket = () => { this.rocketPressed = true; };
         const dropBomb = () => { this.bombPressed = true; };
+        const push = () => { this.pushPresses++; };
         bindPad(this.scene, {
             up: () => this.pressQueue.push(DIRECTIONS.UP),
             down: () => this.pressQueue.push(DIRECTIONS.DOWN),
@@ -44,6 +51,8 @@ export class InputManager {
             rt: fireRocket,
             b: dropBomb,
             lt: dropBomb,
+            rb: push,
+            lb: push,
         });
 
         // Swipe Handling
@@ -83,6 +92,10 @@ export class InputManager {
 
         if (Phaser.Input.Keyboard.JustDown(this.stopKey)) {
             this.stopToggled = true;
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(this.pushKey)) {
+            this.pushPresses++;
         }
     }
 
@@ -130,6 +143,13 @@ export class InputManager {
         if (!this.rocketPressed) return false;
         this.rocketPressed = false;
         return true;
+    }
+
+    // Push taps (Q or pad RB/LB) since the last call
+    drainPushPresses() {
+        const count = this.pushPresses;
+        this.pushPresses = 0;
+        return count;
     }
 
     // True once per F (or pad A) press — toggles the player's brake (stop/refuel)
