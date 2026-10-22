@@ -22,6 +22,7 @@ export class UIManager {
         this.last = {};
         this.nitroTween = null;
         this.starTween = null;
+        this.toast = null;
         this.fuelTween = null;
 
         const { width, height } = scene.scale;
@@ -71,8 +72,8 @@ export class UIManager {
         this.fix(icon(scene, 142, 256, 'rocket'));
         this.rocketText = this.fix(label(scene, 164, 248, 'x0', { color: UI_COLORS.orange }));
         this.nitroIcon = this.fix(icon(scene, 240, 256, 'bolt'));
-        this.nitroText = this.fix(label(scene, 262, 248, t('hud.nitro'), { color: UI_COLORS.cyan }));
-        this.renderNitro(false);
+        this.nitroText = this.fix(label(scene, 262, 248, 'x0', { color: UI_COLORS.cyan }));
+        this.renderNitro(0, false);
 
         // --- Wanted level (top-right) -----------------------------------------
         const wantedW = 5 * 40 + 36;
@@ -119,7 +120,7 @@ export class UIManager {
 
     // Pure renderer: called every frame with a HUD snapshot
     // { banked, carried, lives, fuel, fuelMax, bombs, rockets, damage, maxDamage,
-    //   nitroActive, queue, stars, chaseCountdown, chaseCountdownMax }
+    //   nitros, nitroActive, queue, stars, chaseCountdown, chaseCountdownMax }
     update(hud) {
         // Punch only on gains: the pump drains these a dollar at a time, and
         // a punch per dollar would just shake
@@ -160,8 +161,8 @@ export class UIManager {
             this.renderDamage(hud.damage, hud.maxDamage);
         }
 
-        if (this.changed('nitro', hud.nitroActive)) {
-            this.renderNitro(hud.nitroActive);
+        if (this.changed('nitro', `${hud.nitros}/${hud.nitroActive}`)) {
+            this.renderNitro(hud.nitros, hud.nitroActive);
         }
 
         const queue = hud.queue || [];
@@ -185,14 +186,16 @@ export class UIManager {
         });
     }
 
-    // Nitro reads as dim/hollow until active, then flashes
-    renderNitro(active) {
+    // Stored charges read like the other ammo; the icon is dim with none in
+    // stock, and both flash while a boost is burning
+    renderNitro(count, active) {
         if (this.nitroTween) {
             this.nitroTween.stop();
             this.nitroTween = null;
         }
+        this.nitroText.setText(`x${count}`);
         const targets = [this.nitroIcon, this.nitroText];
-        targets.forEach(t => t.setAlpha(active ? 1 : 0.25));
+        targets.forEach(t => t.setAlpha(active || count > 0 ? 1 : 0.25));
         if (active) {
             this.nitroTween = this.scene.tweens.add({
                 targets, alpha: 0.35, duration: 180, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
@@ -275,13 +278,19 @@ export class UIManager {
         }
     }
 
+    // A new toast replaces the one on screen rather than drawing over it
     showToast(text) {
+        if (this.toast) {
+            this.scene.tweens.killTweensOf(this.toast);
+            this.toast.destroy();
+        }
         const { width } = this.scene.scale;
         const t = label(this.scene, 0, 0, text, { size: 16, color: UI_COLORS.gold }).setOrigin(0.5);
         const w = Math.ceil((t.width + 48) / 2) * 2;
         const bg = panel(this.scene, -w / 2, -26, w, 52, 'gold');
         const toast = this.scene.add.container(width / 2, 150, [bg, t])
             .setScrollFactor(0).setDepth(150).setScale(0.4).setAlpha(0);
+        this.toast = toast;
 
         this.scene.tweens.add({ targets: toast, scale: 1, alpha: 1, duration: 160, ease: 'Back.easeOut' });
         this.scene.tweens.add({
@@ -291,7 +300,10 @@ export class UIManager {
             delay: 900,
             duration: 600,
             ease: 'Sine.easeIn',
-            onComplete: () => toast.destroy()
+            onComplete: () => {
+                toast.destroy();
+                if (this.toast === toast) this.toast = null;
+            },
         });
     }
 

@@ -18,7 +18,8 @@ export class GameState {
         this.damage = 0;
         this.maxDamage = stats.maxDamage;       // derived from armor upgrade
         this.maxLives = CONFIG.PLAYER.MAX_LIVES;
-        this.nitroRemaining = 0;
+        this.nitros = 0;          // stored charges
+        this.nitroRemaining = 0;  // ms left on the running boost
         this.pushMeter = 0;       // 0..1, filled by tapping push, drains over time
         this.pumpOwed = 0;        // fractional dollars pumped but not yet charged
         this.stars = 0;
@@ -81,9 +82,21 @@ export class GameState {
         return true;
     }
 
-    // Nitro refreshes to full on re-pickup (no stacking).
+    // A nitro pickup is stored; the player fires it later with useNitro.
     pickupNitro() {
+        if (this.nitros >= CONFIG.NITRO.MAX_CARRY) return false;
+        this.nitros++;
+        return true;
+    }
+
+    // Burn one stored charge. Refused while a boost is already running, so
+    // a double press can't waste a charge, and on an empty tank, where the
+    // car only crawls and the boost would do nothing.
+    useNitro() {
+        if (this.nitros <= 0 || this.isNitroActive() || this.isOutOfFuel()) return false;
+        this.nitros--;
         this.nitroRemaining = CONFIG.NITRO.DURATION_MS;
+        return true;
     }
 
     isNitroActive() {
@@ -178,20 +191,16 @@ export class GameState {
         this.fuel = Math.min(this.maxFuel, this.fuel + amount);
     }
 
-    // Fuel burned over `delta` ms of driving: the base drain plus the push
-    // surcharge, which scales with how full the push meter is.
-    burnFuel(delta) {
-        const perSec = CONFIG.FUEL.DRAIN_PER_SEC + CONFIG.PUSH.FUEL_PER_SEC * this.pushMeter;
-        this.drainFuel(perSec * (delta / 1000));
-    }
-
     isOutOfFuel() {
         return this.fuel <= 0;
     }
 
-    // One tap of the push key
+    // One tap of the push key. Only an empty tank can be pushed; false
+    // otherwise.
     push() {
+        if (!this.isOutOfFuel()) return false;
         this.pushMeter = Math.min(1, this.pushMeter + CONFIG.PUSH.PER_PRESS);
+        return true;
     }
 
     isPushing() {
@@ -199,17 +208,14 @@ export class GameState {
     }
 
     // Per-tile move duration for the player this frame. An empty tank crawls
-    // (and only moves while pushed, see GameScene). Otherwise nitro and push
-    // don't stack: the faster of the two wins. `slowFactor` is the
-    // helicopter spotlight.
+    // (and only moves while pushed, see GameScene), nitro or not. Otherwise
+    // nitro speeds it up. `slowFactor` is the helicopter spotlight.
     playerMoveDuration(slowFactor = 1) {
-        let factor;
+        let factor = 1;
         if (this.isOutOfFuel()) {
             factor = CONFIG.PUSH.DRY_SPEED_FACTOR;
-        } else {
-            const nitro = this.isNitroActive() ? CONFIG.NITRO.SPEED_FACTOR : 1;
-            const push = 1 - (1 - CONFIG.PUSH.SPEED_FACTOR) * this.pushMeter;
-            factor = Math.min(nitro, push);
+        } else if (this.isNitroActive()) {
+            factor = CONFIG.NITRO.SPEED_FACTOR;
         }
         return this.moveDuration * factor * slowFactor;
     }

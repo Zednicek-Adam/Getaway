@@ -12,6 +12,7 @@ Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 | --- | --- |
 | ![Title screen](docs/screenshots/title.png) | ![A five-star chase](docs/screenshots/chase.png) |
 | ![The garage](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
+| ![Credits](docs/screenshots/credits.png) | |
 
 ## The loop
 
@@ -39,7 +40,11 @@ Banked money persists between runs in `localStorage` and is spent in the garage.
 ### Losing
 
 You have three lives. You lose one by taking a full damage bar (three rams by
-default) or by running the tank dry. Either way, carried money is gone.
+default), and the carried money goes with it.
+
+Gas costs $1 a unit at the pumps, paid from carried cash first and then the
+bank. Run the tank dry and the car stalls: tap push to roll it along at a crawl
+to cash on the road or to a pump. With no money at all, the pump gives nothing.
 
 ## Controls
 
@@ -47,8 +52,10 @@ default) or by running the tank dry. Either way, carried money is gone.
 | --- | ------- | ------ |
 | Arrows / WASD | D-pad / left stick | Steer (queues up to 2 turns ahead) |
 | `F` | A | Brake — hold position, and refuel when parked on a station pad |
+| `Q` | LB | Push the car (empty tank only; tap fast) |
 | `Space` | B / LT | Drop a bomb (10s fuse, destroys police) |
 | `E` | X / RT | Fire a rocket along your facing, up to 8 tiles |
+| `R` | RB | Fire a stored nitro (4s speed boost) |
 | `G` | Y | Open the garage (only while parked on the safehouse pad) |
 | `Esc` | Start | Pause |
 
@@ -62,10 +69,13 @@ buttons once a controller is connected.
 Touch devices can swipe to steer. An INSTRUCTIONS page shows this same summary
 in-game, reachable from both the main menu and the pause menu; opening it from
 pause leaves the run paused and returns you there. The pause menu can also drop
-you back to the main menu.
+you back to the main menu. CREDITS on the title screen lists who made the game,
+and links to this repository (opened in a new tab).
 
 The car drives itself forward; you only choose turns. Because turns are buffered,
-you can line up a sequence through an intersection before you reach it.
+you can line up a sequence through an intersection before you reach it. Pressing
+back (the way you came) U-turns at once when nothing is queued; with turns queued,
+double-tap back to drop them and U-turn.
 
 ## Language
 
@@ -84,7 +94,7 @@ Money is the bulk of what spawns; the rest is weighted rarer.
 | ------ | ------ | ------ |
 | spinning gold `$` coin | Money | +$100 carried, +1 heat |
 | green `+` token | Repair | Removes one point of damage |
-| blue lightning token | Nitro | ~1.5× speed for 4 seconds |
+| blue lightning token | Nitro | Stored, up to 3; fire one for ~1.5× speed for 4 seconds |
 | orange missile token | Rocket | +1 rocket |
 | black bomb, lit fuse | Bomb | +1 bomb |
 | red heart | Extra life | +1 life, capped at 5 |
@@ -194,7 +204,7 @@ src/
   managers/         Input, Map, Police, UI
   objects/          Car, PoliceCar, SwatVan, Helicopter, DiamondCar,
                     Collectible, Bomb, Rocket, Roadblock
-  scenes/           Boot, Menu, Game, Pause, Garage, Instructions
+  scenes/           Boot, Menu, Game, Pause, Garage, Instructions, Credits
   ui/               shared look: pixel text, 9-slice panels, button menus
   generated/        art.json manifest written by tools/generate_art.py
 test/               vitest suites for the Phaser-free modules

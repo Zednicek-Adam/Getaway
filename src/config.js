@@ -7,6 +7,7 @@ export const CONFIG = {
         INVULN_MS: 3000,      // invulnerability after being caught
         MAX_BOMBS: 3,
         QUEUE_MAX: 2,         // max buffered turns
+        DOUBLE_TAP_MS: 400,   // two back presses this close U-turn past queued turns
         MAX_LIVES: 5,         // reserved for WP2 (extra-life pickup cap)
     },
 
@@ -24,14 +25,12 @@ export const CONFIG = {
         PRICE: 1,             // $ per fuel unit; carried cash pays first, then the bank. No cash, no gas.
     },
 
-    // Tap the push key to squeeze out extra speed; it burns extra fuel. With
-    // an empty tank, pushing is the only way to move (at a crawl).
+    // With an empty tank the car only moves while the player taps push, at a
+    // crawl. Push does nothing while there's gas in the tank.
     PUSH: {
         PER_PRESS: 0.25,      // push meter gained per tap (meter is 0..1)
         DECAY_PER_SEC: 1.2,   // meter lost per second; ~5 taps/s holds it full
-        SPEED_FACTOR: 0.85,   // move-duration multiplier at a full meter (nitro is 0.65; they don't stack)
-        FUEL_PER_SEC: 2,      // extra fuel burned per second at a full meter while moving
-        DRY_SPEED_FACTOR: 3,  // empty tank: pushing crawls at 3x the move duration
+        DRY_SPEED_FACTOR: 3,  // pushing crawls at 3x the move duration
     },
 
     ECONOMY: {
@@ -47,6 +46,7 @@ export const CONFIG = {
     NITRO: {
         SPEED_FACTOR: 0.65,   // move-duration multiplier while active (300ms → 195ms/tile ≈ 1.54× speed)
         DURATION_MS: 4000,
+        MAX_CARRY: 3,         // stored charges; the player fires one on demand
     },
 
     MAP: {

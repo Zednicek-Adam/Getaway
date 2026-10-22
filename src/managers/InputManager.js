@@ -22,6 +22,9 @@ export class InputManager {
         // two taps in one frame
         this.pushPresses = 0;
 
+        // Nitro key state (R) — consumed by GameScene
+        this.nitroPressed = false;
+
         // Keyboard Keys
         this.cursors = this.scene.input.keyboard.createCursorKeys();
         this.wasd = {
@@ -35,9 +38,11 @@ export class InputManager {
         this.stopKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
         // Q, not SHIFT: five quick SHIFT taps open Windows' Sticky Keys prompt
         this.pushKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+        this.nitroKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
 
         // Gamepad: D-pad or left stick steers. Rocket and bomb sit on both the
-        // face buttons and the triggers, so either grip works.
+        // face buttons and the triggers, so either grip works; nitro is the
+        // right bumper, next to the rocket trigger, and push the left one.
         const fireRocket = () => { this.rocketPressed = true; };
         const dropBomb = () => { this.bombPressed = true; };
         const push = () => { this.pushPresses++; };
@@ -51,7 +56,7 @@ export class InputManager {
             rt: fireRocket,
             b: dropBomb,
             lt: dropBomb,
-            rb: push,
+            rb: () => { this.nitroPressed = true; },
             lb: push,
         });
 
@@ -96,6 +101,10 @@ export class InputManager {
 
         if (Phaser.Input.Keyboard.JustDown(this.pushKey)) {
             this.pushPresses++;
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(this.nitroKey)) {
+            this.nitroPressed = true;
         }
     }
 
@@ -145,7 +154,7 @@ export class InputManager {
         return true;
     }
 
-    // Push taps (Q or pad RB/LB) since the last call
+    // Push taps (Q or pad LB) since the last call
     drainPushPresses() {
         const count = this.pushPresses;
         this.pushPresses = 0;
@@ -156,6 +165,13 @@ export class InputManager {
     consumeStopToggle() {
         if (!this.stopToggled) return false;
         this.stopToggled = false;
+        return true;
+    }
+
+    // True once per R (or pad RB) press — fires a stored nitro
+    consumeNitroPress() {
+        if (!this.nitroPressed) return false;
+        this.nitroPressed = false;
         return true;
     }
 }

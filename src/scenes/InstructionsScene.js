@@ -11,9 +11,11 @@ import { t } from '../i18n';
 // road pickups use — so the icons taught here can never drift from the icons in
 // play. Text comes from i18n.js, which keeps it inside the glyphs Press Start
 // 2P actually has.
-// Control and pickup rows share one grid
+// Control and pickup rows start level; the eight control rows sit closer
+// together so they clear the notes
 const ROW_Y = 342;
-const ROW_STEP = 39;
+const CONTROL_STEP = 34;
+const PICKUP_STEP = 39;
 
 export class InstructionsScene extends Phaser.Scene {
     constructor() {
@@ -54,14 +56,15 @@ export class InstructionsScene extends Phaser.Scene {
         const controls = [
             [t('help.keySteer'), t('help.steer')],
             ['F / A', t('help.brake')],
-            ['Q / RB', t('help.push')],
+            ['Q / LB', t('help.push')],
             [t('help.keyBomb'), t('help.bomb')],
             ['E / X', t('help.rocket')],
+            ['R / RB', t('help.useNitro')],
             ['G / Y', t('help.garage')],
             ['ESC / START', t('help.pause')],
         ];
         controls.forEach(([key, action], i) => {
-            const y = ROW_Y + i * ROW_STEP;
+            const y = ROW_Y + i * CONTROL_STEP;
             this.keycap(300, y, key);
             this.body(320, y, action, UI_COLORS.white);
         });
@@ -78,7 +81,7 @@ export class InstructionsScene extends Phaser.Scene {
             [COLLECTIBLE_TYPES.LIFE, t('help.life'), t('help.lifeEffect')],
         ];
         pickups.forEach(([type, name, effect], i) => {
-            const y = ROW_Y + i * ROW_STEP;
+            const y = ROW_Y + i * PICKUP_STEP;
             const pickup = createCollectibleIcon(this, type, TILE_SIZE);
             pickup.setPosition(770, y);
             this.body(806, y, name, UI_COLORS.white);
@@ -120,7 +123,7 @@ export class InstructionsScene extends Phaser.Scene {
     keycap(x, y, text) {
         const t = label(this, 0, y, text, { size: 16, color: UI_COLORS.gold }).setOrigin(0.5);
         const w = Math.ceil((t.width + 20) / 2) * 2;
-        panel(this, x - w, y - 18, w, 36);
+        panel(this, x - w, y - 16, w, 32);
         t.setX(x - w / 2).setDepth(1);
         return t;
     }

@@ -112,6 +112,8 @@ export class GameScene extends Phaser.Scene {
 
         // One-shot per-run garage hint (fires the first time on the base pad)
         this.garageHintShown = false;
+        // One-shot per-run hint on the first nitro pickup
+        this.nitroHintShown = false;
 
         // Pump session: the bill so far (shown when the pump stops), whether
         // the no-cash hint has shown, and whether the bank changed since the
@@ -144,17 +146,24 @@ export class GameScene extends Phaser.Scene {
             // Brake toggle — stop to refuel at a station, or wait; steering resumes
             this.playerCar.halted = !this.playerCar.halted;
         }
+        // Nitro only fires while the car is driving; a parked or stuck car
+        // would just burn the boost standing still (GameState also refuses it
+        // on an empty tank)
+        const driving = this.playerCar.isMoving && !this.playerCar.halted;
+        if (this.inputManager.consumeNitroPress() && driving && this.state.useNitro()) {
+            this.uiManager.showToast(t('toast.nitro'));
+        }
+        // Pushing only works on an empty tank
         for (let i = this.inputManager.drainPushPresses(); i > 0; i--) {
-            this.state.push();
-            this.pushPuff();
+            if (this.state.push()) this.pushPuff();
         }
         // An empty tank only moves while it's being pushed
         this.playerCar.stalled = this.state.isOutOfFuel() && !this.state.isPushing();
 
-        // Per-frame player speed: nitro or push shortens the per-tile move
-        // duration, an empty tank or the helicopter spotlight lengthens it.
-        // Car.update clamps t = min(moveTimer/duration, 1), so changing the
-        // duration mid-move is safe; a boost expiring mid-move eases the visual
+        // Per-frame player speed: nitro shortens the per-tile move duration;
+        // an empty tank or the helicopter spotlight lengthens it. Car.update
+        // clamps t = min(moveTimer/duration, 1), so changing the duration
+        // mid-move is safe; a boost expiring mid-move eases the visual
         // backward by at most one frame (accepted).
         const heliFactor = this.policeManager.isHeliOverhead() ? CONFIG.HELICOPTER.SLOW_FACTOR : 1;
         this.playerCar.moveConfig.duration = this.state.playerMoveDuration(heliFactor);
@@ -247,7 +256,7 @@ export class GameScene extends Phaser.Scene {
         // (h) Fuel drain + state tick. Running dry doesn't cost a life any
         // more: the car stalls and has to be pushed to a pump.
         if (this.playerCar.isMoving) {
-            this.state.burnFuel(delta);
+            this.state.drainFuel(CONFIG.FUEL.DRAIN_PER_SEC * (delta / 1000));
         }
         this.state.tick(delta, { spotted: this.policeManager.isPlayerSpotted() });
         if (this.state.isOutOfFuel() && !this.dryWarned) {
@@ -269,6 +278,7 @@ export class GameScene extends Phaser.Scene {
             rockets: this.state.rockets,
             damage: this.state.damage,
             maxDamage: this.state.maxDamage,
+            nitros: this.state.nitros,
             nitroActive: this.state.isNitroActive(),
             queue: this.playerCar.turnQueue.toArray(),
             stars: this.state.stars,
@@ -316,14 +326,12 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    // One push tap: a puff out of the exhaust, or road dust behind a car
-    // that's being shoved along on an empty tank
+    // One push tap: road dust behind a car being shoved along on an empty tank
     pushPuff() {
         const { x, y } = this.playerCar.visual;
         const rear = rearVector(this.playerCar.direction);
-        const dry = this.state.isOutOfFuel();
         smokePuff(this, x + rear.x * 26, y + rear.y * 26, {
-            drift: 10, scale: dry ? 1 : 0.7, depth: 0.9, tint: dry ? 0xc8b48a : 0x9aa0aa,
+            drift: 10, scale: 1, depth: 0.9, tint: 0xc8b48a,
         });
     }
 
@@ -587,8 +595,13 @@ export class GameScene extends Phaser.Scene {
             if (!this.state.addLife()) return;
             this.uiManager.showToast(t('toast.life'));
         } else if (item.type === COLLECTIBLE_TYPES.NITRO) {
-            this.state.pickupNitro(); // Refresh-to-full speed boost
-            this.uiManager.showToast(t('toast.nitro'));
+            // Stored for later (R / RB fires it); full — leave it on the road
+            if (!this.state.pickupNitro()) return;
+            // The first one each run says which button fires it
+            if (!this.nitroHintShown) {
+                this.nitroHintShown = true;
+                this.uiManager.showToast(t(hasGamepad() ? 'toast.nitroPad' : 'toast.nitroKeys'));
+            }
         } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
             // Inventory full — leave the rocket on the road for later
             if (!this.state.pickupRocket()) return;
