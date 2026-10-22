@@ -65,7 +65,9 @@ pause leaves the run paused and returns you there. The pause menu can also drop
 you back to the main menu.
 
 The car drives itself forward; you only choose turns. Because turns are buffered,
-you can line up a sequence through an intersection before you reach it.
+you can line up a sequence through an intersection before you reach it. Pressing
+back (the way you came) U-turns at once when nothing is queued; with turns queued,
+double-tap back to drop them and U-turn.
 
 ## Language
 
