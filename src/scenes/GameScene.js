@@ -15,8 +15,8 @@ import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
 import { explosion, sparkBurst, smokePuff, floatText, rearVector, CarTrail } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
-import { bindPad, hasGamepad } from '../gamepad';
-import { TouchControls, touchControlsActive } from '../ui/touchControls';
+import { bindPad } from '../gamepad';
+import { TouchControls, controlHint } from '../ui/touchControls';
 import { t } from '../i18n';
 
 // Pickup feedback: popup text + spark tint per collectible type. Text is a
@@ -56,7 +56,6 @@ export class GameScene extends Phaser.Scene {
 
         // UI
         this.uiManager = new UIManager(this);
-        this.touchControls = new TouchControls(this, this.inputManager.actions);
 
         // Touch PUMP button: brake at the next station the car reaches.
         // Catching a pump with a timed brake tap is hard on a phone.
@@ -116,6 +115,10 @@ export class GameScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-G', openGarage);
 
         bindPad(this, { start: pause, y: openGarage });
+
+        // On-screen buttons for touch screens: the InputManager's actions,
+        // plus pause and the garage, which open scenes straight away
+        this.touchControls = new TouchControls(this, { ...this.inputManager.actions, pause, garage: openGarage });
 
         // One-shot per-run garage hint (fires the first time on the base pad)
         this.garageHintShown = false;
@@ -216,7 +219,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.garageHintShown &&
             this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) {
             this.garageHintShown = true;
-            this.uiManager.showToast(t(hasGamepad() ? 'toast.garagePad' : 'toast.garageKeys'));
+            this.uiManager.showToast(t(controlHint('toast.garage')));
         }
 
         // (b) Deposit — ordered before the catch check so a catch on the base
@@ -272,7 +275,7 @@ export class GameScene extends Phaser.Scene {
         this.state.tick(delta, { spotted: this.policeManager.isPlayerSpotted() });
         if (this.state.isOutOfFuel() && !this.dryWarned) {
             this.dryWarned = true;
-            this.uiManager.showToast(t(this.hintKey('toast.dry')));
+            this.uiManager.showToast(t(controlHint('toast.dry')));
         } else if (!this.state.isOutOfFuel()) {
             this.dryWarned = false;
         }
@@ -305,14 +308,8 @@ export class GameScene extends Phaser.Scene {
             pumpStopArmed: this.pumpStopArmed,
             outOfFuel: this.state.isOutOfFuel(),
             lowFuel: this.state.fuel / this.state.maxFuel < 0.2,
+            atBase: this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY),
         });
-    }
-
-    // The variant of a control hint that names the buttons in the player's
-    // hands: `${base}Pad`, `${base}Touch` or `${base}Keys`
-    hintKey(base) {
-        if (hasGamepad()) return `${base}Pad`;
-        return touchControlsActive() ? `${base}Touch` : `${base}Keys`;
     }
 
     // Car.finishMove asks this once per tile it arrives on. An armed PUMP
@@ -639,7 +636,7 @@ export class GameScene extends Phaser.Scene {
             // The first one each run says which button fires it
             if (!this.nitroHintShown) {
                 this.nitroHintShown = true;
-                this.uiManager.showToast(t(this.hintKey('toast.nitro')));
+                this.uiManager.showToast(t(controlHint('toast.nitro')));
             }
         } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
             // Inventory full — leave the rocket on the road for later

@@ -3,7 +3,8 @@ import { CONFIG } from '../config';
 import { canPurchase, purchase } from '../garage';
 import { writeSave } from '../storage';
 import { label, panel, icon, dim, money, UI_COLORS } from '../ui/ui';
-import { bindPad, hasGamepad } from '../gamepad';
+import { bindPad } from '../gamepad';
+import { controlHint } from '../ui/touchControls';
 import { sparkBurst } from '../fx';
 import { t } from '../i18n';
 
@@ -86,7 +87,7 @@ export class GarageScene extends Phaser.Scene {
             return { key, def, y, idle, lit, name, pips, value, price, priceX: price.x };
         });
 
-        const hint = t(hasGamepad() ? 'garage.hintPad' : 'garage.hintKeys');
+        const hint = t(controlHint('garage.hint'));
         label(this, width / 2, top + ph - 40, hint, { color: UI_COLORS.dim }).setOrigin(0.5);
 
         this.select(0);
@@ -105,11 +106,24 @@ export class GarageScene extends Phaser.Scene {
             this.scene.resume('GameScene');
             this.scene.stop();
         };
+        this.createCloseButton(left + pw - 24 - 88, top + 24, 88, close);
+
         this.input.keyboard.on('keydown-ESC', close);
         this.input.keyboard.on('keydown-G', close);
 
         // Gamepad — Y opened the garage, so Y closes it too, like G
         bindPad(this, { up, down, a: buy, b: close, y: close, start: close });
+    }
+
+    // An X in the panel's top-right corner, the only way out on a touch screen
+    createCloseButton(x, y, size, close) {
+        const idle = panel(this, x, y, size, size);
+        const lit = panel(this, x, y, size, size, 'red').setVisible(false);
+        label(this, x + size / 2, y + size / 2, 'X', { size: 32, color: UI_COLORS.red }).setOrigin(0.5);
+        const hit = this.add.zone(x + size / 2, y + size / 2, size, size).setInteractive({ useHandCursor: true });
+        hit.on('pointerover', () => { idle.setVisible(false); lit.setVisible(true); });
+        hit.on('pointerout', () => { idle.setVisible(true); lit.setVisible(false); });
+        hit.on('pointerdown', close);
     }
 
     select(index) {

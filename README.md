@@ -57,8 +57,8 @@ to cash on the road or to a pump. With no money at all, the pump gives nothing.
 | `Space` | B / LT | Bomb | Drop a bomb (10s fuse, destroys police) |
 | `E` | X / RT | Rocket | Fire a rocket along your facing, up to 8 tiles |
 | `R` | RB | Bolt | Fire a stored nitro (4s speed boost) |
-| `G` | Y | — | Open the garage (only while parked on the safehouse pad) |
-| `Esc` | Start | — | Pause |
+| `G` | Y | GARAGE | Open the garage (only while parked on the safehouse pad) |
+| `Esc` | Start | Pause (top) | Pause |
 
 Gamepad buttons follow the Xbox layout; on a PlayStation pad A is Cross, B
 Circle, X Square and Y Triangle. The pad also drives every menu: D-pad or stick
@@ -69,7 +69,9 @@ buttons once a controller is connected.
 
 On a phone or tablet, swipe anywhere to steer. Buttons in the bottom corners
 cover the rest: rocket, bomb and nitro on the right, brake, PUMP and push on the
-left. The swipe and the buttons work at the same time, one thumb each. Phones
+left, and GARAGE above push while you're parked on the safehouse pad. Pause sits
+at the top, left of the wanted stars, and the garage closes with the X in its
+corner; everything in the menus can be tapped. The swipe and the buttons work at the same time, one thumb each. Phones
 show the buttons from the start; a laptop with a touch screen shows them after
 its first touch.
 

@@ -2,7 +2,7 @@ import { CONFIG } from '../config';
 import { DIRECTIONS } from '../constants';
 import { ICON } from '../art';
 import { label, panel, icon, money, UI_COLORS, dim, createMenu } from '../ui/ui';
-import { hasGamepad } from '../gamepad';
+import { controlHint } from '../ui/touchControls';
 import { t } from '../i18n';
 
 const HUD_DEPTH = 100;
@@ -333,12 +333,12 @@ export class UIManager {
         scene.tweens.add({ targets: box, y: height / 2, duration: 520, ease: 'Bounce.easeOut' });
 
         // Visual cue only: GameScene.handleGameOver already restarts on any
-        // click, ENTER or pad A/START, so the button itself must not restart a
+        // click or tap, ENTER or pad A/START, so the button itself must not restart a
         // second time.
         createMenu(scene, {
             x: 0, y: 86, width: 320, items: [{ label: t('gameOver.restart'), action: () => {} }],
             container: box,
         });
-        box.add(label(scene, 0, 150, t(hasGamepad() ? 'gameOver.hintPad' : 'gameOver.hintKeys'), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
+        box.add(label(scene, 0, 150, t(controlHint('gameOver.hint')), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
     }
 }

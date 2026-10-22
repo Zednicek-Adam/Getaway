@@ -35,6 +35,7 @@ export const STRINGS = {
         'pause.mainMenu': 'MAIN MENU',
         'pause.hintKeys': 'ESC TO RESUME',
         'pause.hintPad': 'START TO RESUME',
+        'pause.hintTouch': 'TAP AN OPTION',
 
         'hud.bank': 'BANK',
         'hud.carry': 'CARRY',
@@ -43,6 +44,7 @@ export const STRINGS = {
 
         'toast.garageKeys': 'PRESS G FOR GARAGE',
         'toast.garagePad': 'PRESS Y FOR GARAGE',
+        'toast.garageTouch': 'TAP GARAGE FOR UPGRADES',
         'toast.banked': '+{amount} BANKED',
         'toast.diamond': 'DIAMOND! +{amount}',
         'toast.nitro': 'NITRO!',
@@ -60,6 +62,7 @@ export const STRINGS = {
         'touch.go': 'GO',
         'touch.push': 'PUSH',
         'touch.pump': 'PUMP',
+        'touch.garage': 'GARAGE',
 
         'pickup.bomb': '+1 BOMB',
         'pickup.repair': 'REPAIRED',
@@ -72,12 +75,14 @@ export const STRINGS = {
         'gameOver.restart': 'RESTART',
         'gameOver.hintKeys': 'PRESS ENTER',
         'gameOver.hintPad': 'PRESS A',
+        'gameOver.hintTouch': 'TAP TO RESTART',
 
         'garage.title': 'GARAGE',
         'garage.bank': 'BANK {amount}',
         'garage.max': 'MAX',
         'garage.hintKeys': 'ENTER BUY    ESC CLOSE',
         'garage.hintPad': 'A BUY    B CLOSE',
+        'garage.hintTouch': 'TAP AN UPGRADE TO BUY IT',
         'garage.engine': 'ENGINE',
         'garage.fuelTank': 'FUEL TANK',
         'garage.armor': 'ARMOR',
@@ -151,6 +156,7 @@ export const STRINGS = {
         'pause.mainMenu': 'MENU PRINCIPAL',
         'pause.hintKeys': 'ESC PARA CONTINUAR',
         'pause.hintPad': 'START PARA CONTINUAR',
+        'pause.hintTouch': 'TOCA UNA OPCION',
 
         'hud.bank': 'BANCO',
         'hud.carry': 'BOTIN',
@@ -159,6 +165,7 @@ export const STRINGS = {
 
         'toast.garageKeys': 'PULSA G PARA IR AL TALLER',
         'toast.garagePad': 'PULSA Y PARA IR AL TALLER',
+        'toast.garageTouch': 'TOCA TALLER PARA MEJORAR',
         'toast.banked': '+{amount} AL BANCO',
         'toast.diamond': '¡DIAMANTE! +{amount}',
         'toast.nitro': '¡NITRO!',
@@ -176,6 +183,7 @@ export const STRINGS = {
         'touch.go': 'SEGUIR',
         'touch.push': 'EMPUJAR',
         'touch.pump': 'SURTIDOR',
+        'touch.garage': 'TALLER',
 
         'pickup.bomb': '+1 BOMBA',
         'pickup.repair': 'REPARADO',
@@ -188,12 +196,14 @@ export const STRINGS = {
         'gameOver.restart': 'REINICIAR',
         'gameOver.hintKeys': 'PULSA ENTER',
         'gameOver.hintPad': 'PULSA A',
+        'gameOver.hintTouch': 'TOCA PARA REINICIAR',
 
         'garage.title': 'TALLER',
         'garage.bank': 'BANCO {amount}',
         'garage.max': 'MAX',
         'garage.hintKeys': 'ENTER COMPRAR    ESC CERRAR',
         'garage.hintPad': 'A COMPRAR    B CERRAR',
+        'garage.hintTouch': 'TOCA UNA MEJORA PARA COMPRARLA',
         'garage.engine': 'MOTOR',
         'garage.fuelTank': 'DEPOSITO',
         'garage.armor': 'BLINDAJE',

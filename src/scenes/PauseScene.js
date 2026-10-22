@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { label, panel, dim, UI_COLORS, createMenu } from '../ui/ui';
-import { bindPad, hasGamepad } from '../gamepad';
+import { bindPad } from '../gamepad';
+import { controlHint } from '../ui/touchControls';
 import { t } from '../i18n';
 
 export class PauseScene extends Phaser.Scene {
@@ -60,7 +61,7 @@ export class PauseScene extends Phaser.Scene {
             ],
         });
 
-        label(this, width / 2, top + ph - 36, t(hasGamepad() ? 'pause.hintPad' : 'pause.hintKeys'), { color: UI_COLORS.dim }).setOrigin(0.5);
+        label(this, width / 2, top + ph - 36, t(controlHint('pause.hint')), { color: UI_COLORS.dim }).setOrigin(0.5);
 
         // A held key repeats, and the repeat lands on whichever scene was just
         // switched to — without this, holding ENTER on INSTRUCTIONS would
