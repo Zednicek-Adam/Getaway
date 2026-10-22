@@ -40,7 +40,11 @@ Banked money persists between runs in `localStorage` and is spent in the garage.
 ### Losing
 
 You have three lives. You lose one by taking a full damage bar (three rams by
-default) or by running the tank dry. Either way, carried money is gone.
+default), and the carried money goes with it.
+
+Gas costs $1 a unit at the pumps, paid from carried cash first and then the
+bank. Run the tank dry and the car stalls: tap push to roll it along at a crawl
+to cash on the road or to a pump. With no money at all, the pump gives nothing.
 
 ## Controls
 
@@ -48,6 +52,7 @@ default) or by running the tank dry. Either way, carried money is gone.
 | --- | ------- | ------ |
 | Arrows / WASD | D-pad / left stick | Steer (queues up to 2 turns ahead) |
 | `F` | A | Brake — hold position, and refuel when parked on a station pad |
+| `Q` | LB | Push the car (empty tank only; tap fast) |
 | `Space` | B / LT | Drop a bomb (10s fuse, destroys police) |
 | `E` | X / RT | Fire a rocket along your facing, up to 8 tiles |
 | `R` | RB | Fire a stored nitro (4s speed boost) |

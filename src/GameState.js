@@ -20,6 +20,8 @@ export class GameState {
         this.maxLives = CONFIG.PLAYER.MAX_LIVES;
         this.nitros = 0;          // stored charges
         this.nitroRemaining = 0;  // ms left on the running boost
+        this.pushMeter = 0;       // 0..1, filled by tapping push, drains over time
+        this.pumpOwed = 0;        // fractional dollars pumped but not yet charged
         this.stars = 0;
         this.heat = 0;
         this.chaseCountdown = 0;
@@ -88,9 +90,10 @@ export class GameState {
     }
 
     // Burn one stored charge. Refused while a boost is already running, so
-    // a double press can't waste a charge.
+    // a double press can't waste a charge, and on an empty tank, where the
+    // car only crawls and the boost would do nothing.
     useNitro() {
-        if (this.nitros <= 0 || this.isNitroActive()) return false;
+        if (this.nitros <= 0 || this.isNitroActive() || this.isOutOfFuel()) return false;
         this.nitros--;
         this.nitroRemaining = CONFIG.NITRO.DURATION_MS;
         return true;
@@ -135,6 +138,7 @@ export class GameState {
         this.chaseCountdown = 0;
         this.starDecayTimer = 0;
         this.nitroRemaining = 0;
+        this.pushMeter = 0;
         this.invulnRemaining = CONFIG.PLAYER.INVULN_MS;
         if (this.lives <= 0) {
             this.gameOver = true;
@@ -149,6 +153,10 @@ export class GameState {
 
         if (this.nitroRemaining > 0) {
             this.nitroRemaining = Math.max(0, this.nitroRemaining - delta);
+        }
+
+        if (this.pushMeter > 0) {
+            this.pushMeter = Math.max(0, this.pushMeter - CONFIG.PUSH.DECAY_PER_SEC * (delta / 1000));
         }
 
         if (this.chaseCountdown > 0) {
@@ -183,6 +191,72 @@ export class GameState {
         this.fuel = Math.min(this.maxFuel, this.fuel + amount);
     }
 
+    isOutOfFuel() {
+        return this.fuel <= 0;
+    }
+
+    // One tap of the push key. Only an empty tank can be pushed; false
+    // otherwise.
+    push() {
+        if (!this.isOutOfFuel()) return false;
+        this.pushMeter = Math.min(1, this.pushMeter + CONFIG.PUSH.PER_PRESS);
+        return true;
+    }
+
+    isPushing() {
+        return this.pushMeter > 0;
+    }
+
+    // Per-tile move duration for the player this frame. An empty tank crawls
+    // (and only moves while pushed, see GameScene), nitro or not. Otherwise
+    // nitro speeds it up. `slowFactor` is the helicopter spotlight.
+    playerMoveDuration(slowFactor = 1) {
+        let factor = 1;
+        if (this.isOutOfFuel()) {
+            factor = CONFIG.PUSH.DRY_SPEED_FACTOR;
+        } else if (this.isNitroActive()) {
+            factor = CONFIG.NITRO.SPEED_FACTOR;
+        }
+        return this.moveDuration * factor * slowFactor;
+    }
+
+    // Take `amount` dollars, carried cash first, then the bank. Never more
+    // than the player has. Returns the split so the caller knows whether the
+    // persistent bank changed.
+    pay(amount) {
+        const fromCarried = Math.min(this.carried, amount);
+        this.carried -= fromCarried;
+        const fromBank = Math.min(this.banked, amount - fromCarried);
+        this.banked -= fromBank;
+        return { fromCarried, fromBank };
+    }
+
+    // Any money at all, carried or banked, to buy fuel with
+    canAffordFuel() {
+        return this.carried + this.banked > this.pumpOwed;
+    }
+
+    // Pump for `delta` ms at a station. Fuel is charged as it flows, in whole
+    // dollars (the fraction carries over to the next fill), and the pump only
+    // gives what the player can pay for: no cash, no gas. A broke player on an
+    // empty tank pushes the car to cash on the road, then to a pump.
+    // Returns { pumped, paid, fromBank, broke }; broke means the money ran out
+    // with room still left in the tank.
+    refuel(delta) {
+        const room = this.maxFuel - this.fuel;
+        if (room <= 0) return { pumped: 0, paid: 0, fromBank: 0, broke: false };
+
+        const affordable = (this.carried + this.banked - this.pumpOwed) / CONFIG.FUEL.PRICE;
+        const pumped = Math.max(0, Math.min(room, affordable, CONFIG.FUEL.REFUEL_PER_SEC * (delta / 1000)));
+        this.fuel += pumped;
+        this.pumpOwed += pumped * CONFIG.FUEL.PRICE;
+        const due = Math.floor(this.pumpOwed + 1e-9); // float sums land a hair under whole dollars
+        const { fromCarried, fromBank } = this.pay(due);
+        this.pumpOwed -= due;
+        const broke = this.fuel < this.maxFuel && !this.canAffordFuel();
+        return { pumped, paid: fromCarried + fromBank, fromBank, broke };
+    }
+
     // Recompute the five derived stats after a garage purchase mid-run.
     // Deliberately does NOT touch current fuel/damage/bombs/rockets counts:
     // maxes only grow, so existing counts stay valid (buying armor while
@@ -194,14 +268,6 @@ export class GameState {
         this.maxDamage = stats.maxDamage;
         this.maxBombs = stats.maxBombs;
         this.maxRockets = stats.maxRockets;
-    }
-
-    // Running dry costs a life (same as a catch), then refills the tank so the
-    // respawn doesn't immediately re-trigger the out-of-fuel check.
-    onOutOfFuel() {
-        this.onCaught();          // lose carried, a life, stars/heat reset, invuln, maybe gameOver
-        this.fuel = this.maxFuel; // full tank on respawn; prevents immediate re-trigger
-        if (this.gameOver) this.gameOverReason = 'outOfFuel';
     }
 
     addStars(count) {

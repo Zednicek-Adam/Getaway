@@ -18,6 +18,10 @@ export class InputManager {
         // Brake/stop toggle state (F) — consumed by GameScene
         this.stopToggled = false;
 
+        // Push taps (Q) since the last drain — a count, since mashing can land
+        // two taps in one frame
+        this.pushPresses = 0;
+
         // Nitro key state (R) — consumed by GameScene
         this.nitroPressed = false;
 
@@ -32,13 +36,16 @@ export class InputManager {
         this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.rocketKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.stopKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+        // Q, not SHIFT: five quick SHIFT taps open Windows' Sticky Keys prompt
+        this.pushKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
         this.nitroKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
 
         // Gamepad: D-pad or left stick steers. Rocket and bomb sit on both the
         // face buttons and the triggers, so either grip works; nitro is the
-        // right bumper, next to the rocket trigger.
+        // right bumper, next to the rocket trigger, and push the left one.
         const fireRocket = () => { this.rocketPressed = true; };
         const dropBomb = () => { this.bombPressed = true; };
+        const push = () => { this.pushPresses++; };
         bindPad(this.scene, {
             up: () => this.pressQueue.push(DIRECTIONS.UP),
             down: () => this.pressQueue.push(DIRECTIONS.DOWN),
@@ -50,6 +57,7 @@ export class InputManager {
             b: dropBomb,
             lt: dropBomb,
             rb: () => { this.nitroPressed = true; },
+            lb: push,
         });
 
         // Swipe Handling
@@ -89,6 +97,10 @@ export class InputManager {
 
         if (Phaser.Input.Keyboard.JustDown(this.stopKey)) {
             this.stopToggled = true;
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(this.pushKey)) {
+            this.pushPresses++;
         }
 
         if (Phaser.Input.Keyboard.JustDown(this.nitroKey)) {
@@ -140,6 +152,13 @@ export class InputManager {
         if (!this.rocketPressed) return false;
         this.rocketPressed = false;
         return true;
+    }
+
+    // Push taps (Q or pad LB) since the last call
+    drainPushPresses() {
+        const count = this.pushPresses;
+        this.pushPresses = 0;
+        return count;
     }
 
     // True once per F (or pad A) press — toggles the player's brake (stop/refuel)

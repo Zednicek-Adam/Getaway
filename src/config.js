@@ -22,6 +22,15 @@ export const CONFIG = {
         DRAIN_PER_SEC: 1,     // % per second while moving
         PICKUP_AMOUNT: 35,    // fuel collectible refill
         REFUEL_PER_SEC: 25,   // station refuel rate
+        PRICE: 1,             // $ per fuel unit; carried cash pays first, then the bank. No cash, no gas.
+    },
+
+    // With an empty tank the car only moves while the player taps push, at a
+    // crawl. Push does nothing while there's gas in the tank.
+    PUSH: {
+        PER_PRESS: 0.25,      // push meter gained per tap (meter is 0..1)
+        DECAY_PER_SEC: 1.2,   // meter lost per second; ~5 taps/s holds it full
+        DRY_SPEED_FACTOR: 3,  // pushing crawls at 3x the move duration
     },
 
     ECONOMY: {

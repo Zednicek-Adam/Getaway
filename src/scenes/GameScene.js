@@ -13,7 +13,7 @@ import { CONFIG } from '../config';
 import { GameState } from '../GameState';
 import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
-import { explosion, sparkBurst, smokePuff, floatText, CarTrail } from '../fx';
+import { explosion, sparkBurst, smokePuff, floatText, rearVector, CarTrail } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
 import { bindPad, hasGamepad } from '../gamepad';
 import { t } from '../i18n';
@@ -59,8 +59,13 @@ export class GameScene extends Phaser.Scene {
         // Car Spawn - Start at center (Generation Seed) to guarantee Road
         const spawnPoint = this.mapManager.playerSpawnPoint || { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
 
-        // avoidsBlocked:false — only the player can drive into a roadblock (and crash)
-        this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager, { avoidsBlocked: false });
+        // avoidsBlocked:false — only the player can drive into a roadblock (and crash).
+        // brakeAt: a car pushed in on an empty tank stops at the first pump it
+        // reaches, broke or not (a broke player gets the no-cash message there).
+        this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager, {
+            avoidsBlocked: false,
+            brakeAt: (x, y) => this.state.isOutOfFuel() && !!this.mapManager.getFuelStationAt(x, y),
+        });
         // Force player to face UP (towards the dead end) as requested
         this.playerCar.direction = DIRECTIONS.UP;
         this.playerCar.turnQueue.clear(); // Clear buffered turns so car stays still
@@ -110,6 +115,15 @@ export class GameScene extends Phaser.Scene {
         // One-shot per-run hint on the first nitro pickup
         this.nitroHintShown = false;
 
+        // Pump session: the bill so far (shown when the pump stops), whether
+        // the no-cash hint has shown, and whether the bank changed since the
+        // last save write (written once per fill, not every frame)
+        this.pumpBill = 0;
+        this.noCashShown = false;
+        this.bankDirty = false;
+        // Out-of-fuel hint shows once per empty tank
+        this.dryWarned = false;
+
         this.gameOver = false;
     }
 
@@ -133,19 +147,26 @@ export class GameScene extends Phaser.Scene {
             this.playerCar.halted = !this.playerCar.halted;
         }
         // Nitro only fires while the car is driving; a parked or stuck car
-        // would just burn the boost standing still
+        // would just burn the boost standing still (GameState also refuses it
+        // on an empty tank)
         const driving = this.playerCar.isMoving && !this.playerCar.halted;
         if (this.inputManager.consumeNitroPress() && driving && this.state.useNitro()) {
             this.uiManager.showToast(t('toast.nitro'));
         }
-        // Per-frame player speed: nitro shortens the per-tile move duration,
-        // the helicopter spotlight lengthens it (slows the player). Car.update
+        // Pushing only works on an empty tank
+        for (let i = this.inputManager.drainPushPresses(); i > 0; i--) {
+            if (this.state.push()) this.pushPuff();
+        }
+        // An empty tank only moves while it's being pushed
+        this.playerCar.stalled = this.state.isOutOfFuel() && !this.state.isPushing();
+
+        // Per-frame player speed: nitro shortens the per-tile move duration;
+        // an empty tank or the helicopter spotlight lengthens it. Car.update
         // clamps t = min(moveTimer/duration, 1), so changing the duration
-        // mid-move is safe; nitro expiring mid-move eases the visual backward by
-        // at most one frame (accepted).
-        const nitroFactor = this.state.isNitroActive() ? CONFIG.NITRO.SPEED_FACTOR : 1;
+        // mid-move is safe; a boost expiring mid-move eases the visual
+        // backward by at most one frame (accepted).
         const heliFactor = this.policeManager.isHeliOverhead() ? CONFIG.HELICOPTER.SLOW_FACTOR : 1;
-        this.playerCar.moveConfig.duration = this.state.moveDuration * nitroFactor * heliFactor;
+        this.playerCar.moveConfig.duration = this.state.playerMoveDuration(heliFactor);
 
         this.playerCar.update(time, delta);
         this.carTrail.update(delta, {
@@ -201,11 +222,9 @@ export class GameScene extends Phaser.Scene {
             this.pulseBaseMarker();
         }
 
-        // (c) Refuel while stopped on a station pad
-        if (!this.playerCar.isMoving &&
-            this.mapManager.getFuelStationAt(this.playerCar.gridX, this.playerCar.gridY)) {
-            this.state.addFuel(CONFIG.FUEL.REFUEL_PER_SEC * (delta / 1000));
-        }
+        // (c) Refuel while stopped on a station pad. Gas is paid for as it
+        // flows: carried cash first, then the bank.
+        this.updatePump(delta);
 
         // (d) Diamond delivery car — ramming it steals the diamond
         // (not guarded by invulnerability: that only covers the police catch)
@@ -234,15 +253,17 @@ export class GameScene extends Phaser.Scene {
         // (g) Collectibles
         this.checkCollectibles();
 
-        // (h) Fuel drain + state tick + out-of-fuel check
+        // (h) Fuel drain + state tick. Running dry doesn't cost a life any
+        // more: the car stalls and has to be pushed to a pump.
         if (this.playerCar.isMoving) {
             this.state.drainFuel(CONFIG.FUEL.DRAIN_PER_SEC * (delta / 1000));
         }
         this.state.tick(delta, { spotted: this.policeManager.isPlayerSpotted() });
-        if (this.state.fuel <= 0) {
-            this.state.onOutOfFuel();
-            this.handleCaught();
-            if (this.gameOver) return;
+        if (this.state.isOutOfFuel() && !this.dryWarned) {
+            this.dryWarned = true;
+            this.uiManager.showToast(t(hasGamepad() ? 'toast.dryPad' : 'toast.dryKeys'));
+        } else if (!this.state.isOutOfFuel()) {
+            this.dryWarned = false;
         }
 
         // (i) HUD snapshot
@@ -263,6 +284,54 @@ export class GameScene extends Phaser.Scene {
             stars: this.state.stars,
             chaseCountdown: this.state.chaseCountdown,
             chaseCountdownMax: CONFIG.CHASE.COUNTDOWN_MS,
+        });
+    }
+
+    // Stopped on a station pad: pump and charge
+    updatePump(delta) {
+        const car = this.playerCar;
+        const atPump = !car.isMoving && this.mapManager.getFuelStationAt(car.gridX, car.gridY);
+        const pump = atPump ? this.state.refuel(delta) : null;
+        // Money ran out with room left in the tank (on arrival or mid-fill);
+        // once per stop at the pump
+        if (pump && pump.broke && !this.noCashShown) {
+            this.noCashShown = true;
+            this.uiManager.showToast(t('toast.noCash'));
+        }
+        if (!atPump) this.noCashShown = false;
+
+        if (!pump || pump.pumped <= 0) {
+            this.endPumpSession();
+            return;
+        }
+
+        this.pumpBill += pump.paid;
+        if (pump.fromBank > 0) {
+            this.save.banked = this.state.banked; // keep the garage's view in sync
+            this.bankDirty = true;
+        }
+    }
+
+    // The pump stopped (tank full, or the car left): show the bill and write
+    // the bank once.
+    endPumpSession() {
+        if (this.pumpBill > 0) {
+            const { x, y } = this.playerCar.visual;
+            floatText(this, x, y, `-${money(this.pumpBill)}`, UI_COLORS.red);
+            this.pumpBill = 0;
+        }
+        if (this.bankDirty) {
+            this.bankDirty = false;
+            writeSave(this.storage, this.save);
+        }
+    }
+
+    // One push tap: road dust behind a car being shoved along on an empty tank
+    pushPuff() {
+        const { x, y } = this.playerCar.visual;
+        const rear = rearVector(this.playerCar.direction);
+        smokePuff(this, x + rear.x * 26, y + rear.y * 26, {
+            drift: 10, scale: 1, depth: 0.9, tint: 0xc8b48a,
         });
     }
 
