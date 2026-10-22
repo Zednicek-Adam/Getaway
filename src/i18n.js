@@ -51,7 +51,15 @@ export const STRINGS = {
         'toast.life': '+1 LIFE',
         'toast.dryKeys': 'OUT OF GAS! TAP Q TO PUSH',
         'toast.dryPad': 'OUT OF GAS! TAP LB TO PUSH',
+        'toast.dryTouch': 'OUT OF GAS! TAP PUSH FAST',
+        'toast.nitroTouch': 'TAP THE BOLT FOR NITRO',
+        'toast.pumpArmed': 'STOPPING AT THE NEXT PUMP',
         'toast.noCash': 'NO CASH, NO GAS',
+
+        'touch.stop': 'STOP',
+        'touch.go': 'GO',
+        'touch.push': 'PUSH',
+        'touch.pump': 'PUMP',
 
         'pickup.bomb': '+1 BOMB',
         'pickup.repair': 'REPAIRED',
@@ -159,7 +167,15 @@ export const STRINGS = {
         'toast.life': '+1 VIDA',
         'toast.dryKeys': '¡SIN GASOLINA! PULSA Q PARA EMPUJAR',
         'toast.dryPad': '¡SIN GASOLINA! PULSA LB PARA EMPUJAR',
+        'toast.dryTouch': '¡SIN GASOLINA! TOCA EMPUJAR RAPIDO',
+        'toast.nitroTouch': 'TOCA EL RAYO PARA EL NITRO',
+        'toast.pumpArmed': 'PARADA EN EL PROXIMO SURTIDOR',
         'toast.noCash': 'SIN DINERO NO HAY GASOLINA',
+
+        'touch.stop': 'FRENAR',
+        'touch.go': 'SEGUIR',
+        'touch.push': 'EMPUJAR',
+        'touch.pump': 'SURTIDOR',
 
         'pickup.bomb': '+1 BOMBA',
         'pickup.repair': 'REPARADO',

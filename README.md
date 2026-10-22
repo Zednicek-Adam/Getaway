@@ -12,7 +12,7 @@ Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 | --- | --- |
 | ![Title screen](docs/screenshots/title.png) | ![A five-star chase](docs/screenshots/chase.png) |
 | ![The garage](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
-| ![Credits](docs/screenshots/credits.png) | |
+| ![Credits](docs/screenshots/credits.png) | ![Touch controls on a phone](docs/screenshots/touch.png) |
 
 ## The loop
 
@@ -48,16 +48,17 @@ to cash on the road or to a pump. With no money at all, the pump gives nothing.
 
 ## Controls
 
-| Key | Gamepad | Action |
-| --- | ------- | ------ |
-| Arrows / WASD | D-pad / left stick | Steer (queues up to 2 turns ahead) |
-| `F` | A | Brake — hold position, and refuel when parked on a station pad |
-| `Q` | LB | Push the car (empty tank only; tap fast) |
-| `Space` | B / LT | Drop a bomb (10s fuse, destroys police) |
-| `E` | X / RT | Fire a rocket along your facing, up to 8 tiles |
-| `R` | RB | Fire a stored nitro (4s speed boost) |
-| `G` | Y | Open the garage (only while parked on the safehouse pad) |
-| `Esc` | Start | Pause |
+| Key | Gamepad | Touch | Action |
+| --- | ------- | ----- | ------ |
+| Arrows / WASD | D-pad / left stick | Swipe | Steer (queues up to 2 turns ahead) |
+| `F` | A | STOP / GO | Brake — hold position, and refuel when parked on a station pad |
+| — | — | PUMP | Stop at the next gas station the car reaches (tap again to cancel) |
+| `Q` | LB | PUSH | Push the car (empty tank only; tap fast) |
+| `Space` | B / LT | Bomb | Drop a bomb (10s fuse, destroys police) |
+| `E` | X / RT | Rocket | Fire a rocket along your facing, up to 8 tiles |
+| `R` | RB | Bolt | Fire a stored nitro (4s speed boost) |
+| `G` | Y | — | Open the garage (only while parked on the safehouse pad) |
+| `Esc` | Start | — | Pause |
 
 Gamepad buttons follow the Xbox layout; on a PlayStation pad A is Cross, B
 Circle, X Square and Y Triangle. The pad also drives every menu: D-pad or stick
@@ -66,8 +67,13 @@ the standard Gamepad API works, and the browser only reveals it after a button
 press, so press one first if it doesn't respond. On-screen prompts switch to pad
 buttons once a controller is connected.
 
-Touch devices can swipe to steer. An INSTRUCTIONS page shows this same summary
-in-game, reachable from both the main menu and the pause menu; opening it from
+On a phone or tablet, swipe anywhere to steer. Buttons in the bottom corners
+cover the rest: rocket, bomb and nitro on the right, brake, PUMP and push on the
+left. The swipe and the buttons work at the same time, one thumb each. Phones
+show the buttons from the start; a laptop with a touch screen shows them after
+its first touch.
+
+An INSTRUCTIONS page shows the keyboard and gamepad controls in-game, reachable from both the main menu and the pause menu; opening it from
 pause leaves the run paused and returns you there. The pause menu can also drop
 you back to the main menu. CREDITS on the title screen lists who made the game,
 and links to this repository (opened in a new tab).

@@ -27,6 +27,11 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
+  // Two thumbs at once: one swiping to steer while the other taps a touch
+  // button. Phaser tracks a single touch unless asked for more.
+  input: {
+    activePointers: 3,
+  },
   physics: {
     default: 'arcade',
     arcade: {

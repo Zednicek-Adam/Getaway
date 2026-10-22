@@ -40,32 +40,43 @@ export class InputManager {
         this.pushKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
         this.nitroKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
 
+        // Pump stop toggle (touch PUMP button) — consumed by GameScene
+        this.pumpStopToggled = false;
+
+        // One handler per action, shared by the gamepad and the touch buttons
+        this.actions = {
+            bomb: () => { this.bombPressed = true; },
+            rocket: () => { this.rocketPressed = true; },
+            nitro: () => { this.nitroPressed = true; },
+            stop: () => { this.stopToggled = true; },
+            // A count, since mashing can land two taps in one frame
+            push: () => { this.pushPresses++; },
+            pump: () => { this.pumpStopToggled = true; },
+        };
+
         // Gamepad: D-pad or left stick steers. Rocket and bomb sit on both the
         // face buttons and the triggers, so either grip works; nitro is the
         // right bumper, next to the rocket trigger, and push the left one.
-        const fireRocket = () => { this.rocketPressed = true; };
-        const dropBomb = () => { this.bombPressed = true; };
-        const push = () => { this.pushPresses++; };
+        const { bomb, rocket, nitro, stop, push } = this.actions;
         bindPad(this.scene, {
             up: () => this.pressQueue.push(DIRECTIONS.UP),
             down: () => this.pressQueue.push(DIRECTIONS.DOWN),
             left: () => this.pressQueue.push(DIRECTIONS.LEFT),
             right: () => this.pressQueue.push(DIRECTIONS.RIGHT),
-            a: () => { this.stopToggled = true; },
-            x: fireRocket,
-            rt: fireRocket,
-            b: dropBomb,
-            lt: dropBomb,
-            rb: () => { this.nitroPressed = true; },
+            a: stop,
+            x: rocket,
+            rt: rocket,
+            b: bomb,
+            lt: bomb,
+            rb: nitro,
             lb: push,
         });
 
-        // Swipe Handling
+        // Swipe Handling. Each finger is tracked on its own, so one thumb can
+        // steer while the other works the touch buttons.
+        this.swipes = new Map();
         this.scene.input.on('pointerdown', this.onPointerDown, this);
         this.scene.input.on('pointerup', this.onPointerUp, this);
-
-        this.swipeStartX = 0;
-        this.swipeStartY = 0;
     }
 
     update() {
@@ -108,14 +119,19 @@ export class InputManager {
         }
     }
 
-    onPointerDown(pointer) {
-        this.swipeStartX = pointer.x;
-        this.swipeStartY = pointer.y;
+    // A touch that lands on a button is a button press, not the start of a swipe
+    onPointerDown(pointer, currentlyOver) {
+        if (currentlyOver.length > 0) return;
+        this.swipes.set(pointer.id, { x: pointer.x, y: pointer.y });
     }
 
     onPointerUp(pointer) {
-        const diffX = pointer.x - this.swipeStartX;
-        const diffY = pointer.y - this.swipeStartY;
+        const start = this.swipes.get(pointer.id);
+        if (!start) return;
+        this.swipes.delete(pointer.id);
+
+        const diffX = pointer.x - start.x;
+        const diffY = pointer.y - start.y;
 
         // Min Distance for swipe
         const minSwipeDist = 30;
@@ -172,6 +188,13 @@ export class InputManager {
     consumeNitroPress() {
         if (!this.nitroPressed) return false;
         this.nitroPressed = false;
+        return true;
+    }
+
+    // True once per PUMP tap — arms or cancels a stop at the next gas station
+    consumePumpStopToggle() {
+        if (!this.pumpStopToggled) return false;
+        this.pumpStopToggled = false;
         return true;
     }
 }
