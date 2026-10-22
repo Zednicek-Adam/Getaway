@@ -1,4 +1,5 @@
-// Versioned persistent save — banked money + garage upgrade levels.
+// Versioned persistent save — banked money, garage upgrade levels and
+// one-time unlocks.
 // Pure and Phaser-free; storage is injected so this is unit-testable.
 import { CONFIG } from './config';
 
@@ -12,6 +13,9 @@ export function defaultSave() {
         version: SAVE_VERSION,
         banked: 0,
         upgrades: { engine: 0, fuelTank: 0, armor: 0, bombBay: 0, rocketRack: 0 },
+        // Added after v1 shipped; older saves simply lack it, which reads as
+        // nothing unlocked, so no version bump (and no wiped saves) needed
+        unlocks: Object.fromEntries(Object.keys(CONFIG.GARAGE.UNLOCKS).map(k => [k, false])),
     };
 }
 
@@ -36,6 +40,12 @@ export function sanitizeSave(raw) {
         clean.upgrades[key] = Number.isFinite(level)
             ? Math.max(0, Math.min(CONFIG.GARAGE.MAX_LEVEL, level))
             : 0;
+    }
+
+    // Known unlocks → strictly true or false; unknown keys dropped
+    const rawUnlocks = raw.unlocks && typeof raw.unlocks === 'object' ? raw.unlocks : {};
+    for (const key of Object.keys(clean.unlocks)) {
+        clean.unlocks[key] = rawUnlocks[key] === true;
     }
 
     return clean;

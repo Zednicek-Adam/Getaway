@@ -79,6 +79,7 @@ export class InstructionsScene extends Phaser.Scene {
             [COLLECTIBLE_TYPES.ROCKET, t('help.rocketName'), t('help.ammoEffect')],
             [COLLECTIBLE_TYPES.BOMB, t('help.bombName'), t('help.ammoEffect')],
             [COLLECTIBLE_TYPES.LIFE, t('help.life'), t('help.lifeEffect')],
+            [COLLECTIBLE_TYPES.RAIL_PASS, t('help.railPass'), t('help.railPassEffect')],
         ];
         pickups.forEach(([type, name, effect], i) => {
             const y = ROW_Y + i * PICKUP_STEP;
@@ -95,15 +96,16 @@ export class InstructionsScene extends Phaser.Scene {
             [t('help.note3'), UI_COLORS.white],
             [t('help.note4'), UI_COLORS.gold],
             [t('help.note5'), UI_COLORS.white],
+            [t('help.note6'), UI_COLORS.purple],
         ];
         notes.forEach(([line, colour], i) => {
-            this.body(centre, 616 + i * 26, line, colour).setOrigin(0.5);
+            this.body(centre, 610 + i * 23, line, colour).setOrigin(0.5);
         });
 
         // --- Wanted level ----------------------------------------------------
-        this.heading(centre, 762, t('help.heat'));
-        this.body(centre, 796, t('help.heat1'), UI_COLORS.white).setOrigin(0.5);
-        this.body(centre, 822, t('help.heat2'), UI_COLORS.red)
+        this.heading(centre, 768, t('help.heat'));
+        this.body(centre, 800, t('help.heat1'), UI_COLORS.white).setOrigin(0.5);
+        this.body(centre, 824, t('help.heat2'), UI_COLORS.red)
             .setOrigin(0.5);
 
         this.createBackButton(centre, height - 60);

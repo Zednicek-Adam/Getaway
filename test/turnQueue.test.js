@@ -145,6 +145,13 @@ describe('pickMove', () => {
         expect(q.length).toBe(0);
     });
 
+    it('drops a queued turn that has become a reversal', () => {
+        // UP was queued riding RIGHT; the rails since swung the car round to DOWN
+        const q = queueOf(UP, LEFT);
+        expect(pickMove(q, DOWN, roads(UP, DOWN, LEFT, RIGHT))).toBe(LEFT);
+        expect(q.length).toBe(0);
+    });
+
     it('goes straight with an empty queue, or stays put if it cannot', () => {
         expect(pickMove(queueOf(), RIGHT, roads(LEFT, RIGHT))).toBe(RIGHT);
         expect(pickMove(queueOf(), RIGHT, roads(LEFT))).toBeNull();

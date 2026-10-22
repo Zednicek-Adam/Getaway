@@ -7,6 +7,8 @@ import manifest from './generated/art.json';
 export const ART = manifest;
 export const PICKUP_FRAMES = manifest.pickups;
 export const ICON = manifest.icons;
+// Train car kinds in train.png order; each kind has 8 frames, clockwise from facing up
+export const TRAIN_CARS = manifest.train.cars;
 
 const BASE = 'art/';
 
@@ -26,6 +28,8 @@ const SHEETS = {
     flame: ['flame.png', 16, 24],
     rocket: ['rocket.png', 32, 16],
     roadblock: ['roadblock.png', 64, 64],
+    train: ['train.png', manifest.train.frameSize, manifest.train.frameSize],
+    crossing: ['crossing.png', 64, 64],
     menuCars: ['menu_cars.png', 208, 80],
 };
 
@@ -39,6 +43,9 @@ const IMAGES = {
     fuelStation: 'fuelstation.png',
     padBase: 'pad_base.png',
     padFuel: 'pad_fuel.png',
+    station: 'station.png',
+    padStation: 'pad_station.png',
+    rail: 'rail.png',
     panel: 'panel.png',
     panelGold: 'panel_gold.png',
     panelRed: 'panel_red.png',
@@ -78,6 +85,9 @@ export function createAnims(scene) {
     add('rotor-spin', 'rotor', 0, 3, 30);
     add('roadblock-v', 'roadblock', 0, 1, 3);
     add('roadblock-h', 'roadblock', 2, 3, 3);
+    // Crossing lamps alternate while the barriers are down (frame 0/3 = arms up)
+    add('crossing-h', 'crossing', 1, 2, 3);
+    add('crossing-v', 'crossing', 4, 5, 3);
     add('menu-player', 'menuCars', 0, 1, 12);
     add('menu-police', 'menuCars', 2, 3, 6);
 }

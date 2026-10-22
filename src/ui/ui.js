@@ -18,6 +18,7 @@ export const UI_COLORS = {
     cyan: '#5fe0ff',
     green: '#6fe08a',
     orange: '#ff9a3c',
+    purple: '#b98af0',
 };
 
 const PANEL_KEYS = { steel: 'panel', gold: 'panelGold', red: 'panelRed' };

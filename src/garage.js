@@ -38,3 +38,33 @@ export function purchase(save, track) {
     save.banked -= check.price;
     return true;
 }
+
+// --- One-time unlocks (CONFIG.GARAGE.UNLOCKS) ---------------------------------
+
+export function hasUnlock(save, key) {
+    return !!(save.unlocks && save.unlocks[key]);
+}
+
+// { ok, reason, price } — reason is 'owned' | 'funds' | null
+export function canUnlock(save, key) {
+    const price = CONFIG.GARAGE.UNLOCKS[key].price;
+    if (hasUnlock(save, key)) return { ok: false, reason: 'owned', price };
+    if (save.banked < price) return { ok: false, reason: 'funds', price };
+    return { ok: true, reason: null, price };
+}
+
+// Mutates `save` on success (unlocks[key] = true, banked -= price); returns bool.
+export function unlock(save, key) {
+    const check = canUnlock(save, key);
+    if (!check.ok) return false;
+    save.unlocks = { ...save.unlocks, [key]: true };
+    save.banked -= check.price;
+    return true;
+}
+
+// The pickup spawn table: rail passes only start appearing once bought
+export function collectibleWeights(save) {
+    const weights = CONFIG.COLLECTIBLES.WEIGHTS;
+    if (!hasUnlock(save, 'railPass')) return weights;
+    return { ...weights, railPass: CONFIG.RAIL_PASS.SPAWN_WEIGHT };
+}

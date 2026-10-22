@@ -191,10 +191,13 @@ export class PoliceManager {
         // this OR keeps the countdown floor pinned indefinitely while overhead.
         if (this.isHeliOverhead()) return true;
 
+        // Cops held at lowered barriers across the loop can't see past the train
         const px = this.playerCar.gridX;
         const py = this.playerCar.gridY;
+        const rail = this.scene.railManager;
         return this.units.some(u =>
-            Math.abs(u.gridX - px) + Math.abs(u.gridY - py) <= CONFIG.CHASE.SPOT_RADIUS);
+            Math.abs(u.gridX - px) + Math.abs(u.gridY - py) <= CONFIG.CHASE.SPOT_RADIUS &&
+            !(rail && rail.blocksView(u, this.playerCar)));
     }
 
     isHeliOverhead() {
@@ -204,7 +207,7 @@ export class PoliceManager {
 
     // Walk from the player's tile along their facing over road tiles, up to
     // MAX_AHEAD steps; the final tile reached is the candidate. Reject on any
-    // of six conditions (see inline). The cadence timer is already reset by the
+    // of the conditions inline. The cadence timer is already reset by the
     // caller, so a rejection simply means "no block this interval".
     trySpawnRoadblock() {
         const player = this.playerCar;
@@ -233,6 +236,7 @@ export class PoliceManager {
         if (this.mapManager.isBasePad(x, y)) return;                    // never on the safehouse pad
         if (this.mapManager.getFuelStationAt(x, y)) return;            // never on a fuel pad
         if (this.mapManager.isBlocked(x, y)) return;                    // already blocked
+        if (this.mapManager.isCrossing(x, y)) return;                   // never on the tracks
         if (this.mapManager.getCollectibleAt(x, y)) return;            // don't bury a pickup
         if (x === player.gridX && y === player.gridY) return;          // player's current tile
         if (x === player.targetX && y === player.targetY) return;      // player's target tile
