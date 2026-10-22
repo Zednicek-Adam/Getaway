@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findPath, MinHeap } from '../src/pathfinding';
+import { findPath, MinHeap, nextStep } from '../src/pathfinding';
 
 // 1 = walkable, 0 = blocked
 function walkabilityOf(grid) {
@@ -86,5 +86,73 @@ describe('findPath', () => {
         const grid = Array.from({ length: size }, () => Array(size).fill(1));
         const path = findPath(walkabilityOf(grid), 0, 0, size - 1, size - 1, { maxNodes: 3 });
         expect(path).toBeNull();
+    });
+});
+
+describe('nextStep', () => {
+    // 3x3 ring round a single building
+    const smallRing = [
+        [1, 1, 1],
+        [1, 0, 1],
+        [1, 1, 1],
+    ];
+    // 5x5 ring round a 3x3 block
+    const bigRing = [
+        [1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1],
+    ];
+
+    it('takes the shortest route when it does not turn back', () => {
+        const step = nextStep(walkabilityOf(bigRing), 2, 0, { x: 1, y: 0 }, 4, 2, { uturnPenalty: 6 });
+        expect(step).toEqual({ x: 3, y: 0 });
+    });
+
+    it('drives round the block when that costs no more than the penalty', () => {
+        // Back via (0,0) is 2 tiles, round the block is 6
+        const step = nextStep(walkabilityOf(smallRing), 1, 0, { x: 0, y: 0 }, 0, 1, { uturnPenalty: 6 });
+        expect(step).toEqual({ x: 2, y: 0 });
+    });
+
+    it('turns back when the way round is longer than the penalty', () => {
+        // Back is 2 tiles, round the block is 14
+        const step = nextStep(walkabilityOf(bigRing), 2, 0, { x: 1, y: 0 }, 0, 0, { uturnPenalty: 6 });
+        expect(step).toEqual({ x: 1, y: 0 });
+    });
+
+    it('turns back out of a dead end', () => {
+        const corridor = [[1, 1, 1]];
+        const step = nextStep(walkabilityOf(corridor), 2, 0, { x: 1, y: 0 }, 0, 0, { uturnPenalty: 6 });
+        expect(step).toEqual({ x: 1, y: 0 });
+    });
+
+    it('returns null when already at the goal or the goal is unreachable', () => {
+        expect(nextStep(walkabilityOf(smallRing), 0, 0, null, 0, 0)).toBeNull();
+        expect(nextStep(walkabilityOf(smallRing), 0, 0, null, 1, 1)).toBeNull();
+    });
+
+    it('replanning every tile reaches the goal without revisiting a tile', () => {
+        // Roads on rows and columns 0, 3 and 6: a 2x2 grid of blocks
+        const grid = Array.from({ length: 7 }, (_, y) =>
+            Array.from({ length: 7 }, (_, x) => (x % 3 === 0 || y % 3 === 0 ? 1 : 0)));
+        const walkable = walkabilityOf(grid);
+
+        let pos = { x: 3, y: 0 };
+        let behind = { x: 2, y: 0 };
+        const goal = { x: 0, y: 3 };
+        const visited = new Set([`${pos.x},${pos.y}`]);
+
+        for (let i = 0; i < 30 && !(pos.x === goal.x && pos.y === goal.y); i++) {
+            const step = nextStep(walkable, pos.x, pos.y, behind, goal.x, goal.y, { uturnPenalty: 6 });
+            expect(step).not.toBeNull();
+            const key = `${step.x},${step.y}`;
+            expect(visited.has(key)).toBe(false);
+            visited.add(key);
+            behind = pos;
+            pos = step;
+        }
+        expect(pos).toEqual(goal);
     });
 });

@@ -1,7 +1,7 @@
 import { Car } from './Car';
 import { DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
-import { findPath } from '../pathfinding';
+import { nextStep } from '../pathfinding';
 
 export class PoliceCar extends Car {
     constructor(scene, gridX, gridY, mapManager, target, manager = null, options = {}) {
@@ -31,6 +31,10 @@ export class PoliceCar extends Car {
         this.ramDamage = 1;
         this.unitType = 'police';
         this.hp = 1; // regular police die to any single hit
+
+        // 'near' AI: last-known tile this unit already reached and found
+        // empty — it roams instead of circling back until the sighting moves
+        this.searchedLastKnown = null;
     }
 
     update(time, delta) {
@@ -139,20 +143,31 @@ export class PoliceCar extends Car {
             return { x: player.gridX, y: player.gridY };
         }
 
+        const dist = Math.abs(player.gridX - this.gridX) + Math.abs(player.gridY - this.gridY);
+
         if (mode === 'intercept') {
+            // Close in on the player once inside the lookahead: aiming ahead of
+            // a slow or halted player from right next to them only circles
+            if (dist <= CONFIG.POLICE.INTERCEPT_LOOKAHEAD + 1) {
+                return { x: player.gridX, y: player.gridY };
+            }
             return this.projectInterceptTile();
         }
 
         if (mode === 'near') {
-            const dist = Math.abs(player.gridX - this.gridX) + Math.abs(player.gridY - this.gridY);
             if (dist <= CONFIG.POLICE.AWARE_RADIUS) {
                 return { x: player.gridX, y: player.gridY };
             }
             const lastKnown = this.manager?.lastKnown;
-            if (lastKnown && !(lastKnown.x === this.gridX && lastKnown.y === this.gridY)) {
-                return lastKnown;
+            if (!lastKnown) return null;
+            if (lastKnown.x === this.gridX && lastKnown.y === this.gridY) {
+                this.searchedLastKnown = { x: lastKnown.x, y: lastKnown.y };
             }
-            return null; // Already at last-known (or none) — roam
+            const searched = this.searchedLastKnown;
+            if (searched && searched.x === lastKnown.x && searched.y === lastKnown.y) {
+                return null; // Already checked there — roam until a new sighting
+            }
+            return lastKnown;
         }
 
         return null;
@@ -182,21 +197,34 @@ export class PoliceCar extends Car {
         return { x, y };
     }
 
-    // First step of the A* path towards (goalX, goalY); null when unreachable
+    // First step of the A* route towards (goalX, goalY), reluctant to U-turn
+    // (see nextStep); null when unreachable
     stepTowards(goalX, goalY) {
-        const path = findPath(
+        const next = nextStep(
             (x, y) => this.mapManager.isRoad(x, y) && !this.mapManager.isBlocked(x, y),
             this.gridX, this.gridY,
-            goalX, goalY
+            this.tileBehind(),
+            goalX, goalY,
+            { uturnPenalty: CONFIG.POLICE.UTURN_PENALTY }
         );
-        if (!path || path.length === 0) return null;
+        if (!next) return null;
 
-        const next = path[0];
         if (next.x > this.gridX) return DIRECTIONS.RIGHT;
         if (next.x < this.gridX) return DIRECTIONS.LEFT;
         if (next.y > this.gridY) return DIRECTIONS.DOWN;
         if (next.y < this.gridY) return DIRECTIONS.UP;
         return null;
+    }
+
+    // Tile the car just came from, opposite its facing
+    tileBehind() {
+        switch (this.direction) {
+            case DIRECTIONS.UP: return { x: this.gridX, y: this.gridY + 1 };
+            case DIRECTIONS.DOWN: return { x: this.gridX, y: this.gridY - 1 };
+            case DIRECTIONS.LEFT: return { x: this.gridX + 1, y: this.gridY };
+            case DIRECTIONS.RIGHT: return { x: this.gridX - 1, y: this.gridY };
+            default: return null;
+        }
     }
 
     // pickRoamMove / getValidMoves are inherited from Car

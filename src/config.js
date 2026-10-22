@@ -66,6 +66,7 @@ export const CONFIG = {
         SPAWN_MIN_DIST: 15,      // Manhattan distance from player
         AWARE_RADIUS: 10,        // 'near' AI chases the live player inside this range
         INTERCEPT_LOOKAHEAD: 3,  // 'intercept' AI aims this many tiles ahead of the player
+        UTURN_PENALTY: 6,        // chase AI reverses only if driving round is this many tiles longer
         RESPAWN_AFTER_BOMB_MS: 8000, // delay before a bombed unit is replaced
         BY_STARS: {
             0: { units: { police: 0 }, duration: 380, ai: 'roam' },
