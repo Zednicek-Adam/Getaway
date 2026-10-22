@@ -137,3 +137,24 @@ export function findPath(isWalkable, startX, startY, endX, endY, { maxNodes = 10
 
     return null; // No path found (or node budget exhausted)
 }
+
+// First tile of the route from (startX, startY) to (endX, endY) for a vehicle
+// that just came from `behind` ({x, y}, or null). Turning back onto `behind`
+// counts as `uturnPenalty` extra tiles, so the vehicle only reverses when the
+// way round is that much longer. Without the penalty an AI that replans every
+// tile flips back and forth between two tiles whenever its goal moves or sits
+// just behind it. Returns {x, y}, or null when unreachable or already there.
+export function nextStep(isWalkable, startX, startY, behind, endX, endY, { uturnPenalty = 0, maxNodes } = {}) {
+    const shortest = findPath(isWalkable, startX, startY, endX, endY, { maxNodes });
+    if (!shortest || shortest.length === 0) return null;
+
+    const first = shortest[0];
+    if (!behind || first.x !== behind.x || first.y !== behind.y) return first;
+
+    const notBehind = (x, y) => !(x === behind.x && y === behind.y) && isWalkable(x, y);
+    const onward = findPath(notBehind, startX, startY, endX, endY, { maxNodes });
+    if (onward && onward.length > 0 && onward.length <= shortest.length + uturnPenalty) {
+        return onward[0];
+    }
+    return first;
+}
