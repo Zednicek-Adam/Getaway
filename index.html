@@ -20,6 +20,10 @@
         /* Keeps a scrollbar from appearing, resizing the parent, and making
            the FIT calculation oscillate. */
         overflow: hidden;
+        /* Taps and swipes are game input: no double-tap zoom, pull-to-refresh
+           or page panning on phones */
+        touch-action: none;
+        overscroll-behavior: none;
       }
       #app {
         width: 100%;

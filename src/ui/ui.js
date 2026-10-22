@@ -1,5 +1,6 @@
 import { ICON } from '../art';
 import { bindPad } from '../gamepad';
+import { stageOffset, STAGE_WIDTH, STAGE_HEIGHT } from '../screen';
 
 // Shared look for every screen: pixel text, 9-slice panels, icons and the
 // button list used by the menus. Font sizes stay on multiples of 8 so Press
@@ -118,14 +119,62 @@ export function createMenu(scene, { x, y, items, width = 400, height = 56, spaci
 
 // Parallax night-city backdrop shared by the title and instructions screens.
 // Returns the layers so the caller can scroll them.
+//
+// Drawn on the 1280x960 stage (see useStage) but stretched to the canvas
+// edges. On a wide screen the city layers repeat sideways and the sky's
+// moonless left half fills the sides (a repeat of the whole sky would put a
+// second moon up). On a tall one, starry night sky fills the space above.
 export function cityBackdrop(scene, container) {
     const { width, height } = scene.scale;
+    const { x: ox, y: oy } = stageOffset(scene);
+    const left = -ox;
+    // Created back to front: without a container, creation order is draw order
+    const pieces = [];
+    if (oy > 0) pieces.push(starfield(scene, left, -oy, width, oy));
+    // Road below the stage, for a stage centred on a tall canvas
+    const below = height - oy - STAGE_HEIGHT;
+    if (below > 0) {
+        pieces.push(scene.add.rectangle(left, STAGE_HEIGHT, width, below, 0x312d36).setOrigin(0));
+    }
+    if (ox > 0) {
+        const sky = scene.textures.get('menuSky');
+        if (!sky.has('moonless')) sky.add('moonless', 0, 0, 0, 640, STAGE_HEIGHT);
+        const leftSide = scene.add.tileSprite(left, 0, ox, STAGE_HEIGHT, 'menuSky', 'moonless').setOrigin(0);
+        leftSide.tilePositionX = left; // meets the sky's left edge without a seam
+        const rightSide = scene.add.tileSprite(STAGE_WIDTH, 0, ox, STAGE_HEIGHT, 'menuSky', 'moonless').setOrigin(0);
+        pieces.push(leftSide, rightSide);
+    }
+
+    const strip = (key) => scene.add.tileSprite(left, 0, width, STAGE_HEIGHT, key).setOrigin(0);
     const layers = {
         sky: scene.add.image(0, 0, 'menuSky').setOrigin(0),
-        far: scene.add.tileSprite(0, 0, width, height, 'menuFar').setOrigin(0),
-        near: scene.add.tileSprite(0, 0, width, height, 'menuNear').setOrigin(0),
-        street: scene.add.tileSprite(0, 0, width, height, 'menuStreet').setOrigin(0),
+        far: strip('menuFar'),
+        near: strip('menuNear'),
+        street: strip('menuStreet'),
     };
-    if (container) container.add(Object.values(layers));
+    pieces.push(...Object.values(layers));
+
+    if (container) container.add(pieces);
     return layers;
+}
+
+// Night sky in the colour of the sky texture's top rows, with stars on the
+// 2px art grid. Seeded, so a rebuilt screen gets the same sky.
+function starfield(scene, x, y, width, height) {
+    const g = scene.add.graphics();
+    g.fillStyle(0x080a1e).fillRect(x, y, width, height);
+    let seed = 7;
+    const rand = () => {
+        seed = (seed * 16807) % 2147483647;
+        return seed / 2147483647;
+    };
+    const count = Math.round((width * height) / 9000);
+    for (let i = 0; i < count; i++) {
+        const sx = x + Math.floor((rand() * width) / 2) * 2;
+        const sy = y + Math.floor((rand() * height) / 2) * 2;
+        const roll = rand();
+        g.fillStyle(roll < 0.15 ? 0xffffff : roll < 0.5 ? 0xb8bce8 : 0x5a5e96);
+        g.fillRect(sx, sy, roll < 0.08 ? 4 : 2, roll < 0.08 ? 4 : 2);
+    }
+    return g;
 }
