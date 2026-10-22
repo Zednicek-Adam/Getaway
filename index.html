@@ -2,45 +2,536 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="art/car_player.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Getaway</title>
+    <title>The Getaway - Pure HTML & CSS Edition</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <style>
-      /* Phaser's Scale Manager centers the canvas inside #app, so #app has to
-         be a definite full-viewport box for it to have something to center
-         against — an auto-height div would size itself to the canvas instead. */
-      html, body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-        background-color: #0b0c14;
-        /* Keeps a scrollbar from appearing, resizing the parent, and making
-           the FIT calculation oscillate. */
-        overflow: hidden;
-      }
-      #app {
-        width: 100%;
-        height: 100%;
-      }
-      /* Keep the pixel art crisp when the canvas is scaled to the window */
-      canvas {
-        image-rendering: pixelated;
-      }
-      /* Load font so canvas can use it immediately */
-      #font-loader {
-        font-family: 'Press Start 2P';
-        color: transparent;
-        position: absolute;
-        pointer-events: none;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <div id="font-loader">.</div>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <form id="game-form">
+      <!-- Screen Navigation State -->
+      <input type="radio" name="screen" id="screen-menu" class="state-input" checked />
+      <input type="radio" name="screen" id="screen-play" class="state-input" />
+      <input type="radio" name="screen" id="screen-instructions" class="state-input" />
+      <input type="radio" name="screen" id="screen-garage" class="state-input" />
+      <input type="radio" name="screen" id="screen-gameover" class="state-input" />
+      <input type="radio" name="screen" id="screen-victory" class="state-input" />
+
+      <!-- Language Toggle (EN / ES) -->
+      <input type="checkbox" id="lang-toggle" class="state-input" />
+
+      <!-- Pause Game Toggle -->
+      <input type="checkbox" id="pause-toggle" class="state-input" />
+
+      <!-- Steering / Lane Selection -->
+      <input type="radio" name="lane" id="lane-1" class="state-input" />
+      <input type="radio" name="lane" id="lane-2" class="state-input" checked />
+      <input type="radio" name="lane" id="lane-3" class="state-input" />
+      <input type="radio" name="lane" id="lane-4" class="state-input" />
+
+      <!-- Damage & Health Shields -->
+      <input type="checkbox" id="damage-1" class="state-input" />
+      <input type="checkbox" id="damage-2" class="state-input" />
+      <input type="checkbox" id="damage-3" class="state-input" />
+
+      <!-- Action Weapons -->
+      <input type="checkbox" id="fire-rocket" class="state-input" />
+      <input type="checkbox" id="drop-bomb" class="state-input" />
+
+      <!-- Pickups & Collectibles -->
+      <input type="checkbox" id="coin-1" class="state-input" />
+      <input type="checkbox" id="coin-2" class="state-input" />
+      <input type="checkbox" id="coin-3" class="state-input" />
+      <input type="checkbox" id="coin-4" class="state-input" />
+      <input type="checkbox" id="coin-5" class="state-input" />
+      <input type="checkbox" id="pickup-repair" class="state-input" />
+      <input type="checkbox" id="pickup-nitro" class="state-input" />
+      <input type="checkbox" id="pickup-rocket" class="state-input" />
+      <input type="checkbox" id="pickup-bomb" class="state-input" />
+      <input type="checkbox" id="diamond-truck-hit" class="state-input" />
+
+      <!-- Special Pad Actions -->
+      <input type="checkbox" id="refuel-action" class="state-input" />
+      <input type="checkbox" id="bank-action" class="state-input" />
+
+      <!-- Garage Upgrade Checks -->
+      <input type="checkbox" id="upg-engine-1" class="state-input upg-check" />
+      <input type="checkbox" id="upg-engine-2" class="state-input upg-check" />
+      <input type="checkbox" id="upg-engine-3" class="state-input upg-check" />
+
+      <input type="checkbox" id="upg-fuel-1" class="state-input upg-check" />
+      <input type="checkbox" id="upg-fuel-2" class="state-input upg-check" />
+      <input type="checkbox" id="upg-fuel-3" class="state-input upg-check" />
+
+      <input type="checkbox" id="upg-armor-1" class="state-input upg-check" />
+      <input type="checkbox" id="upg-armor-2" class="state-input upg-check" />
+      <input type="checkbox" id="upg-armor-3" class="state-input upg-check" />
+
+      <input type="checkbox" id="upg-bomb-1" class="state-input upg-check" />
+      <input type="checkbox" id="upg-bomb-2" class="state-input upg-check" />
+      <input type="checkbox" id="upg-bomb-3" class="state-input upg-check" />
+
+      <input type="checkbox" id="upg-rocket-1" class="state-input upg-check" />
+      <input type="checkbox" id="upg-rocket-2" class="state-input upg-check" />
+      <input type="checkbox" id="upg-rocket-3" class="state-input upg-check" />
+
+      <!-- ====================================================================
+           1. TITLE SCREEN / MAIN MENU
+           ==================================================================== -->
+      <div class="screen screen-menu">
+        <div class="menu-backdrop">
+          <div class="parallax-layer layer-sky"></div>
+          <div class="parallax-layer layer-far"></div>
+          <div class="parallax-layer layer-near"></div>
+          <div class="parallax-layer layer-street"></div>
+          <div class="menu-chase">
+            <div class="menu-car-police"></div>
+            <div class="menu-car-player"></div>
+          </div>
+        </div>
+
+        <div class="menu-content">
+          <div class="game-logo" title="The Getaway"></div>
+          <div class="menu-tagline">
+            <span class="lang-en">PURE HTML &amp; CSS ARCADE CHASE</span>
+            <span class="lang-es">PERSECUCIÓN ARCADE PURA EN HTML Y CSS</span>
+          </div>
+
+          <div class="menu-buttons">
+            <label for="screen-play" class="arcade-btn gold">
+              <span class="lang-en">▶ PLAY GAME</span>
+              <span class="lang-es">▶ JUGAR</span>
+            </label>
+            <label for="screen-instructions" class="arcade-btn">
+              <span class="lang-en">? INSTRUCTIONS</span>
+              <span class="lang-es">? INSTRUCCIONES</span>
+            </label>
+            <label for="screen-garage" class="arcade-btn">
+              <span class="lang-en">⚙ GARAGE</span>
+              <span class="lang-es">⚙ TALLER</span>
+            </label>
+            <label for="lang-toggle" class="arcade-btn">
+              <span class="lang-en">LANG: ENGLISH</span>
+              <span class="lang-es">IDIOMA: ESPAÑOL</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           2. INSTRUCTIONS SCREEN
+           ==================================================================== -->
+      <div class="screen screen-instructions">
+        <div class="instructions-card panel">
+          <h2 class="card-title">
+            <span class="lang-en">HOW TO PLAY</span>
+            <span class="lang-es">CÓMO JUGAR</span>
+          </h2>
+
+          <div class="inst-section">
+            <h3>
+              <span class="lang-en">THE GETAWAY LOOP</span>
+              <span class="lang-es">EL BUCLE DE JUEGO</span>
+            </h3>
+            <p style="font-size: 8px; line-height: 1.6;">
+              <span class="lang-en">Grab money off the highway and bank it at the safehouse (Lane 4) before the police catch you. Every coin raises your heat!</span>
+              <span class="lang-es">Recoge dinero de la autopista y deposítalo en el refugio (carril 4) antes de que la policía te atrape. ¡Cada moneda sube tu alerta!</span>
+            </p>
+          </div>
+
+          <div class="inst-section">
+            <h3>
+              <span class="lang-en">CONTROLS</span>
+              <span class="lang-es">CONTROLES</span>
+            </h3>
+            <div class="inst-grid">
+              <div class="inst-row"><span class="key-cap">CLICK</span><span><span class="lang-en">Click lane to steer</span><span class="lang-es">Clic en carril para girar</span></span></div>
+              <div class="inst-row"><span class="key-cap">F</span><span><span class="lang-en">Brake / Refuel at station</span><span class="lang-es">Frenar / Repostar</span></span></div>
+              <div class="inst-row"><span class="key-cap">E</span><span><span class="lang-en">Fire rocket</span><span class="lang-es">Lanzar cohete</span></span></div>
+              <div class="inst-row"><span class="key-cap">SPACE</span><span><span class="lang-en">Drop bomb</span><span class="lang-es">Soltar bomba</span></span></div>
+              <div class="inst-row"><span class="key-cap">G</span><span><span class="lang-en">Garage workshop</span><span class="lang-es">Taller de mejoras</span></span></div>
+              <div class="inst-row"><span class="key-cap">ESC</span><span><span class="lang-en">Pause menu</span><span class="lang-es">Pausar partida</span></span></div>
+            </div>
+          </div>
+
+          <div class="inst-section">
+            <h3>
+              <span class="lang-en">PICKUPS</span>
+              <span class="lang-es">OBJETOS</span>
+            </h3>
+            <div class="inst-grid">
+              <div class="inst-row"><div class="pickup-icon-preview icon-coin-p"></div><span><span class="lang-en">+$100 Money (+1 Heat)</span><span class="lang-es">+$100 Dinero (+1 Alerta)</span></span></div>
+              <div class="inst-row"><div class="pickup-icon-preview icon-repair-p"></div><span><span class="lang-en">Repair (+1 Shield)</span><span class="lang-es">Reparar (+1 Escudo)</span></span></div>
+              <div class="inst-row"><div class="pickup-icon-preview icon-nitro-p"></div><span><span class="lang-en">Nitro Speed Boost</span><span class="lang-es">Nitro Turbo</span></span></div>
+              <div class="inst-row"><div class="pickup-icon-preview icon-rocket-p"></div><span><span class="lang-en">+1 Rocket ammo</span><span class="lang-es">+1 Cohete</span></span></div>
+              <div class="inst-row"><div class="pickup-icon-preview icon-bomb-p"></div><span><span class="lang-en">+1 Bomb ammo</span><span class="lang-es">+1 Bomba</span></span></div>
+              <div class="inst-row"><div class="pickup-icon-preview icon-heart-p"></div><span><span class="lang-en">Extra Life</span><span class="lang-es">Vida Extra</span></span></div>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-top: 10px;">
+            <label for="screen-menu" class="arcade-btn gold">
+              <span class="lang-en">BACK TO MENU</span>
+              <span class="lang-es">VOLVER AL MENÚ</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           3. THE GARAGE SCREEN
+           ==================================================================== -->
+      <div class="screen screen-garage">
+        <div class="garage-card panel-gold">
+          <div class="garage-header">
+            <h2 class="card-title" style="margin: 0;">
+              <span class="lang-en">GARAGE UPGRADES</span>
+              <span class="lang-es">TALLER DE MEJORAS</span>
+            </h2>
+            <div class="garage-balance">
+              <span class="lang-en">BANKED: </span>
+              <span class="lang-es">GUARDADO: </span>
+              <span class="banked-display"></span>
+            </div>
+          </div>
+
+          <div class="garage-tracks">
+            <!-- Engine -->
+            <div class="garage-track">
+              <div class="track-info">
+                <span class="track-name"><span class="lang-en">ENGINE</span><span class="lang-es">MOTOR</span></span>
+                <span class="track-desc"><span class="lang-en">Top speed: 300ms → 225ms</span><span class="lang-es">Velocidad: 300ms → 225ms</span></span>
+              </div>
+              <div class="upgrade-pips">
+                <label for="upg-engine-1" class="pip-label"><div class="pip-box"></div><span>$500</span></label>
+                <label for="upg-engine-2" class="pip-label"><div class="pip-box"></div><span>$1.5k</span></label>
+                <label for="upg-engine-3" class="pip-label"><div class="pip-box"></div><span>$4k</span></label>
+              </div>
+            </div>
+
+            <!-- Fuel Tank -->
+            <div class="garage-track">
+              <div class="track-info">
+                <span class="track-name"><span class="lang-en">FUEL TANK</span><span class="lang-es">DEPÓSITO</span></span>
+                <span class="track-desc"><span class="lang-en">Capacity: 100 → 200</span><span class="lang-es">Capacidad: 100 → 200</span></span>
+              </div>
+              <div class="upgrade-pips">
+                <label for="upg-fuel-1" class="pip-label"><div class="pip-box"></div><span>$500</span></label>
+                <label for="upg-fuel-2" class="pip-label"><div class="pip-box"></div><span>$1.5k</span></label>
+                <label for="upg-fuel-3" class="pip-label"><div class="pip-box"></div><span>$4k</span></label>
+              </div>
+            </div>
+
+            <!-- Armor -->
+            <div class="garage-track">
+              <div class="track-info">
+                <span class="track-name"><span class="lang-en">ARMOR</span><span class="lang-es">BLINDAJE</span></span>
+                <span class="track-desc"><span class="lang-en">Shields: 3 → 6 hits</span><span class="lang-es">Escudos: 3 → 6 golpes</span></span>
+              </div>
+              <div class="upgrade-pips">
+                <label for="upg-armor-1" class="pip-label"><div class="pip-box"></div><span>$500</span></label>
+                <label for="upg-armor-2" class="pip-label"><div class="pip-box"></div><span>$1.5k</span></label>
+                <label for="upg-armor-3" class="pip-label"><div class="pip-box"></div><span>$4k</span></label>
+              </div>
+            </div>
+
+            <!-- Bomb Bay -->
+            <div class="garage-track">
+              <div class="track-info">
+                <span class="track-name"><span class="lang-en">BOMB BAY</span><span class="lang-es">BOMBAS</span></span>
+                <span class="track-desc"><span class="lang-en">Capacity: 3 → 6 bombs</span><span class="lang-es">Capacidad: 3 → 6 bombas</span></span>
+              </div>
+              <div class="upgrade-pips">
+                <label for="upg-bomb-1" class="pip-label"><div class="pip-box"></div><span>$500</span></label>
+                <label for="upg-bomb-2" class="pip-label"><div class="pip-box"></div><span>$1.5k</span></label>
+                <label for="upg-bomb-3" class="pip-label"><div class="pip-box"></div><span>$4k</span></label>
+              </div>
+            </div>
+
+            <!-- Rockets -->
+            <div class="garage-track">
+              <div class="track-info">
+                <span class="track-name"><span class="lang-en">ROCKETS</span><span class="lang-es">COHETES</span></span>
+                <span class="track-desc"><span class="lang-en">Magazine: 2 → 5 rockets</span><span class="lang-es">Capacidad: 2 → 5 cohetes</span></span>
+              </div>
+              <div class="upgrade-pips">
+                <label for="upg-rocket-1" class="pip-label"><div class="pip-box"></div><span>$500</span></label>
+                <label for="upg-rocket-2" class="pip-label"><div class="pip-box"></div><span>$1.5k</span></label>
+                <label for="upg-rocket-3" class="pip-label"><div class="pip-box"></div><span>$4k</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: center; gap: 16px; margin-top: 12px;">
+            <label for="screen-play" class="arcade-btn gold">
+              <span class="lang-en">▶ HIT THE ROAD</span>
+              <span class="lang-es">▶ VOLVER A RUTA</span>
+            </label>
+            <label for="screen-menu" class="arcade-btn">
+              <span class="lang-en">MENU</span>
+              <span class="lang-es">MENÚ</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           4. ARCADE GETAWAY SCREEN (THE CORE HIGHWAY CHASE)
+           ==================================================================== -->
+      <div class="screen screen-play">
+        <!-- Top Status HUD -->
+        <div class="hud-bar panel">
+          <div class="hud-stat">
+            <div class="hud-icon icon-bag"></div>
+            <div class="carried-display"></div>
+          </div>
+
+          <div class="hud-stat">
+            <div class="stars-meter">
+              <div class="hud-star"></div>
+              <div class="hud-star"></div>
+              <div class="hud-star"></div>
+              <div class="hud-star"></div>
+              <div class="hud-star"></div>
+            </div>
+          </div>
+
+          <div class="hud-stat fuel-meter-container">
+            <div class="hud-icon icon-fuel"></div>
+            <div class="fuel-gauge-box">
+              <div class="fuel-gauge-fill"></div>
+            </div>
+          </div>
+
+          <div class="hud-stat">
+            <div class="shields-box">
+              <div class="shield-unit shield-unit-1"></div>
+              <div class="shield-unit shield-unit-2"></div>
+              <div class="shield-unit shield-unit-3"></div>
+            </div>
+          </div>
+
+          <label for="pause-toggle" class="arcade-btn" style="padding: 4px 8px; font-size: 8px;">
+            <span>⏸</span>
+          </label>
+        </div>
+
+        <!-- Safehouse Banking Banner -->
+        <div class="notification-banner panel-gold bank-notification">
+          <span class="lang-en">SAFEHOUSE DEPOSIT! +$500 BANKED • CHASE CLEARED!</span>
+          <span class="lang-es">¡DEPÓSITO EN REFUGIO! +$500 GUARDADO • ¡SIN ALERTA!</span>
+        </div>
+
+        <!-- Siren Overlay for High Police Heat -->
+        <div class="siren-overlay"></div>
+
+        <!-- The 4-Lane Scrolling Highway -->
+        <div class="arcade-viewport">
+          <div class="road-surface"></div>
+
+          <!-- Clickable Hitbox Overlay for Steering -->
+          <div class="lane-hitboxes">
+            <label for="lane-1" class="lane-hitbox" title="Lane 1 / Gas Station"></label>
+            <label for="lane-2" class="lane-hitbox" title="Lane 2"></label>
+            <label for="lane-3" class="lane-hitbox" title="Lane 3"></label>
+            <label for="lane-4" class="lane-hitbox" title="Lane 4 / Safehouse"></label>
+          </div>
+
+          <!-- Lane 1: Refuel Station Pad -->
+          <label for="refuel-action" class="station-pad" title="Click to Refuel!">
+            <div class="station-base">
+              <div class="station-pump"></div>
+            </div>
+            <span class="pad-label">
+              <span class="lang-en">REFUEL</span>
+              <span class="lang-es">REPOSTAR</span>
+            </span>
+          </label>
+
+          <!-- Lane 4: Safehouse Pad -->
+          <label for="bank-action" class="safehouse-pad" title="Click to Bank Money!">
+            <div class="safehouse-base">
+              <div class="safehouse-roof"></div>
+            </div>
+            <span class="safehouse-label">
+              <span class="lang-en">SAFEHOUSE $</span>
+              <span class="lang-es">REFUGIO $</span>
+            </span>
+          </label>
+
+          <!-- Pickups Floating Down Lanes -->
+          <label for="coin-1" class="pickup-item coin-pickup coin-lane-1" title="Coin"></label>
+          <label for="coin-2" class="pickup-item coin-pickup coin-lane-2" title="Coin"></label>
+          <label for="coin-3" class="pickup-item coin-pickup coin-lane-3" title="Coin"></label>
+          <label for="coin-4" class="pickup-item coin-pickup coin-lane-4" title="Coin"></label>
+          <label for="coin-5" class="pickup-item coin-pickup coin-lane-2b" title="Coin"></label>
+
+          <label for="pickup-repair" class="pickup-item repair-pickup" title="Repair"></label>
+          <label for="pickup-nitro" class="pickup-item nitro-pickup" title="Nitro"></label>
+          <label for="pickup-rocket" class="pickup-item rocket-pickup" title="Rocket"></label>
+          <label for="pickup-bomb" class="pickup-item bomb-pickup" title="Bomb"></label>
+
+          <!-- Armored Diamond Courier Truck -->
+          <label for="diamond-truck-hit" class="diamond-truck" title="Diamond Truck!">
+            <span class="diamond-badge">💎$1000</span>
+          </label>
+
+          <!-- Police Pursuers & Road Hazards -->
+          <label for="damage-1" class="police-car police-lane-2" title="Police Cruiser!"></label>
+          <label for="damage-2" class="police-car police-lane-3" title="Police Cruiser!"></label>
+          <label for="damage-3" class="swat-van" title="SWAT Van!"></label>
+          <label for="damage-2" class="roadblock-item" title="Roadblock!"></label>
+
+          <!-- Police Helicopter Pursuit (3+ Stars) -->
+          <div class="heli-unit">
+            <div class="heli-body"></div>
+            <div class="heli-rotor"></div>
+            <div class="heli-spotlight"></div>
+          </div>
+
+          <!-- Weapons Fired -->
+          <div class="rocket-missile" style="left: 184px;"></div>
+          <div class="planted-bomb"></div>
+          <div class="explosion-fx"></div>
+
+          <!-- Player Car -->
+          <div class="player-car-container">
+            <div class="player-car-sprite"></div>
+            <div class="car-exhaust-flame"></div>
+          </div>
+        </div>
+
+        <!-- Bottom Controls & Action Bar -->
+        <div class="controls-hud panel">
+          <div class="steering-buttons">
+            <label for="lane-1" class="arcade-btn steer-btn">◀ 1</label>
+            <label for="lane-2" class="arcade-btn steer-btn">2</label>
+            <label for="lane-3" class="arcade-btn steer-btn">3</label>
+            <label for="lane-4" class="arcade-btn steer-btn">4 ▶</label>
+          </div>
+
+          <div class="action-buttons">
+            <label for="refuel-action" class="arcade-btn action-label-btn" title="Refuel">
+              <span class="hud-icon icon-fuel" style="width: 18px; height: 18px; background-size: 270px 18px; background-position: -72px 0;"></span>
+              <span class="lang-en">BRAKE</span>
+              <span class="lang-es">FRENAR</span>
+            </label>
+
+            <label for="fire-rocket" class="arcade-btn action-label-btn" title="Fire Rocket">
+              <span class="hud-icon icon-rocket" style="width: 18px; height: 18px; background-size: 270px 18px; background-position: -108px 0;"></span>
+              <span class="lang-en">ROCKET</span>
+              <span class="lang-es">COHETE</span>
+            </label>
+
+            <label for="drop-bomb" class="arcade-btn action-label-btn" title="Drop Bomb">
+              <span class="hud-icon icon-bomb" style="width: 18px; height: 18px; background-size: 270px 18px; background-position: -90px 0;"></span>
+              <span class="lang-en">BOMB</span>
+              <span class="lang-es">BOMBA</span>
+            </label>
+
+            <label for="screen-garage" class="arcade-btn gold action-label-btn" title="Open Garage">
+              <span>⚙</span>
+              <span class="lang-en">GARAGE</span>
+              <span class="lang-es">TALLER</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Pause Overlay Modal -->
+        <div class="pause-overlay">
+          <div class="panel" style="padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center;">
+            <h2 style="color: var(--gold); font-size: 14px;">
+              <span class="lang-en">GAME PAUSED</span>
+              <span class="lang-es">JUEGO EN PAUSA</span>
+            </h2>
+            <label for="pause-toggle" class="arcade-btn gold">
+              <span class="lang-en">▶ RESUME</span>
+              <span class="lang-es">▶ CONTINUAR</span>
+            </label>
+            <label for="screen-instructions" class="arcade-btn">
+              <span class="lang-en">? INSTRUCTIONS</span>
+              <span class="lang-es">? INSTRUCCIONES</span>
+            </label>
+            <label for="screen-menu" class="arcade-btn red">
+              <span class="lang-en">QUIT TO MENU</span>
+              <span class="lang-es">VOLVER AL MENÚ</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           5. GAME OVER / BUSTED SCREEN
+           ==================================================================== -->
+      <div class="screen screen-gameover">
+        <div class="end-card panel-red">
+          <h2 class="end-title busted">
+            <span class="lang-en">BUSTED!</span>
+            <span class="lang-es">¡ATRAPADO!</span>
+          </h2>
+          <p style="font-size: 9px; line-height: 1.6; color: #ffb8b8;">
+            <span class="lang-en">The police shut you down. Carried money was confiscated!</span>
+            <span class="lang-es">La policía te interceptó. ¡El dinero llevado fue confiscado!</span>
+          </p>
+
+          <div class="end-stats">
+            <div>
+              <span class="lang-en">BANKED SAVINGS: </span>
+              <span class="lang-es">DINERO GUARDADO: </span>
+              <span class="banked-display"></span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px;">
+            <button type="reset" class="arcade-btn gold reset-btn">
+              <span class="lang-en">↺ TRY AGAIN</span>
+              <span class="lang-es">↺ REINTENTAR</span>
+            </button>
+            <label for="screen-menu" class="arcade-btn">
+              <span class="lang-en">MAIN MENU</span>
+              <span class="lang-es">MENÚ PRINCIPAL</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           6. VICTORY / ESCAPED SCREEN
+           ==================================================================== -->
+      <div class="screen screen-victory">
+        <div class="end-card panel-gold">
+          <h2 class="end-title escaped">
+            <span class="lang-en">ESCAPED!</span>
+            <span class="lang-es">¡ESCAPASTE!</span>
+          </h2>
+          <p style="font-size: 9px; line-height: 1.6; color: var(--gold-light);">
+            <span class="lang-en">You evaded the 5-star manhunt and secured your fortune!</span>
+            <span class="lang-es">¡Evadiste la persecución de 5 estrellas y aseguraste tu botín!</span>
+          </p>
+
+          <div class="end-stats">
+            <div>
+              <span class="lang-en">FINAL BANKED: </span>
+              <span class="lang-es">TOTAL GUARDADO: </span>
+              <span class="banked-display"></span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px;">
+            <button type="reset" class="arcade-btn gold reset-btn">
+              <span class="lang-en">PLAY AGAIN</span>
+              <span class="lang-es">JUGAR DE NUEVO</span>
+            </button>
+            <label for="screen-menu" class="arcade-btn">
+              <span class="lang-en">MENU</span>
+              <span class="lang-es">MENÚ</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </form>
   </body>
 </html>
