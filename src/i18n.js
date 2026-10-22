@@ -37,7 +37,6 @@ export const STRINGS = {
 
         'hud.bank': 'BANK',
         'hud.carry': 'CARRY',
-        'hud.nitro': 'NOS',
         'hud.wanted': 'WANTED',
         'hud.next': 'NEXT',
 
@@ -46,12 +45,14 @@ export const STRINGS = {
         'toast.banked': '+{amount} BANKED',
         'toast.diamond': 'DIAMOND! +{amount}',
         'toast.nitro': 'NITRO!',
+        'toast.nitroKeys': 'PRESS R FOR NITRO',
+        'toast.nitroPad': 'PRESS RB FOR NITRO',
         'toast.life': '+1 LIFE',
 
         'pickup.bomb': '+1 BOMB',
         'pickup.repair': 'REPAIRED',
         'pickup.life': '+1 LIFE',
-        'pickup.nitro': 'NITRO!',
+        'pickup.nitro': '+1 NITRO',
         'pickup.rocket': '+1 ROCKET',
 
         'gameOver.title': 'GAME OVER',
@@ -85,6 +86,7 @@ export const STRINGS = {
         'help.brake': 'BRAKE/REFUEL',
         'help.bomb': 'DROP BOMB',
         'help.rocket': 'FIRE ROCKET',
+        'help.useNitro': 'FIRE NITRO',
         'help.garage': 'GARAGE (BASE)',
         'help.pause': 'PAUSE',
         'help.pickups': 'PICKUPS',
@@ -126,7 +128,6 @@ export const STRINGS = {
 
         'hud.bank': 'BANCO',
         'hud.carry': 'BOTIN',
-        'hud.nitro': 'NOS',
         'hud.wanted': 'BUSCADO',
         'hud.next': 'LUEGO',
 
@@ -135,12 +136,14 @@ export const STRINGS = {
         'toast.banked': '+{amount} AL BANCO',
         'toast.diamond': '¡DIAMANTE! +{amount}',
         'toast.nitro': '¡NITRO!',
+        'toast.nitroKeys': 'PULSA R PARA EL NITRO',
+        'toast.nitroPad': 'PULSA RB PARA EL NITRO',
         'toast.life': '+1 VIDA',
 
         'pickup.bomb': '+1 BOMBA',
         'pickup.repair': 'REPARADO',
         'pickup.life': '+1 VIDA',
-        'pickup.nitro': '¡NITRO!',
+        'pickup.nitro': '+1 NITRO',
         'pickup.rocket': '+1 COHETE',
 
         'gameOver.title': 'FIN DEL JUEGO',
@@ -174,6 +177,7 @@ export const STRINGS = {
         'help.brake': 'FRENAR/REPOSTAR',
         'help.bomb': 'SOLTAR BOMBA',
         'help.rocket': 'LANZAR COHETE',
+        'help.useNitro': 'USAR NITRO',
         'help.garage': 'TALLER (BASE)',
         'help.pause': 'PAUSA',
         'help.pickups': 'OBJETOS',

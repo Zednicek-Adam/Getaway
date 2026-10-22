@@ -18,6 +18,9 @@ export class InputManager {
         // Brake/stop toggle state (F) — consumed by GameScene
         this.stopToggled = false;
 
+        // Nitro key state (R) — consumed by GameScene
+        this.nitroPressed = false;
+
         // Keyboard Keys
         this.cursors = this.scene.input.keyboard.createCursorKeys();
         this.wasd = {
@@ -29,9 +32,11 @@ export class InputManager {
         this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.rocketKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.stopKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+        this.nitroKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
 
         // Gamepad: D-pad or left stick steers. Rocket and bomb sit on both the
-        // face buttons and the triggers, so either grip works.
+        // face buttons and the triggers, so either grip works; nitro is the
+        // right bumper, next to the rocket trigger.
         const fireRocket = () => { this.rocketPressed = true; };
         const dropBomb = () => { this.bombPressed = true; };
         bindPad(this.scene, {
@@ -44,6 +49,7 @@ export class InputManager {
             rt: fireRocket,
             b: dropBomb,
             lt: dropBomb,
+            rb: () => { this.nitroPressed = true; },
         });
 
         // Swipe Handling
@@ -83,6 +89,10 @@ export class InputManager {
 
         if (Phaser.Input.Keyboard.JustDown(this.stopKey)) {
             this.stopToggled = true;
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(this.nitroKey)) {
+            this.nitroPressed = true;
         }
     }
 
@@ -136,6 +146,13 @@ export class InputManager {
     consumeStopToggle() {
         if (!this.stopToggled) return false;
         this.stopToggled = false;
+        return true;
+    }
+
+    // True once per R (or pad RB) press — fires a stored nitro
+    consumeNitroPress() {
+        if (!this.nitroPressed) return false;
+        this.nitroPressed = false;
         return true;
     }
 }
