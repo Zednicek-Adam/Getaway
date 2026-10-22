@@ -4,6 +4,7 @@ import { COLLECTIBLE_TYPES, createCollectibleIcon } from '../objects/Collectible
 import { label, panel, dim, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
 import { t } from '../i18n';
+import { useStage } from '../screen';
 
 // Static "how to play" page reached from the main menu.
 //
@@ -30,7 +31,7 @@ export class InstructionsScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height } = this.scale;
+        const { width, height } = useStage(this, () => ({ returnTo: this.returnTo }), { anchor: 'bottom' });
         const centre = width / 2;
 
         // The title screen's city, dimmed behind a big panel

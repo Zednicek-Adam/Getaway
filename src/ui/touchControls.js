@@ -67,13 +67,9 @@ export class TouchControls {
     // `actions` maps each button's action name to a handler
     constructor(scene, actions) {
         this.scene = scene;
-        this.last = {};
+        this.actions = actions;
         this.pulses = {};
-
-        this.buttons = {};
-        for (const def of BUTTONS) {
-            this.buttons[def.action] = this.createButton(def, def.at(scene.scale), actions[def.action]);
-        }
+        this.build();
 
         this.setVisible(touchControlsActive());
         if (!this.visible) {
@@ -86,6 +82,27 @@ export class TouchControls {
             };
             scene.input.on('pointerdown', reveal);
         }
+    }
+
+    // Places every button against the current canvas edges
+    build() {
+        this.buttons = {};
+        for (const def of BUTTONS) {
+            this.buttons[def.action] = this.createButton(def, def.at(this.scene.scale), this.actions[def.action]);
+        }
+    }
+
+    // The canvas changed size (a phone rotated): rebuild the buttons for the
+    // new edges. The next update() redraws them.
+    relayout() {
+        Object.values(this.pulses).forEach((tw) => tw && tw.stop());
+        this.pulses = {};
+        for (const b of Object.values(this.buttons)) {
+            b.parts.forEach((p) => p.destroy());
+            b.hit.destroy();
+        }
+        this.build();
+        this.setVisible(this.visible);
     }
 
     createButton(def, { left, top, size }, handler) {

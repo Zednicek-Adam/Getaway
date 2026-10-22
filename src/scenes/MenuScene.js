@@ -3,6 +3,7 @@ import { loadSave, getBrowserStorage } from '../storage';
 import { label, panel, icon, money, UI_COLORS, createMenu, cityBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
 import { t, setLanguage, nextLanguage } from '../i18n';
+import { useStage } from '../screen';
 
 // Parallax speeds in texture pixels per millisecond
 const SCROLL = { far: 0.012, near: 0.035, street: 0.3 };
@@ -20,7 +21,9 @@ export class MenuScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height } = this.scale;
+        // A size change mid-slide is left alone: the scene is on its way out
+        const { width } = useStage(this, () => (this.isTransitioning ? null : { selected: this.menu.selected }),
+            { anchor: 'bottom' });
 
         // Container for all menu elements (so we can slide them as one unit)
         this.menuContainer = this.add.container(0, 0);
@@ -62,10 +65,11 @@ export class MenuScene extends Phaser.Scene {
             this.scene.launch('GameScene');
             this.scene.bringToTop('MenuScene');
 
-            // Slide the entire menu container upward off-screen
+            // Slide the entire menu container upward off-screen (the whole
+            // canvas, which can be taller than the stage)
             this.tweens.add({
                 targets: this.menuContainer,
-                y: -height,
+                y: -this.scale.height,
                 duration: 600,
                 ease: 'Power2',
                 onComplete: () => {

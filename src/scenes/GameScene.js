@@ -17,6 +17,7 @@ import { explosion, sparkBurst, smokePuff, floatText, rearVector, CarTrail } fro
 import { money, UI_COLORS } from '../ui/ui';
 import { bindPad } from '../gamepad';
 import { TouchControls, controlHint } from '../ui/touchControls';
+import { onScreenResize } from '../screen';
 import { t } from '../i18n';
 
 // Pickup feedback: popup text + spark tint per collectible type. Text is a
@@ -119,6 +120,16 @@ export class GameScene extends Phaser.Scene {
         // On-screen buttons for touch screens: the InputManager's actions,
         // plus pause and the garage, which open scenes straight away
         this.touchControls = new TouchControls(this, { ...this.inputManager.actions, pause, garage: openGarage });
+
+        // A phone rotating changes the canvas size: the camera follows on its
+        // own (Phaser resizes it), the HUD and buttons rebuild for the new edges
+        onScreenResize(this, () => {
+            this.uiManager.relayout();
+            this.touchControls.relayout();
+            // update() stops after a game over and doesn't run while paused,
+            // so fill the new HUD in now
+            this.refreshHud();
+        });
 
         // One-shot per-run garage hint (fires the first time on the base pad)
         this.garageHintShown = false;
@@ -281,6 +292,11 @@ export class GameScene extends Phaser.Scene {
         }
 
         // (i) HUD snapshot
+        this.refreshHud();
+    }
+
+    // Draws the HUD and touch buttons from the current state
+    refreshHud() {
         this.uiManager.update({
             banked: this.state.banked,
             carried: this.state.carried,

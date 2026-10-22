@@ -7,6 +7,7 @@ import { bindPad } from '../gamepad';
 import { controlHint } from '../ui/touchControls';
 import { sparkBurst } from '../fx';
 import { t } from '../i18n';
+import { useStage } from '../screen';
 
 // Icon per upgrade track (icons.png)
 const TRACK_ICONS = {
@@ -32,7 +33,7 @@ export class GarageScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height } = this.scale;
+        const { width, height } = useStage(this, () => ({ gameState: this.gameState, save: this.save, storage: this.storage }));
 
         dim(this, 0.72);
 

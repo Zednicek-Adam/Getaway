@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { label, panel, dim, UI_COLORS, INK, createMenu, cityBackdrop } from '../ui/ui';
 import { bindPad } from '../gamepad';
 import { t } from '../i18n';
+import { useStage } from '../screen';
 
 const REPO_URL = 'https://github.com/Zednicek-Adam/Getaway';
 // Shown on screen in the font's capitals; GitHub paths are case-insensitive
@@ -27,7 +28,7 @@ export class CreditsScene extends Phaser.Scene {
     }
 
     create() {
-        const { width } = this.scale;
+        const { width } = useStage(this, undefined, { anchor: 'bottom' });
         const centre = width / 2;
 
         cityBackdrop(this);

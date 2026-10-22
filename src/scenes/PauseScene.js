@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { label, panel, dim, UI_COLORS, createMenu } from '../ui/ui';
 import { bindPad } from '../gamepad';
 import { controlHint } from '../ui/touchControls';
+import { useStage } from '../screen';
 import { t } from '../i18n';
 
 export class PauseScene extends Phaser.Scene {
@@ -10,7 +11,7 @@ export class PauseScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height } = this.scale;
+        const { width, height } = useStage(this);
 
         // Dim the frozen run underneath, then a centred panel
         dim(this, 0.7);
