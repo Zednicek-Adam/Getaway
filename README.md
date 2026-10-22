@@ -12,6 +12,7 @@ Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 | --- | --- |
 | ![Title screen](docs/screenshots/title.png) | ![A five-star chase](docs/screenshots/chase.png) |
 | ![The garage](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
+| ![Credits](docs/screenshots/credits.png) | |
 
 ## The loop
 
@@ -62,7 +63,8 @@ buttons once a controller is connected.
 Touch devices can swipe to steer. An INSTRUCTIONS page shows this same summary
 in-game, reachable from both the main menu and the pause menu; opening it from
 pause leaves the run paused and returns you there. The pause menu can also drop
-you back to the main menu.
+you back to the main menu. CREDITS on the title screen lists who made the game,
+and links to this repository (opened in a new tab).
 
 The car drives itself forward; you only choose turns. Because turns are buffered,
 you can line up a sequence through an intersection before you reach it. Pressing
@@ -196,7 +198,7 @@ src/
   managers/         Input, Map, Police, UI
   objects/          Car, PoliceCar, SwatVan, Helicopter, DiamondCar,
                     Collectible, Bomb, Rocket, Roadblock
-  scenes/           Boot, Menu, Game, Pause, Garage, Instructions
+  scenes/           Boot, Menu, Game, Pause, Garage, Instructions, Credits
   ui/               shared look: pixel text, 9-slice panels, button menus
   generated/        art.json manifest written by tools/generate_art.py
 test/               vitest suites for the Phaser-free modules

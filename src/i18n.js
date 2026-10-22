@@ -25,6 +25,7 @@ export const STRINGS = {
         'menu.subtitle': 'PIXEL REMAKE',
         'menu.start': 'START',
         'menu.instructions': 'INSTRUCTIONS',
+        'menu.credits': 'CREDITS',
         'menu.language': 'LANG: {name}',
         'menu.bank': 'BANK {amount}',
 
@@ -105,6 +106,17 @@ export const STRINGS = {
         'help.heat': 'HEAT',
         'help.heat1': 'EVERY PICKUP RAISES YOUR WANTED STARS',
         'help.heat2': '1-3 PATROLS   4 SWAT + ROADBLOCKS   5 HELICOPTER',
+
+        'credits.title': 'CREDITS',
+        'credits.by': 'A GAME BY',
+        'credits.design': 'GAME DESIGN',
+        'credits.languages': 'LANGUAGES',
+        'credits.thanks': 'SPECIAL THANKS',
+        'credits.thanksWho': 'YOU, FOR PLAYING',
+        'credits.engine': 'ENGINE',
+        'credits.source': 'SOURCE CODE',
+        'credits.disclaimer': 'NO REAL POLICE CARS WERE HARMED IN THE MAKING OF THIS GAME',
+        'credits.github': 'VIEW ON GITHUB',
     },
 
     es: {
@@ -114,6 +126,7 @@ export const STRINGS = {
         'menu.subtitle': 'REMAKE EN PIXELES',
         'menu.start': 'JUGAR',
         'menu.instructions': 'INSTRUCCIONES',
+        'menu.credits': 'CREDITOS',
         'menu.language': 'IDIOMA: {name}',
         'menu.bank': 'BANCO {amount}',
 
@@ -194,6 +207,17 @@ export const STRINGS = {
         'help.heat': 'NIVEL DE BUSQUEDA',
         'help.heat1': 'CADA OBJETO RECOGIDO SUBE TUS ESTRELLAS',
         'help.heat2': '1-3 PATRULLAS   4 SWAT + BARRICADAS   5 HELICOPTERO',
+
+        'credits.title': 'CREDITOS',
+        'credits.by': 'UN JUEGO DE',
+        'credits.design': 'DISEÑO',
+        'credits.languages': 'IDIOMAS',
+        'credits.thanks': 'AGRADECIMIENTOS',
+        'credits.thanksWho': 'A TI, POR JUGAR',
+        'credits.engine': 'MOTOR',
+        'credits.source': 'CODIGO FUENTE',
+        'credits.disclaimer': 'NINGUN PATRULLERO REAL SUFRIO DAÑOS EN ESTE JUEGO',
+        'credits.github': 'VER EN GITHUB',
     },
 };
 
