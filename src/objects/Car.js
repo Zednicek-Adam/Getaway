@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
-import { TurnQueue, isOpposite, pickMove } from '../turnQueue';
+import { TurnQueue, DoubleTap, isOpposite, pickMove, steer } from '../turnQueue';
 
 export class Car {
     constructor(scene, gridX, gridY, mapManager, options = {}) {
@@ -30,6 +30,7 @@ export class Car {
         // Movement State
         this.direction = DIRECTIONS.RIGHT;
         this.turnQueue = new TurnQueue(CONFIG.PLAYER.QUEUE_MAX); // Buffered turns (FIFO)
+        this.reverseTap = new DoubleTap(CONFIG.PLAYER.DOUBLE_TAP_MS); // Back pressed twice
         this.isMoving = false;
         this.halted = false; // Player brake toggle (stop to refuel / wait)
         this.moveConfig = {
@@ -145,8 +146,7 @@ export class Car {
         this.isMoving = true;
     }
 
-    // Player input path: queue the turn (or U-turn immediately when the
-    // queue is empty and the press opposes the direction of travel)
+    // Player input path: queue the turn, or U-turn (see steer)
     enqueueTurn(dir) {
         // First input clears the initial wait state; steering also releases the brake
         if (this.waitingForInput) {
@@ -154,10 +154,9 @@ export class Car {
         }
         this.halted = false;
 
-        if (this.turnQueue.length === 0 && isOpposite(dir, this.direction)) {
+        const now = this.scene.time.now;
+        if (steer(this.turnQueue, this.reverseTap, this.direction, dir, now) === 'uturn') {
             this.performUturn(dir);
-        } else {
-            this.turnQueue.push(dir);
         }
     }
 

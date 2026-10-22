@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TurnQueue, isOpposite, oppositeOf, pickMove } from '../src/turnQueue';
+import { TurnQueue, DoubleTap, isOpposite, oppositeOf, pickMove, steer } from '../src/turnQueue';
 import { DIRECTIONS } from '../src/constants';
 
 describe('isOpposite', () => {
@@ -148,5 +148,96 @@ describe('pickMove', () => {
     it('goes straight with an empty queue, or stays put if it cannot', () => {
         expect(pickMove(queueOf(), RIGHT, roads(LEFT, RIGHT))).toBe(RIGHT);
         expect(pickMove(queueOf(), RIGHT, roads(LEFT))).toBeNull();
+    });
+});
+
+describe('DoubleTap', () => {
+    const { LEFT, RIGHT } = DIRECTIONS;
+
+    it('fires on a second press of the same direction inside the window', () => {
+        const tap = new DoubleTap(400);
+        expect(tap.press(LEFT, 1000)).toBe(false);
+        expect(tap.press(LEFT, 1400)).toBe(true);
+    });
+
+    it('ignores a second press that comes too late', () => {
+        const tap = new DoubleTap(400);
+        tap.press(LEFT, 1000);
+        expect(tap.press(LEFT, 1401)).toBe(false);
+        // ...but that late press starts a new pair
+        expect(tap.press(LEFT, 1500)).toBe(true);
+    });
+
+    it('needs the same direction twice in a row', () => {
+        const tap = new DoubleTap(400);
+        tap.press(LEFT, 1000);
+        expect(tap.press(RIGHT, 1100)).toBe(false);
+        expect(tap.press(LEFT, 1200)).toBe(false);
+    });
+
+    it('consumes a hit, so a third press starts over', () => {
+        const tap = new DoubleTap(400);
+        tap.press(LEFT, 1000);
+        tap.press(LEFT, 1100);
+        expect(tap.press(LEFT, 1200)).toBe(false);
+    });
+});
+
+describe('steer', () => {
+    const { UP, DOWN, LEFT, RIGHT } = DIRECTIONS;
+    const setup = (...dirs) => {
+        const queue = new TurnQueue(2);
+        dirs.forEach((d) => queue.push(d));
+        return { queue, tap: new DoubleTap(400) };
+    };
+
+    it('U-turns on a single back press when nothing is queued', () => {
+        const { queue, tap } = setup();
+        expect(steer(queue, tap, RIGHT, LEFT, 0)).toBe('uturn');
+    });
+
+    it('queues a single back press when turns are queued', () => {
+        const { queue, tap } = setup(UP);
+        expect(steer(queue, tap, RIGHT, LEFT, 0)).toBe('queued');
+        expect(queue.toArray()).toEqual([UP, LEFT]);
+    });
+
+    it('U-turns on a quick second back press when turns are queued', () => {
+        const { queue, tap } = setup(UP);
+        steer(queue, tap, RIGHT, LEFT, 0);
+        expect(steer(queue, tap, RIGHT, LEFT, 200)).toBe('uturn');
+    });
+
+    it('U-turns on the double tap with a full queue', () => {
+        const { queue, tap } = setup(UP, LEFT);
+        expect(steer(queue, tap, RIGHT, LEFT, 0)).toBe('ignored');
+        expect(steer(queue, tap, RIGHT, LEFT, 200)).toBe('uturn');
+    });
+
+    it('U-turns on the double tap when the first press undid a queued turn', () => {
+        const { queue, tap } = setup(UP, RIGHT);
+        expect(steer(queue, tap, RIGHT, LEFT, 0)).toBe('cancelled');
+        expect(steer(queue, tap, RIGHT, LEFT, 200)).toBe('uturn');
+    });
+
+    it('does not U-turn when the two back presses are slow', () => {
+        const { queue, tap } = setup(UP);
+        steer(queue, tap, RIGHT, LEFT, 0);
+        expect(steer(queue, tap, RIGHT, LEFT, 900)).not.toBe('uturn');
+        expect(queue.toArray()).toEqual([UP, LEFT]);
+    });
+
+    it('never U-turns on a double tap of a sideways direction', () => {
+        const { queue, tap } = setup(UP);
+        steer(queue, tap, RIGHT, DOWN, 0);
+        expect(steer(queue, tap, RIGHT, DOWN, 100)).not.toBe('uturn');
+    });
+
+    it('does not flip straight back after an instant U-turn', () => {
+        // Empty queue: the first back press U-turns, so the second press is
+        // now "straight on" and must not reverse the car again
+        const { queue, tap } = setup();
+        expect(steer(queue, tap, RIGHT, LEFT, 0)).toBe('uturn');
+        expect(steer(queue, tap, LEFT, LEFT, 100)).toBe('queued');
     });
 });
