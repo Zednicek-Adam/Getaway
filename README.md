@@ -50,6 +50,7 @@ default) or by running the tank dry. Either way, carried money is gone.
 | `F` | A | Brake — hold position, and refuel when parked on a station pad |
 | `Space` | B / LT | Drop a bomb (10s fuse, destroys police) |
 | `E` | X / RT | Fire a rocket along your facing, up to 8 tiles |
+| `R` | RB | Fire a stored nitro (4s speed boost) |
 | `G` | Y | Open the garage (only while parked on the safehouse pad) |
 | `Esc` | Start | Pause |
 
@@ -88,7 +89,7 @@ Money is the bulk of what spawns; the rest is weighted rarer.
 | ------ | ------ | ------ |
 | spinning gold `$` coin | Money | +$100 carried, +1 heat |
 | green `+` token | Repair | Removes one point of damage |
-| blue lightning token | Nitro | ~1.5× speed for 4 seconds |
+| blue lightning token | Nitro | Stored, up to 3; fire one for ~1.5× speed for 4 seconds |
 | orange missile token | Rocket | +1 rocket |
 | black bomb, lit fuse | Bomb | +1 bomb |
 | red heart | Extra life | +1 life, capped at 5 |

@@ -107,6 +107,8 @@ export class GameScene extends Phaser.Scene {
 
         // One-shot per-run garage hint (fires the first time on the base pad)
         this.garageHintShown = false;
+        // One-shot per-run hint on the first nitro pickup
+        this.nitroHintShown = false;
 
         this.gameOver = false;
     }
@@ -129,6 +131,12 @@ export class GameScene extends Phaser.Scene {
         if (this.inputManager.consumeStopToggle()) {
             // Brake toggle — stop to refuel at a station, or wait; steering resumes
             this.playerCar.halted = !this.playerCar.halted;
+        }
+        // Nitro only fires while the car is driving; a parked or stuck car
+        // would just burn the boost standing still
+        const driving = this.playerCar.isMoving && !this.playerCar.halted;
+        if (this.inputManager.consumeNitroPress() && driving && this.state.useNitro()) {
+            this.uiManager.showToast(t('toast.nitro'));
         }
         // Per-frame player speed: nitro shortens the per-tile move duration,
         // the helicopter spotlight lengthens it (slows the player). Car.update
@@ -249,6 +257,7 @@ export class GameScene extends Phaser.Scene {
             rockets: this.state.rockets,
             damage: this.state.damage,
             maxDamage: this.state.maxDamage,
+            nitros: this.state.nitros,
             nitroActive: this.state.isNitroActive(),
             queue: this.playerCar.turnQueue.toArray(),
             stars: this.state.stars,
@@ -517,8 +526,13 @@ export class GameScene extends Phaser.Scene {
             if (!this.state.addLife()) return;
             this.uiManager.showToast(t('toast.life'));
         } else if (item.type === COLLECTIBLE_TYPES.NITRO) {
-            this.state.pickupNitro(); // Refresh-to-full speed boost
-            this.uiManager.showToast(t('toast.nitro'));
+            // Stored for later (R / RB fires it); full — leave it on the road
+            if (!this.state.pickupNitro()) return;
+            // The first one each run says which button fires it
+            if (!this.nitroHintShown) {
+                this.nitroHintShown = true;
+                this.uiManager.showToast(t(hasGamepad() ? 'toast.nitroPad' : 'toast.nitroKeys'));
+            }
         } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
             // Inventory full — leave the rocket on the road for later
             if (!this.state.pickupRocket()) return;

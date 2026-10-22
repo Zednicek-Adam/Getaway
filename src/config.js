@@ -37,6 +37,7 @@ export const CONFIG = {
     NITRO: {
         SPEED_FACTOR: 0.65,   // move-duration multiplier while active (300ms → 195ms/tile ≈ 1.54× speed)
         DURATION_MS: 4000,
+        MAX_CARRY: 3,         // stored charges; the player fires one on demand
     },
 
     MAP: {

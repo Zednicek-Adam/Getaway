@@ -52,11 +52,13 @@ export class InstructionsScene extends Phaser.Scene {
             ['F / A', t('help.brake')],
             [t('help.keyBomb'), t('help.bomb')],
             ['E / X', t('help.rocket')],
+            ['R / RB', t('help.useNitro')],
             ['G / Y', t('help.garage')],
             ['ESC / START', t('help.pause')],
         ];
+        // 40px rows (vs 44 for pickups) so seven keycaps clear the notes
         controls.forEach(([key, action], i) => {
-            const y = 346 + i * 44;
+            const y = 346 + i * 40;
             this.keycap(300, y, key);
             this.body(320, y, action, UI_COLORS.white);
         });

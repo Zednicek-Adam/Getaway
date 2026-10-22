@@ -18,7 +18,8 @@ export class GameState {
         this.damage = 0;
         this.maxDamage = stats.maxDamage;       // derived from armor upgrade
         this.maxLives = CONFIG.PLAYER.MAX_LIVES;
-        this.nitroRemaining = 0;
+        this.nitros = 0;          // stored charges
+        this.nitroRemaining = 0;  // ms left on the running boost
         this.stars = 0;
         this.heat = 0;
         this.chaseCountdown = 0;
@@ -79,9 +80,20 @@ export class GameState {
         return true;
     }
 
-    // Nitro refreshes to full on re-pickup (no stacking).
+    // A nitro pickup is stored; the player fires it later with useNitro.
     pickupNitro() {
+        if (this.nitros >= CONFIG.NITRO.MAX_CARRY) return false;
+        this.nitros++;
+        return true;
+    }
+
+    // Burn one stored charge. Refused while a boost is already running, so
+    // a double press can't waste a charge.
+    useNitro() {
+        if (this.nitros <= 0 || this.isNitroActive()) return false;
+        this.nitros--;
         this.nitroRemaining = CONFIG.NITRO.DURATION_MS;
+        return true;
     }
 
     isNitroActive() {

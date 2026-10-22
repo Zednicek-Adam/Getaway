@@ -277,37 +277,69 @@ describe('GameState', () => {
     });
 
     describe('nitro', () => {
-        it('pickup sets the timer and isNitroActive', () => {
+        it('pickup stores a charge without starting the boost', () => {
             const state = new GameState();
+            expect(state.pickupNitro()).toBe(true);
+            expect(state.nitros).toBe(1);
             expect(state.isNitroActive()).toBe(false);
+        });
+
+        it('pickup is refused at the carry cap', () => {
+            const state = new GameState();
+            for (let i = 0; i < CONFIG.NITRO.MAX_CARRY; i++) {
+                expect(state.pickupNitro()).toBe(true);
+            }
+            expect(state.pickupNitro()).toBe(false);
+            expect(state.nitros).toBe(CONFIG.NITRO.MAX_CARRY);
+        });
+
+        it('useNitro burns a charge and starts the timer', () => {
+            const state = new GameState();
             state.pickupNitro();
+            expect(state.useNitro()).toBe(true);
+            expect(state.nitros).toBe(0);
             expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS);
             expect(state.isNitroActive()).toBe(true);
+        });
+
+        it('useNitro with nothing stored does nothing', () => {
+            const state = new GameState();
+            expect(state.useNitro()).toBe(false);
+            expect(state.isNitroActive()).toBe(false);
+        });
+
+        it('useNitro is refused while a boost is running (no wasted charge)', () => {
+            const state = new GameState();
+            state.pickupNitro();
+            state.pickupNitro();
+            state.useNitro();
+            state.tick(CONFIG.NITRO.DURATION_MS / 2);
+            expect(state.useNitro()).toBe(false);
+            expect(state.nitros).toBe(1);
+            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS / 2);
+
+            state.tick(CONFIG.NITRO.DURATION_MS / 2);
+            expect(state.useNitro()).toBe(true);
+            expect(state.nitros).toBe(0);
         });
 
         it('tick expires the timer after the full duration', () => {
             const state = new GameState();
             state.pickupNitro();
+            state.useNitro();
             state.tick(CONFIG.NITRO.DURATION_MS);
             expect(state.nitroRemaining).toBe(0);
             expect(state.isNitroActive()).toBe(false);
         });
 
-        it('re-pickup mid-timer refreshes to full (no stacking)', () => {
+        it('onCaught stops the boost but keeps stored charges', () => {
             const state = new GameState();
             state.pickupNitro();
-            state.tick(CONFIG.NITRO.DURATION_MS / 2);
-            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS / 2);
             state.pickupNitro();
-            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS);
-        });
-
-        it('onCaught zeroes the nitro timer', () => {
-            const state = new GameState();
-            state.pickupNitro();
+            state.useNitro();
             state.onCaught();
-            expect(state.nitroRemaining).toBe(0);
             expect(state.isNitroActive()).toBe(false);
+            expect(state.nitros).toBe(1);
         });
     });
 
