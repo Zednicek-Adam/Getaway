@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, DIRECTIONS } from '../constants';
 import { CONFIG } from '../config';
-import { TurnQueue, isOpposite, pickMove } from '../turnQueue';
+import { TurnQueue, DoubleTap, isOpposite, pickMove, steer } from '../turnQueue';
 
 export class Car {
     constructor(scene, gridX, gridY, mapManager, options = {}) {
@@ -41,8 +41,13 @@ export class Car {
         // Movement State
         this.direction = DIRECTIONS.RIGHT;
         this.turnQueue = new TurnQueue(CONFIG.PLAYER.QUEUE_MAX); // Buffered turns (FIFO)
+        this.reverseTap = new DoubleTap(CONFIG.PLAYER.DOUBLE_TAP_MS); // Back pressed twice
         this.isMoving = false;
         this.halted = false; // Player brake toggle (stop to refuel / wait)
+        this.stalled = false; // Player out of fuel and not being pushed (set by GameScene)
+        // Optional (x, y) => bool, asked on arriving at each tile: true brakes
+        // there (sets halted). GameScene uses it to stop a dry car at a pump.
+        this.brakeAt = options.brakeAt ?? null;
         this.moveConfig = {
             duration: CONFIG.PLAYER.MOVE_DURATION, // ms to cross one tile (Speed)
         };
@@ -126,13 +131,20 @@ export class Car {
         this.isMoving = false;
         this.moveTimer = 0;
 
+        if (this.brakeAt && this.brakeAt(this.gridX, this.gridY)) {
+            this.halted = true;
+            return;
+        }
+
         // Check if we should continue moving
         this.tryMove();
     }
 
     tryMove() {
-        // Don't auto-move if waiting for first input, or braked by the player
-        if (this.waitingForInput || this.halted) return;
+        // Don't auto-move if waiting for first input, braked by the player, or
+        // stalled on an empty tank. Checked only between tiles, so a stall
+        // finishes the current tile first.
+        if (this.waitingForInput || this.halted || this.stalled) return;
 
         // On plain track the rails steer: queued turns wait for a crossing
         const forced = this.trackFollow && this.trackFollow(this);
@@ -186,8 +198,7 @@ export class Car {
         this.isMoving = true;
     }
 
-    // Player input path: queue the turn (or U-turn immediately when the
-    // queue is empty and the press opposes the direction of travel)
+    // Player input path: queue the turn, or U-turn (see steer)
     enqueueTurn(dir) {
         // First input clears the initial wait state; steering also releases the brake
         if (this.waitingForInput) {
@@ -195,10 +206,9 @@ export class Car {
         }
         this.halted = false;
 
-        if (this.turnQueue.length === 0 && isOpposite(dir, this.direction)) {
+        const now = this.scene.time.now;
+        if (steer(this.turnQueue, this.reverseTap, this.direction, dir, now) === 'uturn') {
             this.performUturn(dir);
-        } else {
-            this.turnQueue.push(dir);
         }
     }
 

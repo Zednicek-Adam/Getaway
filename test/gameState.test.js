@@ -277,37 +277,78 @@ describe('GameState', () => {
     });
 
     describe('nitro', () => {
-        it('pickup sets the timer and isNitroActive', () => {
+        it('pickup stores a charge without starting the boost', () => {
             const state = new GameState();
+            expect(state.pickupNitro()).toBe(true);
+            expect(state.nitros).toBe(1);
             expect(state.isNitroActive()).toBe(false);
+        });
+
+        it('pickup is refused at the carry cap', () => {
+            const state = new GameState();
+            for (let i = 0; i < CONFIG.NITRO.MAX_CARRY; i++) {
+                expect(state.pickupNitro()).toBe(true);
+            }
+            expect(state.pickupNitro()).toBe(false);
+            expect(state.nitros).toBe(CONFIG.NITRO.MAX_CARRY);
+        });
+
+        it('useNitro burns a charge and starts the timer', () => {
+            const state = new GameState();
             state.pickupNitro();
+            expect(state.useNitro()).toBe(true);
+            expect(state.nitros).toBe(0);
             expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS);
             expect(state.isNitroActive()).toBe(true);
+        });
+
+        it('useNitro is refused on an empty tank and keeps the charge', () => {
+            const state = new GameState();
+            state.pickupNitro();
+            state.fuel = 0;
+            expect(state.useNitro()).toBe(false);
+            expect(state.nitros).toBe(1);
+            expect(state.isNitroActive()).toBe(false);
+        });
+
+        it('useNitro with nothing stored does nothing', () => {
+            const state = new GameState();
+            expect(state.useNitro()).toBe(false);
+            expect(state.isNitroActive()).toBe(false);
+        });
+
+        it('useNitro is refused while a boost is running (no wasted charge)', () => {
+            const state = new GameState();
+            state.pickupNitro();
+            state.pickupNitro();
+            state.useNitro();
+            state.tick(CONFIG.NITRO.DURATION_MS / 2);
+            expect(state.useNitro()).toBe(false);
+            expect(state.nitros).toBe(1);
+            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS / 2);
+
+            state.tick(CONFIG.NITRO.DURATION_MS / 2);
+            expect(state.useNitro()).toBe(true);
+            expect(state.nitros).toBe(0);
         });
 
         it('tick expires the timer after the full duration', () => {
             const state = new GameState();
             state.pickupNitro();
+            state.useNitro();
             state.tick(CONFIG.NITRO.DURATION_MS);
             expect(state.nitroRemaining).toBe(0);
             expect(state.isNitroActive()).toBe(false);
         });
 
-        it('re-pickup mid-timer refreshes to full (no stacking)', () => {
+        it('onCaught stops the boost but keeps stored charges', () => {
             const state = new GameState();
             state.pickupNitro();
-            state.tick(CONFIG.NITRO.DURATION_MS / 2);
-            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS / 2);
             state.pickupNitro();
-            expect(state.nitroRemaining).toBe(CONFIG.NITRO.DURATION_MS);
-        });
-
-        it('onCaught zeroes the nitro timer', () => {
-            const state = new GameState();
-            state.pickupNitro();
+            state.useNitro();
             state.onCaught();
-            expect(state.nitroRemaining).toBe(0);
             expect(state.isNitroActive()).toBe(false);
+            expect(state.nitros).toBe(1);
         });
     });
 
@@ -357,36 +398,152 @@ describe('GameState', () => {
         });
     });
 
-    describe('onOutOfFuel', () => {
-        it('costs a life and refills the tank when lives remain', () => {
-            const state = new GameState();
-            state.pickupMoney();
-            expect(state.lives).toBeGreaterThan(1);
-
-            state.onOutOfFuel();
-            expect(state.lives).toBe(CONFIG.PLAYER.LIVES - 1);
-            expect(state.carried).toBe(0);
-            expect(state.stars).toBe(0);
-            expect(state.fuel).toBe(state.maxFuel);
-            expect(state.isInvulnerable()).toBe(true);
-            expect(state.gameOver).toBe(false);
-        });
-
-        it('at 1 life ends the game with the outOfFuel reason', () => {
-            const state = new GameState();
-            state.lives = 1;
-            state.onOutOfFuel();
-            expect(state.gameOver).toBe(true);
-            expect(state.gameOverReason).toBe('outOfFuel');
-        });
-
-        it('a normal catch chain to 0 lives still reports busted', () => {
+    describe('game over', () => {
+        it('a catch chain to 0 lives reports busted', () => {
             const state = new GameState();
             for (let i = 0; i < CONFIG.PLAYER.LIVES; i++) {
                 state.onCaught();
             }
             expect(state.gameOver).toBe(true);
             expect(state.gameOverReason).toBe('busted');
+        });
+    });
+
+    describe('paying for gas', () => {
+        const PRICE = CONFIG.FUEL.PRICE;
+        const RATE = CONFIG.FUEL.REFUEL_PER_SEC;
+
+        it('charges carried cash first, then the bank', () => {
+            const state = new GameState({ banked: 1000 });
+            state.carried = 10;
+            state.fuel = 0;
+
+            const result = state.refuel(1000); // one second at the pump
+            const cost = RATE * PRICE;
+            expect(state.fuel).toBeCloseTo(RATE);
+            expect(result.paid).toBe(cost);
+            expect(state.carried).toBe(0);
+            expect(result.fromBank).toBe(cost - 10);
+            expect(state.banked).toBe(1000 - (cost - 10));
+        });
+
+        it('charges whole dollars and carries the fraction to the next frame', () => {
+            const state = new GameState({ banked: 1000 });
+            state.fuel = 0;
+            let paid = 0;
+            for (let i = 0; i < 60; i++) paid += state.refuel(1000 / 60).paid; // 1s at 60fps
+            expect(paid).toBe(Math.floor(RATE * PRICE));
+            expect(state.banked).toBe(1000 - paid);
+        });
+
+        it('a full tank costs nothing and pumps nothing', () => {
+            const state = new GameState({ banked: 1000 });
+            expect(state.refuel(1000)).toEqual({ pumped: 0, paid: 0, fromBank: 0, broke: false });
+            expect(state.banked).toBe(1000);
+        });
+
+        it('only fills the room left in the tank', () => {
+            const state = new GameState({ banked: 1000 });
+            state.fuel = state.maxFuel - 3;
+            const result = state.refuel(5000);
+            expect(result.pumped).toBeCloseTo(3);
+            expect(state.fuel).toBe(state.maxFuel);
+            expect(result.paid).toBe(3 * PRICE);
+        });
+
+        it('flat broke: no gas at all', () => {
+            const state = new GameState();
+            state.fuel = 0;
+            const result = state.refuel(1000);
+            expect(result.pumped).toBe(0);
+            expect(result.broke).toBe(true);
+            expect(state.fuel).toBe(0);
+            expect(state.canAffordFuel()).toBe(false);
+        });
+
+        it('only pumps as much as the player can pay for', () => {
+            const state = new GameState({ banked: 4 });
+            state.fuel = 0;
+            const result = state.refuel(1000);
+            expect(result.pumped).toBeCloseTo(4 / PRICE);
+            expect(result.paid).toBe(4);
+            expect(result.broke).toBe(true);
+            expect(state.banked).toBe(0);
+            expect(state.carried).toBe(0);
+            expect(state.pumpOwed).toBeCloseTo(0);
+
+            // Next frame: nothing more comes out
+            expect(state.refuel(100).pumped).toBe(0);
+        });
+
+        it('cash picked up on the road buys fuel again', () => {
+            const state = new GameState();
+            state.fuel = 0;
+            state.pickupMoney();
+            expect(state.canAffordFuel()).toBe(true);
+            state.refuel(1000);
+            expect(state.fuel).toBeCloseTo(RATE);
+            expect(state.carried).toBe(CONFIG.ECONOMY.MONEY_VALUE - RATE * PRICE);
+        });
+    });
+
+    describe('push', () => {
+        it('does nothing while there is gas in the tank', () => {
+            const state = new GameState();
+            expect(state.push()).toBe(false);
+            expect(state.pushMeter).toBe(0);
+            expect(state.isPushing()).toBe(false);
+        });
+
+        it('on an empty tank each tap fills the meter, capped at 1', () => {
+            const state = new GameState();
+            state.fuel = 0;
+            expect(state.push()).toBe(true);
+            expect(state.pushMeter).toBe(CONFIG.PUSH.PER_PRESS);
+            for (let i = 0; i < 20; i++) state.push();
+            expect(state.pushMeter).toBe(1);
+            expect(state.isPushing()).toBe(true);
+        });
+
+        it('the meter drains over time', () => {
+            const state = new GameState();
+            state.fuel = 0;
+            for (let i = 0; i < 4; i++) state.push();
+            state.tick(500);
+            expect(state.pushMeter).toBeCloseTo(1 - CONFIG.PUSH.DECAY_PER_SEC * 0.5);
+            state.tick(10000);
+            expect(state.pushMeter).toBe(0);
+            expect(state.isPushing()).toBe(false);
+        });
+
+        it('with gas, only nitro changes the speed', () => {
+            const state = new GameState();
+            expect(state.playerMoveDuration()).toBe(state.moveDuration);
+            state.pickupNitro();
+            state.useNitro();
+            expect(state.playerMoveDuration()).toBeCloseTo(state.moveDuration * CONFIG.NITRO.SPEED_FACTOR);
+        });
+
+        it('an empty tank crawls at the dry speed, nitro or not', () => {
+            const state = new GameState();
+            state.pickupNitro();
+            state.useNitro();
+            state.fuel = 0;
+            expect(state.isOutOfFuel()).toBe(true);
+            expect(state.playerMoveDuration()).toBe(state.moveDuration * CONFIG.PUSH.DRY_SPEED_FACTOR);
+        });
+
+        it('the helicopter slow factor applies on top', () => {
+            const state = new GameState();
+            expect(state.playerMoveDuration(1.5)).toBe(state.moveDuration * 1.5);
+        });
+
+        it('a catch empties the meter', () => {
+            const state = new GameState();
+            state.fuel = 0;
+            state.push();
+            state.onCaught();
+            expect(state.pushMeter).toBe(0);
         });
     });
 });

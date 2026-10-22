@@ -70,6 +70,45 @@ export class TurnQueue {
     }
 }
 
+// Spots a quick second press of the same direction. Pure: the caller passes
+// the clock. A hit is consumed, so a third press starts a fresh pair.
+export class DoubleTap {
+    constructor(windowMs) {
+        this.windowMs = windowMs;
+        this.reset();
+    }
+
+    press(dir, now) {
+        if (dir === this.dir && now - this.at <= this.windowMs) {
+            this.reset();
+            return true;
+        }
+        this.dir = dir;
+        this.at = now;
+        return false;
+    }
+
+    reset() {
+        this.dir = null;
+        this.at = -Infinity;
+    }
+}
+
+// What a player's direction press does. Pressing back (opposite to travel)
+// reverses at once when nothing is queued. With turns queued a single back
+// press edits the queue as usual (it may undo the last turn); pressing it
+// twice in quick succession drops the plan and spins round.
+// Returns 'uturn' when the car should reverse now (the caller clears the
+// queue), otherwise the TurnQueue.push result. Mutates `queue` and `tap`.
+export function steer(queue, tap, direction, dir, now) {
+    const doubleTap = tap.press(dir, now);
+    if (isOpposite(dir, direction) && (queue.length === 0 || doubleTap)) {
+        tap.reset();
+        return 'uturn';
+    }
+    return queue.push(dir);
+}
+
 // Direction a car takes when it stands on a tile boundary. `canMove(dir)`
 // reports whether the neighbouring tile that way is open.
 //   - The front queued turn fires as soon as the road allows it (consumed).
