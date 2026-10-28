@@ -2,7 +2,7 @@ import { CONFIG } from '../config';
 import { DIRECTIONS } from '../constants';
 import { ICON } from '../art';
 import { label, panel, icon, money, UI_COLORS, dim, createMenu } from '../ui/ui';
-import { hasGamepad } from '../gamepad';
+import { controlHint } from '../ui/touchControls';
 import { t } from '../i18n';
 
 const HUD_DEPTH = 100;
@@ -24,7 +24,17 @@ export class UIManager {
         this.starTween = null;
         this.toast = null;
         this.fuelTween = null;
+        this.gameOverBox = null;
+        this.gameOverDim = null;
 
+        this.build();
+    }
+
+    // Lays the HUD out against the current canvas size. Everything built here
+    // goes through fix(), which is how relayout() finds it again.
+    build() {
+        const scene = this.scene;
+        this.objects = [];
         const { width, height } = scene.scale;
 
         // --- Status panel (top-left) -----------------------------------------
@@ -103,7 +113,32 @@ export class UIManager {
 
     // Pin a display object to the screen above the world
     fix(obj) {
+        this.objects.push(obj);
         return obj.setScrollFactor(0).setDepth(HUD_DEPTH);
+    }
+
+    // The canvas changed size (a phone rotated): rebuild the HUD for the new
+    // edges. The next update() redraws every value. A game over panel stays
+    // up and is re-centred.
+    relayout() {
+        [this.nitroTween, this.starTween, this.fuelTween].forEach((tw) => tw && tw.stop());
+        this.nitroTween = this.starTween = this.fuelTween = null;
+        if (this.toast) {
+            this.scene.tweens.killTweensOf(this.toast);
+            this.toast.destroy();
+            this.toast = null;
+        }
+        this.scene.tweens.killTweensOf(this.objects);
+        this.objects.forEach((obj) => obj.destroy());
+        this.last = {};
+        this.build();
+
+        if (this.gameOverBox) {
+            const { width, height } = this.scene.scale;
+            this.scene.tweens.killTweensOf(this.gameOverBox);
+            this.gameOverBox.setPosition(width / 2, height / 2);
+            this.gameOverDim.setSize(width, height);
+        }
     }
 
     changed(key, value) {
@@ -313,11 +348,12 @@ export class UIManager {
         const scene = this.scene;
         const { width, height } = scene.scale;
 
-        dim(scene, 0.75).setDepth(190);
+        this.gameOverDim = dim(scene, 0.75).setDepth(190);
 
         const pw = 720;
         const ph = 420;
         const box = scene.add.container(width / 2, height / 2).setScrollFactor(0).setDepth(195);
+        this.gameOverBox = box;
         box.add(panel(scene, -pw / 2, -ph / 2, pw, ph, 'red'));
 
         // Hazard stripes along the top edge
@@ -333,12 +369,12 @@ export class UIManager {
         scene.tweens.add({ targets: box, y: height / 2, duration: 520, ease: 'Bounce.easeOut' });
 
         // Visual cue only: GameScene.handleGameOver already restarts on any
-        // click, ENTER or pad A/START, so the button itself must not restart a
+        // click or tap, ENTER or pad A/START, so the button itself must not restart a
         // second time.
         createMenu(scene, {
             x: 0, y: 86, width: 320, items: [{ label: t('gameOver.restart'), action: () => {} }],
             container: box,
         });
-        box.add(label(scene, 0, 150, t(hasGamepad() ? 'gameOver.hintPad' : 'gameOver.hintKeys'), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
+        box.add(label(scene, 0, 150, t(controlHint('gameOver.hint')), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
     }
 }

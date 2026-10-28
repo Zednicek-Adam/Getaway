@@ -15,7 +15,9 @@ import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
 import { explosion, sparkBurst, smokePuff, floatText, rearVector, CarTrail } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
-import { bindPad, hasGamepad } from '../gamepad';
+import { bindPad } from '../gamepad';
+import { TouchControls, controlHint } from '../ui/touchControls';
+import { onScreenResize } from '../screen';
 import { t } from '../i18n';
 
 // Pickup feedback: popup text + spark tint per collectible type. Text is a
@@ -56,15 +58,20 @@ export class GameScene extends Phaser.Scene {
         // UI
         this.uiManager = new UIManager(this);
 
+        // Touch PUMP button: brake at the next station the car reaches.
+        // Catching a pump with a timed brake tap is hard on a phone.
+        this.pumpStopArmed = false;
+
         // Car Spawn - Start at center (Generation Seed) to guarantee Road
         const spawnPoint = this.mapManager.playerSpawnPoint || { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
 
         // avoidsBlocked:false — only the player can drive into a roadblock (and crash).
         // brakeAt: a car pushed in on an empty tank stops at the first pump it
         // reaches, broke or not (a broke player gets the no-cash message there).
+        // So does one with the touch PUMP stop armed (see brakeAtPump).
         this.playerCar = new Car(this, spawnPoint.x, spawnPoint.y, this.mapManager, {
             avoidsBlocked: false,
-            brakeAt: (x, y) => this.state.isOutOfFuel() && !!this.mapManager.getFuelStationAt(x, y),
+            brakeAt: (x, y) => this.brakeAtPump(x, y),
         });
         // Force player to face UP (towards the dead end) as requested
         this.playerCar.direction = DIRECTIONS.UP;
@@ -110,6 +117,20 @@ export class GameScene extends Phaser.Scene {
 
         bindPad(this, { start: pause, y: openGarage });
 
+        // On-screen buttons for touch screens: the InputManager's actions,
+        // plus pause and the garage, which open scenes straight away
+        this.touchControls = new TouchControls(this, { ...this.inputManager.actions, pause, garage: openGarage });
+
+        // A phone rotating changes the canvas size: the camera follows on its
+        // own (Phaser resizes it), the HUD and buttons rebuild for the new edges
+        onScreenResize(this, () => {
+            this.uiManager.relayout();
+            this.touchControls.relayout();
+            // update() stops after a game over and doesn't run while paused,
+            // so fill the new HUD in now
+            this.refreshHud();
+        });
+
         // One-shot per-run garage hint (fires the first time on the base pad)
         this.garageHintShown = false;
         // One-shot per-run hint on the first nitro pickup
@@ -145,6 +166,10 @@ export class GameScene extends Phaser.Scene {
         if (this.inputManager.consumeStopToggle()) {
             // Brake toggle — stop to refuel at a station, or wait; steering resumes
             this.playerCar.halted = !this.playerCar.halted;
+        }
+        if (this.inputManager.consumePumpStopToggle()) {
+            this.pumpStopArmed = !this.pumpStopArmed;
+            if (this.pumpStopArmed) this.uiManager.showToast(t('toast.pumpArmed'));
         }
         // Nitro only fires while the car is driving; a parked or stuck car
         // would just burn the boost standing still (GameState also refuses it
@@ -205,7 +230,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.garageHintShown &&
             this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) {
             this.garageHintShown = true;
-            this.uiManager.showToast(t(hasGamepad() ? 'toast.garagePad' : 'toast.garageKeys'));
+            this.uiManager.showToast(t(controlHint('toast.garage')));
         }
 
         // (b) Deposit — ordered before the catch check so a catch on the base
@@ -261,12 +286,17 @@ export class GameScene extends Phaser.Scene {
         this.state.tick(delta, { spotted: this.policeManager.isPlayerSpotted() });
         if (this.state.isOutOfFuel() && !this.dryWarned) {
             this.dryWarned = true;
-            this.uiManager.showToast(t(hasGamepad() ? 'toast.dryPad' : 'toast.dryKeys'));
+            this.uiManager.showToast(t(controlHint('toast.dry')));
         } else if (!this.state.isOutOfFuel()) {
             this.dryWarned = false;
         }
 
         // (i) HUD snapshot
+        this.refreshHud();
+    }
+
+    // Draws the HUD and touch buttons from the current state
+    refreshHud() {
         this.uiManager.update({
             banked: this.state.banked,
             carried: this.state.carried,
@@ -285,6 +315,28 @@ export class GameScene extends Phaser.Scene {
             chaseCountdown: this.state.chaseCountdown,
             chaseCountdownMax: CONFIG.CHASE.COUNTDOWN_MS,
         });
+        this.touchControls.update({
+            bombs: this.state.bombs,
+            rockets: this.state.rockets,
+            nitros: this.state.nitros,
+            nitroActive: this.state.isNitroActive(),
+            halted: this.playerCar.halted,
+            pumpStopArmed: this.pumpStopArmed,
+            outOfFuel: this.state.isOutOfFuel(),
+            lowFuel: this.state.fuel / this.state.maxFuel < 0.2,
+            atBase: this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY),
+        });
+    }
+
+    // Car.finishMove asks this once per tile it arrives on. An armed PUMP
+    // stop is spent by the stop it causes, so arming it while parked at one
+    // pump still means the next one.
+    brakeAtPump(x, y) {
+        if (!this.mapManager.getFuelStationAt(x, y)) return false;
+        if (this.state.isOutOfFuel()) return true;
+        if (!this.pumpStopArmed) return false;
+        this.pumpStopArmed = false;
+        return true;
     }
 
     // Stopped on a station pad: pump and charge
@@ -600,7 +652,7 @@ export class GameScene extends Phaser.Scene {
             // The first one each run says which button fires it
             if (!this.nitroHintShown) {
                 this.nitroHintShown = true;
-                this.uiManager.showToast(t(hasGamepad() ? 'toast.nitroPad' : 'toast.nitroKeys'));
+                this.uiManager.showToast(t(controlHint('toast.nitro')));
             }
         } else if (item.type === COLLECTIBLE_TYPES.ROCKET) {
             // Inventory full — leave the rocket on the road for later
