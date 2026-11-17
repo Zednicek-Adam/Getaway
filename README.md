@@ -67,9 +67,11 @@ the standard Gamepad API works, and the browser only reveals it after a button
 press, so press one first if it doesn't respond. On-screen prompts switch to pad
 buttons once a controller is connected.
 
-On a phone or tablet the game fills the whole screen, held either way: the
-map shows more road on a wide or tall screen, and the menus sit on a night
-sky stretched to the edges. Rotating mid-run keeps the run going. Swipe
+On a phone or tablet the game fills the whole screen, held either way, and
+the menus sit on a night sky stretched to the edges. On a phone the map is
+zoomed in a little and the HUD and buttons are drawn bigger, so the streets
+and text stay readable on the small screen; a tablet is big enough as it is.
+Rotating mid-run keeps the run going. Swipe
 anywhere to steer. Buttons in the bottom corners
 cover the rest: rocket, bomb and nitro on the right, brake, PUMP and push on the
 left, and GARAGE above push while you're parked on the safehouse pad. Pause sits

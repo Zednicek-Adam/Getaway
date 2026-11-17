@@ -10,7 +10,8 @@ import { t } from '../i18n';
 // pump toggle and push on the left, plus the garage while parked on the base
 // pad. Pause sits up top beside the wanted panel, out of the way of a stray
 // thumb. 144px is about 44 CSS px once FIT shrinks the 1280px-wide canvas
-// onto a phone held upright, the usual minimum for a touch target.
+// onto a phone held upright, the usual minimum for a touch target, before the
+// HUD scale-up on phones (see viewScales). Sizes here are HUD pixels.
 
 const SIZE = 144;
 const PAUSE_SIZE = 128;
@@ -69,6 +70,8 @@ export class TouchControls {
         this.scene = scene;
         this.actions = actions;
         this.pulses = {};
+        this.space = scene.hudSpace;
+        this.layer = this.space.layer(DEPTH);
         this.build();
 
         this.setVisible(touchControlsActive());
@@ -88,7 +91,7 @@ export class TouchControls {
     build() {
         this.buttons = {};
         for (const def of BUTTONS) {
-            this.buttons[def.action] = this.createButton(def, def.at(this.scene.scale), this.actions[def.action]);
+            this.buttons[def.action] = this.createButton(def, def.at(this.space), this.actions[def.action]);
         }
     }
 
@@ -135,8 +138,10 @@ export class TouchControls {
             scene.time.delayedCall(80, () => parts.forEach((p) => p.setY(p.y - 4)));
         });
 
-        parts.forEach((p) => p.setScrollFactor(0).setDepth(DEPTH).setVisible(false));
-        hit.setScrollFactor(0).setDepth(DEPTH);
+        // The zone needs scroll factor 0 of its own for hit-testing
+        parts.forEach((p) => p.setScrollFactor(0).setVisible(false));
+        hit.setScrollFactor(0);
+        this.layer.add([...parts, hit]);
         hit.input.enabled = false;
         return { def, size, idle, lit, text, hit, parts };
     }
