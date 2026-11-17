@@ -16,8 +16,8 @@ import { oppositeOf } from '../turnQueue';
 import { explosion, sparkBurst, smokePuff, floatText, rearVector, CarTrail } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
 import { bindPad } from '../gamepad';
-import { TouchControls, controlHint } from '../ui/touchControls';
-import { onScreenResize } from '../screen';
+import { TouchControls, controlHint, touchControlsActive } from '../ui/touchControls';
+import { onScreenResize, viewScales, HudSpace } from '../screen';
 import { t } from '../i18n';
 
 // Pickup feedback: popup text + spark tint per collectible type. Text is a
@@ -56,6 +56,8 @@ export class GameScene extends Phaser.Scene {
         this.inputManager = new InputManager(this);
 
         // UI
+        this.hudSpace = new HudSpace(this);
+        this.applyViewScales();
         this.uiManager = new UIManager(this);
 
         // Touch PUMP button: brake at the next station the car reaches.
@@ -122,8 +124,10 @@ export class GameScene extends Phaser.Scene {
         this.touchControls = new TouchControls(this, { ...this.inputManager.actions, pause, garage: openGarage });
 
         // A phone rotating changes the canvas size: the camera follows on its
-        // own (Phaser resizes it), the HUD and buttons rebuild for the new edges
+        // own (Phaser resizes it), the zoom and HUD scale are worked out again
+        // and the HUD and buttons rebuild for the new edges
         onScreenResize(this, () => {
+            this.applyViewScales();
             this.uiManager.relayout();
             this.touchControls.relayout();
             // update() stops after a game over and doesn't run while paused,
@@ -293,6 +297,15 @@ export class GameScene extends Phaser.Scene {
 
         // (i) HUD snapshot
         this.refreshHud();
+    }
+
+    // On a phone the map zooms in and the HUD and buttons grow, by how far FIT
+    // shrinks the canvas onto the page (see viewScales)
+    applyViewScales() {
+        const cssPerPixel = this.scale.displaySize.width / this.scale.width;
+        const { mapZoom, uiScale } = viewScales(cssPerPixel, touchControlsActive());
+        this.cameras.main.setZoom(mapZoom);
+        this.hudSpace.setScale(uiScale);
     }
 
     // Draws the HUD and touch buttons from the current state

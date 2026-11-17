@@ -2,7 +2,7 @@ import { CONFIG } from '../config';
 import { DIRECTIONS } from '../constants';
 import { ICON } from '../art';
 import { label, panel, icon, money, UI_COLORS, dim, createMenu } from '../ui/ui';
-import { controlHint } from '../ui/touchControls';
+import { controlHint, touchControlsActive } from '../ui/touchControls';
 import { t } from '../i18n';
 
 const HUD_DEPTH = 100;
@@ -27,6 +27,13 @@ export class UIManager {
         this.gameOverBox = null;
         this.gameOverDim = null;
 
+        // HUD pixels, scaled up on a phone (see HudSpace). Containers ignore
+        // their children's depth, so each depth gets a layer of its own.
+        this.space = scene.hudSpace;
+        this.layer = this.space.layer(HUD_DEPTH);
+        this.toastLayer = this.space.layer(150);
+        this.gameOverLayer = this.space.layer(195);
+
         this.build();
     }
 
@@ -35,7 +42,7 @@ export class UIManager {
     build() {
         const scene = this.scene;
         this.objects = [];
-        const { width, height } = scene.scale;
+        const { width, height } = this.space;
 
         // --- Status panel (top-left) -----------------------------------------
         this.fix(panel(scene, 16, 16, 344, 204));
@@ -114,7 +121,8 @@ export class UIManager {
     // Pin a display object to the screen above the world
     fix(obj) {
         this.objects.push(obj);
-        return obj.setScrollFactor(0).setDepth(HUD_DEPTH);
+        this.layer.add(obj);
+        return obj.setScrollFactor(0);
     }
 
     // The canvas changed size (a phone rotated): rebuild the HUD for the new
@@ -134,10 +142,10 @@ export class UIManager {
         this.build();
 
         if (this.gameOverBox) {
-            const { width, height } = this.scene.scale;
+            const { width, height } = this.space;
             this.scene.tweens.killTweensOf(this.gameOverBox);
             this.gameOverBox.setPosition(width / 2, height / 2);
-            this.gameOverDim.setSize(width, height);
+            this.gameOverDim.setSize(this.scene.scale.width, this.scene.scale.height);
         }
     }
 
@@ -319,18 +327,24 @@ export class UIManager {
             this.scene.tweens.killTweensOf(this.toast);
             this.toast.destroy();
         }
-        const { width } = this.scene.scale;
+        const { width } = this.space;
         const t = label(this.scene, 0, 0, text, { size: 16, color: UI_COLORS.gold }).setOrigin(0.5);
         const w = Math.ceil((t.width + 48) / 2) * 2;
+        // Under the wanted panel. With touch buttons it drops under the pause
+        // button, and on a screen too narrow to pass the status panel (a
+        // phone held upright), under that.
+        let y = 150;
+        if (touchControlsActive()) y = (width - w) / 2 < 16 + 344 + 16 ? 326 : 202;
         const bg = panel(this.scene, -w / 2, -26, w, 52, 'gold');
-        const toast = this.scene.add.container(width / 2, 150, [bg, t])
-            .setScrollFactor(0).setDepth(150).setScale(0.4).setAlpha(0);
+        const toast = this.scene.add.container(width / 2, y, [bg, t])
+            .setScrollFactor(0).setScale(0.4).setAlpha(0);
+        this.toastLayer.add(toast);
         this.toast = toast;
 
         this.scene.tweens.add({ targets: toast, scale: 1, alpha: 1, duration: 160, ease: 'Back.easeOut' });
         this.scene.tweens.add({
             targets: toast,
-            y: 118,
+            y: y - 32,
             alpha: 0,
             delay: 900,
             duration: 600,
@@ -346,13 +360,15 @@ export class UIManager {
     // costing a life)
     showGameOver(reason) {
         const scene = this.scene;
-        const { width, height } = scene.scale;
+        const { width, height } = this.space;
 
+        // The dim covers the whole canvas outside the HUD layers
         this.gameOverDim = dim(scene, 0.75).setDepth(190);
 
         const pw = 720;
         const ph = 420;
-        const box = scene.add.container(width / 2, height / 2).setScrollFactor(0).setDepth(195);
+        const box = scene.add.container(width / 2, height / 2).setScrollFactor(0);
+        this.gameOverLayer.add(box);
         this.gameOverBox = box;
         box.add(panel(scene, -pw / 2, -ph / 2, pw, ph, 'red'));
 

@@ -30,6 +30,22 @@ export function gameSizeFor(pageWidth, pageHeight, fill) {
     return { width: STAGE_WIDTH, height: even(STAGE_WIDTH / aspect) };
 }
 
+// How far a touch screen zooms the map, and how much bigger it draws the
+// HUD and buttons, given how many CSS pixels one game pixel covers. FIT shrinks
+// the canvas a long way onto a phone (0.3 to 0.4 CSS px per game pixel), which
+// leaves the streets and the HUD text tiny. The map zooms until a tile is about
+// 32 CSS px and the HUD grows until one of its pixels is about 0.55 CSS px,
+// each up to a cap. A tablet already meets both and is left alone.
+// Steps of an eighth keep a 64px tile a whole number of pixels on screen.
+export function viewScales(cssPerPixel, touch) {
+    if (!touch || !(cssPerPixel > 0)) return { mapZoom: 1, uiScale: 1 };
+    const scale = (wanted, max) => Math.min(max, Math.max(1, Math.round(wanted * 8) / 8));
+    return {
+        mapZoom: scale(0.5 / cssPerPixel, 1.5),
+        uiScale: scale(0.55 / cssPerPixel, 1.375),
+    };
+}
+
 // Keeps a filling canvas the shape of the page as it rotates or resizes.
 // `pageSize` returns the current { width, height } of the page.
 export function watchScreen(game, pageSize) {
@@ -82,4 +98,42 @@ export function stageOffset(scene) {
         x: (scene.scale.width - STAGE_WIDTH) / 2,
         y: scene.stageAnchor === 'bottom' ? spareY : spareY / 2,
     };
+}
+
+// The HUD's coordinate space in a scene whose camera zooms (GameScene on a
+// touch screen). Objects pinned to the screen with scroll factor 0 still zoom
+// with the camera, about the canvas centre, so each HUD layer is a container
+// that undoes the map zoom and applies the HUD's own scale instead: a child at
+// (x, y) lands at uiScale * (x, y) on the canvas. Lay out against width x
+// height, the canvas size in HUD pixels. Children keep scroll factor 0, which
+// is what input hit-testing reads.
+export class HudSpace {
+    constructor(scene) {
+        this.scene = scene;
+        this.layers = [];
+        this.setScale(1);
+    }
+
+    // Call after the camera zoom or the canvas size changes
+    setScale(uiScale) {
+        this.uiScale = uiScale;
+        this.width = this.scene.scale.width / uiScale;
+        this.height = this.scene.scale.height / uiScale;
+        this.layers.forEach((layer) => this.fit(layer));
+    }
+
+    // A container for HUD objects, drawn at `depth`
+    layer(depth) {
+        const layer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(depth);
+        this.layers.push(layer);
+        this.fit(layer);
+        return layer;
+    }
+
+    fit(layer) {
+        const zoom = this.scene.cameras.main.zoom;
+        const { width, height } = this.scene.scale;
+        const pull = 1 - 1 / zoom;
+        layer.setPosition((width / 2) * pull, (height / 2) * pull).setScale(this.uiScale / zoom);
+    }
 }
