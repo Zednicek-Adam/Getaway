@@ -303,7 +303,8 @@ export class GameScene extends Phaser.Scene {
     // shrinks the canvas onto the page (see viewScales)
     applyViewScales() {
         const cssPerPixel = this.scale.displaySize.width / this.scale.width;
-        const { mapZoom, uiScale } = viewScales(cssPerPixel, touchControlsActive());
+        const sideways = this.scale.width > this.scale.height;
+        const { mapZoom, uiScale } = viewScales(cssPerPixel, touchControlsActive(), sideways);
         this.cameras.main.setZoom(mapZoom);
         this.hudSpace.setScale(uiScale);
     }

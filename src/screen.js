@@ -35,14 +35,16 @@ export function gameSizeFor(pageWidth, pageHeight, fill) {
 // the canvas a long way onto a phone (0.3 to 0.4 CSS px per game pixel), which
 // leaves the streets and the HUD text tiny. The map zooms until a tile is about
 // 32 CSS px and the HUD grows until one of its pixels is about 0.55 CSS px,
-// each up to a cap. A tablet already meets both and is left alone.
-// Steps of an eighth keep a 64px tile a whole number of pixels on screen.
-export function viewScales(cssPerPixel, touch) {
+// each up to a cap. A phone held sideways caps the HUD lower: the screen is
+// short, and a bigger HUD would crowd the road. A tablet already meets both
+// and is left alone. Steps of an eighth keep a 64px tile a whole number of
+// pixels on screen.
+export function viewScales(cssPerPixel, touch, sideways) {
     if (!touch || !(cssPerPixel > 0)) return { mapZoom: 1, uiScale: 1 };
     const scale = (wanted, max) => Math.min(max, Math.max(1, Math.round(wanted * 8) / 8));
     return {
         mapZoom: scale(0.5 / cssPerPixel, 1.5),
-        uiScale: scale(0.55 / cssPerPixel, 1.375),
+        uiScale: scale(0.55 / cssPerPixel, sideways ? 1.125 : 1.375),
     };
 }
 

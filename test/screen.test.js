@@ -33,33 +33,33 @@ describe('gameSizeFor', () => {
 
 describe('viewScales', () => {
     it('leaves a desktop alone', () => {
-        expect(viewScales(0.4, false)).toEqual({ mapZoom: 1, uiScale: 1 });
+        expect(viewScales(0.4, false, true)).toEqual({ mapZoom: 1, uiScale: 1 });
     });
 
-    it('zooms the map and grows the HUD on a phone held sideways', () => {
+    it('zooms the map and grows the HUD less on a phone held sideways', () => {
         // 844x390 page, 2078x960 canvas: 0.406 CSS px per game pixel
-        expect(viewScales(390 / 960, true)).toEqual({ mapZoom: 1.25, uiScale: 1.375 });
+        expect(viewScales(390 / 960, true, true)).toEqual({ mapZoom: 1.25, uiScale: 1.125 });
     });
 
     it('caps both on a phone held upright', () => {
         // 390x844 page, 1280x2770 canvas: 0.305 CSS px per game pixel
-        expect(viewScales(390 / 1280, true)).toEqual({ mapZoom: 1.5, uiScale: 1.375 });
+        expect(viewScales(390 / 1280, true, false)).toEqual({ mapZoom: 1.5, uiScale: 1.375 });
     });
 
     it('leaves a tablet alone', () => {
         // 1180x820 iPad held sideways, 1180x820 upright
-        expect(viewScales(820 / 960, true)).toEqual({ mapZoom: 1, uiScale: 1 });
-        expect(viewScales(820 / 1280, true)).toEqual({ mapZoom: 1, uiScale: 1 });
+        expect(viewScales(820 / 960, true, true)).toEqual({ mapZoom: 1, uiScale: 1 });
+        expect(viewScales(820 / 1280, true, false)).toEqual({ mapZoom: 1, uiScale: 1 });
     });
 
     it('keeps the zoom on eighths, so a tile is a whole number of pixels', () => {
         for (let css = 0.2; css < 1; css += 0.01) {
-            const { mapZoom } = viewScales(css, true);
+            const { mapZoom } = viewScales(css, true, false);
             expect(Number.isInteger(mapZoom * 64)).toBe(true);
         }
     });
 
     it('falls back to no scaling for an unmeasured canvas', () => {
-        expect(viewScales(0, true)).toEqual({ mapZoom: 1, uiScale: 1 });
+        expect(viewScales(0, true, false)).toEqual({ mapZoom: 1, uiScale: 1 });
     });
 });
