@@ -171,8 +171,8 @@ export class GameScene extends Phaser.Scene {
         this.playerCar.update(time, delta);
         this.carTrail.update(delta, {
             nitro: this.state.isNitroActive(),
-            damage: this.state.damage,
-            maxDamage: this.state.maxDamage,
+            armor: this.state.armor,
+            dents: this.state.dents,
         });
 
         // Roadblock crash — checked the frame the player starts moving into a
@@ -233,10 +233,12 @@ export class GameScene extends Phaser.Scene {
         }
 
         // (e) Catch check (same tile or swap-through). Skipped while invulnerable
-        // or while parked on the base pad — the safehouse is a safe zone.
+        // or while parked on the base pad — the safehouse is a safe zone — and
+        // at 0 stars: patrols cruising past don't touch a player nobody wants.
         const atSafehouse = this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY);
+        const wanted = this.state.stars > 0;
         const rammingUnit = this.policeManager.getCollidingUnit(this.carsCollide.bind(this), this.playerCar);
-        if (rammingUnit && !this.state.isInvulnerable() && !atSafehouse) {
+        if (rammingUnit && wanted && !this.state.isInvulnerable() && !atSafehouse) {
             const result = this.state.onRammed(rammingUnit.ramDamage);
             if (result === 'caught') {
                 this.handleCaught();
@@ -276,8 +278,8 @@ export class GameScene extends Phaser.Scene {
             maxLives: this.state.maxLives,
             bombs: this.state.bombs,
             rockets: this.state.rockets,
-            damage: this.state.damage,
-            maxDamage: this.state.maxDamage,
+            armor: this.state.armor,
+            maxArmor: this.state.maxArmor,
             nitros: this.state.nitros,
             nitroActive: this.state.isNitroActive(),
             queue: this.playerCar.turnQueue.toArray(),
@@ -488,7 +490,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.respawnPlayerAtBase();
-        // onCaught() reset stars to 0 — the fleet stays empty until the next pickup
+        // onCaught() reset stars to 0 — clear the chasers; fresh patrols spawn
+        // well away from the base on the next update
         this.policeManager.despawnAll();
         this.blinkPlayer(CONFIG.PLAYER.INVULN_MS);
     }
@@ -588,7 +591,7 @@ export class GameScene extends Phaser.Scene {
             // Inventory full — leave the bomb on the road (WP5 wires laying/exploding)
             if (!this.state.pickupBomb()) return;
         } else if (item.type === COLLECTIBLE_TYPES.REPAIR) {
-            // Undamaged — leave the repair on the road for later
+            // Armor full — leave it on the road for later
             if (!this.state.repair()) return;
         } else if (item.type === COLLECTIBLE_TYPES.LIFE) {
             // At max lives — leave the extra life on the road

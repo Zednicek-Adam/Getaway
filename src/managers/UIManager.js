@@ -44,8 +44,9 @@ export class UIManager {
             this.hearts.push(this.fix(icon(scene, 44 + i * 34, 122, 'heart')));
         }
 
-        // Armour pips show REMAINING hits. Pool sized to the highest armor
-        // level so upgrades have slots; only the first maxDamage are shown.
+        // Armour pips: one per point, lit while held, hollow up to the cap.
+        // Pool sized to the highest armor level so upgrades have slots; only
+        // the first maxArmor are shown.
         this.shields = [];
         const maxShields = Math.max(...CONFIG.GARAGE.TRACKS.armor.values);
         for (let i = 0; i < maxShields; i++) {
@@ -119,7 +120,7 @@ export class UIManager {
     }
 
     // Pure renderer: called every frame with a HUD snapshot
-    // { banked, carried, lives, fuel, fuelMax, bombs, rockets, damage, maxDamage,
+    // { banked, carried, lives, fuel, fuelMax, bombs, rockets, armor, maxArmor,
     //   nitros, nitroActive, queue, stars, chaseCountdown, chaseCountdownMax }
     update(hud) {
         // Punch only on gains: the pump drains these a dollar at a time, and
@@ -157,8 +158,8 @@ export class UIManager {
             this.rocketText.setText(`x${hud.rockets}`).setColor(hud.rockets > 0 ? UI_COLORS.orange : UI_COLORS.faint);
         }
 
-        if (this.changed('damage', `${hud.damage}/${hud.maxDamage}`)) {
-            this.renderDamage(hud.damage, hud.maxDamage);
+        if (this.changed('armor', `${hud.armor}/${hud.maxArmor}`)) {
+            this.renderArmor(hud.armor, hud.maxArmor);
         }
 
         if (this.changed('nitro', `${hud.nitros}/${hud.nitroActive}`)) {
@@ -177,12 +178,11 @@ export class UIManager {
         this.renderChaseBar(hud.chaseCountdown, hud.chaseCountdownMax);
     }
 
-    // Shields show remaining hits: lit while intact, hollow once spent
-    renderDamage(damage, maxDamage) {
-        const remaining = maxDamage - damage;
+    // Shields: lit for each armor point held, hollow for the empty slots
+    renderArmor(armor, maxArmor) {
         this.shields.forEach((s, i) => {
-            s.setVisible(i < maxDamage);
-            s.setFrame(i < remaining ? ICON.shield : ICON.shieldEmpty);
+            s.setVisible(i < maxArmor);
+            s.setFrame(i < armor ? ICON.shield : ICON.shieldEmpty);
         });
     }
 

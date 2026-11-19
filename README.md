@@ -24,8 +24,8 @@ Every pickup raises your **heat**, and heat buys the police stars:
 
 | Stars | Response |
 | ----- | -------- |
-| 0 | One patrol roaming aimlessly |
-| 1–2 | Patrols actively home in on you |
+| 0 | Two patrols cruising the city; they leave you alone |
+| 1–2 | Two patrols home in on you |
 | 3 | Three cars driving straight at you |
 | 4 | SWAT van joins; roadblocks start dropping ahead of you |
 | 5 | Second SWAT van and a helicopter that slows you from overhead |
@@ -39,8 +39,10 @@ Banked money persists between runs in `localStorage` and is spent in the garage.
 
 ### Losing
 
-You have three lives. You lose one by taking a full damage bar (three rams by
-default), and the carried money goes with it.
+You have three lives, and you start with no armor. Each armor point soaks one
+ram; a ram with no armor left costs a life, and the carried money goes with it.
+Armor pickups on the road build it back up (three points by default, more with
+the garage upgrade). Every new life starts bare again.
 
 Gas costs $1 a unit at the pumps, paid from carried cash first and then the
 bank. Run the tank dry and the car stalls: tap push to roll it along at a crawl
@@ -93,7 +95,7 @@ Money is the bulk of what spawns; the rest is weighted rarer.
 | Sprite | Pickup | Effect |
 | ------ | ------ | ------ |
 | spinning gold `$` coin | Money | +$100 carried, +1 heat |
-| green `+` token | Repair | Removes one point of damage |
+| green `+` token | Armor | +1 armor point, up to the cap |
 | blue lightning token | Nitro | Stored, up to 3; fire one for ~1.5× speed for 4 seconds |
 | orange missile token | Rocket | +1 rocket |
 | black bomb, lit fuse | Bomb | +1 bomb |
@@ -112,7 +114,7 @@ costing $500 / $1,500 / $4,000 out of banked money:
 | ----- | ----------- |
 | Engine | 300ms → 225ms per tile |
 | Fuel tank | 100 → 200 |
-| Armor | 3 → 6 hits |
+| Armor | 3 → 6 points |
 | Bomb bay | 3 → 6 bombs |
 | Rockets | 2 → 5 rockets |
 
@@ -195,7 +197,7 @@ src/
   fx.js             one-shot effects (explosions, smoke, sparks, popups)
   gamepad.js        Gamepad API polling, edge detection and per-scene bindings
   i18n.js           every on-screen string in English and Spanish, language switch
-  GameState.js      pure run state — money, lives, fuel, stars, damage
+  GameState.js      pure run state — money, lives, fuel, stars, armor
   garage.js         upgrade pricing and derived-stat math
   storage.js        versioned localStorage save with sanitising loader
   pathfinding.js    BFS used by police AI
