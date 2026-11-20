@@ -1,19 +1,17 @@
-// Versioned persistent save — banked money, garage upgrade levels, personal
-// bests and the top runs.
+// Versioned persistent save — personal bests and the top runs.
 // Pure and Phaser-free; storage is injected so this is unit-testable.
-import { CONFIG } from './config';
+//
+// Money and garage upgrades used to live here too. Every run now starts at
+// $0 with a stock car (see newWallet in garage.js), so a v1 save's `banked`
+// and `upgrades` are simply dropped on load.
 import { defaultBests, sanitizeBests, sanitizeTopRuns } from './bests';
 
 export const SAVE_KEY = 'getaway-save';
 export const SAVE_VERSION = 1;
 
-const TRACK_KEYS = ['engine', 'fuelTank', 'armor', 'bombBay', 'rocketRack'];
-
 export function defaultSave() {
     return {
         version: SAVE_VERSION,
-        banked: 0,
-        upgrades: { engine: 0, fuelTank: 0, armor: 0, bombBay: 0, rocketRack: 0 },
         bests: defaultBests(),
         topRuns: [],
     };
@@ -27,28 +25,13 @@ export function sanitizeSave(raw) {
         return defaultSave();
     }
 
-    const clean = defaultSave();
-
-    // banked → non-negative finite integer (floor); invalid → 0
-    const banked = Math.floor(Number(raw.banked));
-    clean.banked = Number.isFinite(banked) && banked > 0 ? banked : 0;
-
-    // Known track levels → integer clamped 0..MAX_LEVEL; unknown keys dropped; missing → 0
-    const rawUpgrades = raw.upgrades && typeof raw.upgrades === 'object' ? raw.upgrades : {};
-    for (const key of TRACK_KEYS) {
-        const level = Math.floor(Number(rawUpgrades[key]));
-        clean.upgrades[key] = Number.isFinite(level)
-            ? Math.max(0, Math.min(CONFIG.GARAGE.MAX_LEVEL, level))
-            : 0;
-    }
-
-    // Personal bests and top runs came after v1 shipped: a save without them
-    // reads as zeroes and an empty list, so old saves keep their money and
-    // upgrades with no version bump
-    clean.bests = sanitizeBests(raw.bests);
-    clean.topRuns = sanitizeTopRuns(raw.topRuns);
-
-    return clean;
+    // Bests and top runs came after v1 shipped: a save without them reads as
+    // zeroes and an empty list, with no version bump
+    return {
+        version: SAVE_VERSION,
+        bests: sanitizeBests(raw.bests),
+        topRuns: sanitizeTopRuns(raw.topRuns),
+    };
 }
 
 export function loadSave(storage) {

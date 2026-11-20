@@ -39,9 +39,9 @@ export class PauseScene extends Phaser.Scene {
             this.scene.start('InstructionsScene', { returnTo: 'PauseScene' });
         };
 
-        // Abandons the run: carried cash is lost, exactly as it would be on a
-        // bust. Banked cash and upgrades were already written to storage when
-        // they were earned, so quitting here costs nothing that was safe.
+        // Ends the run, the same as RESTART: its money and upgrades go (every
+        // run starts at $0 with a stock car) and it counts toward the bests
+        // and top runs (GameScene records them on shutdown).
         const mainMenuAction = () => {
             this.scene.stop('GameScene');
             this.scene.start('MenuScene');

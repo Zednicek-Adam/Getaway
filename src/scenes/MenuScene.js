@@ -40,15 +40,18 @@ export class MenuScene extends Phaser.Scene {
         const subtitle = label(this, width / 2, 290, t('menu.subtitle'), { color: UI_COLORS.white }).setOrigin(0.5);
         this.menuContainer.add(subtitle);
 
-        // Persistent bank readout — shows $0 fine when empty
-        const banked = loadSave(getBrowserStorage()).banked;
-        const bankLabel = label(this, 0, 0, t('menu.bank', { amount: money(banked) }), { color: UI_COLORS.gold }).setOrigin(0, 0.5);
-        const bankW = Math.ceil((bankLabel.width + 72) / 2) * 2;
-        const bankX = width / 2 - bankW / 2;
-        const bankPanel = panel(this, bankX, 700, bankW, 52);
-        const coin = icon(this, bankX + 28, 726, 'coin');
-        bankLabel.setPosition(bankX + 50, 726);
-        this.menuContainer.add([bankPanel, coin, bankLabel]);
+        // The score to beat: the best run's takings. Every run starts at $0,
+        // so there's no bank to show here. Hidden until a run makes the list.
+        const best = loadSave(getBrowserStorage()).topRuns[0];
+        if (best) {
+            const bestLabel = label(this, 0, 0, t('menu.bestRun', { amount: money(best.banked) }), { color: UI_COLORS.gold }).setOrigin(0, 0.5);
+            const bestW = Math.ceil((bestLabel.width + 72) / 2) * 2;
+            const bestX = width / 2 - bestW / 2;
+            const bestPanel = panel(this, bestX, 700, bestW, 52);
+            const coin = icon(this, bestX + 28, 726, 'coin');
+            bestLabel.setPosition(bestX + 50, 726);
+            this.menuContainer.add([bestPanel, coin, bestLabel]);
+        }
 
         // Track whether transition is already in progress
         this.isTransitioning = false;

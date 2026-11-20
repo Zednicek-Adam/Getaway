@@ -28,7 +28,7 @@ export const STRINGS = {
         'menu.credits': 'CREDITS',
         'menu.bestRuns': 'BEST RUNS',
         'menu.language': 'LANG: {name}',
-        'menu.bank': 'BANK {amount}',
+        'menu.bestRun': 'BEST RUN {amount}',
 
         'pause.title': 'PAUSED',
         'pause.resume': 'RESUME',
@@ -173,7 +173,7 @@ export const STRINGS = {
         'menu.credits': 'CREDITOS',
         'menu.bestRuns': 'MEJORES PARTIDAS',
         'menu.language': 'IDIOMA: {name}',
-        'menu.bank': 'BANCO {amount}',
+        'menu.bestRun': 'MEJOR PARTIDA {amount}',
 
         'pause.title': 'PAUSA',
         'pause.resume': 'CONTINUAR',

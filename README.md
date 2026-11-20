@@ -36,7 +36,8 @@ countdown that refuses to tick below 25% while a patrol can see you — you have
 to actually break line of sight, not just outlast it. Once the chase ends, stars
 decay one every five seconds.
 
-Banked money persists between runs in `localStorage` and is spent in the garage.
+Banked money is spent in the garage. It only lasts the run: every run starts
+at $0 with a stock car.
 
 ### Losing
 
@@ -59,8 +60,10 @@ record the run beats flashes NEW BEST.
 BEST RUNS on the main menu lists your five best whole runs, ranked by money
 banked. A run has to bank something to make the list, and on a tie the older
 run keeps its place. When a run makes it, the game-over panel says where it
-landed. Bests and the list are saved with the bank in `localStorage`, and a run
-quit from the pause menu still counts toward both.
+landed, and the main menu shows the best run's takings as the score to beat.
+Bests and the list are the only things saved in `localStorage`. A run quit
+from the pause menu ends like a bust: it counts toward both, and its money and
+upgrades are gone.
 
 ## Controls
 
@@ -145,7 +148,8 @@ costing $500 / $1,500 / $4,000 out of banked money:
 | Bomb bay | 3 → 6 bombs |
 | Rockets | 2 → 5 rockets |
 
-Upgrades apply mid-run and persist across runs.
+Upgrades apply mid-run and last until the run ends. The next run starts with a
+stock car, so the bank is there to spend before you get busted.
 
 ## Running it locally
 

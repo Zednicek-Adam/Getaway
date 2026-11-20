@@ -11,6 +11,7 @@ import { Rocket } from '../objects/Rocket';
 import { DiamondCar } from '../objects/DiamondCar';
 import { CONFIG } from '../config';
 import { GameState } from '../GameState';
+import { newWallet } from '../garage';
 import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
 import { summarizeRun, recordBests, recordTopRun } from '../bests';
@@ -40,10 +41,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // Game State (recreated on every restart) — seeded from the persistent save
+        // Game State (recreated on every restart). Every run starts at $0 with
+        // a stock car: the money and upgrades live in this run's wallet and
+        // go when it ends. Only the bests and top runs are saved.
         this.storage = getBrowserStorage();
         this.save = loadSave(this.storage);
-        this.state = new GameState({ banked: this.save.banked, upgrades: this.save.upgrades });
+        this.wallet = newWallet();
+        this.state = new GameState({ banked: this.wallet.banked, upgrades: this.wallet.upgrades });
 
         // Map System
         this.mapManager = new MapManager(this, MAP_WIDTH, MAP_HEIGHT);
@@ -114,7 +118,7 @@ export class GameScene extends Phaser.Scene {
             if (this.gameOver) return;
             if (!this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY)) return;
             this.scene.pause('GameScene');
-            this.scene.launch('GarageScene', { gameState: this.state, save: this.save, storage: this.storage });
+            this.scene.launch('GarageScene', { gameState: this.state, wallet: this.wallet });
         };
         this.input.keyboard.on('keydown-G', openGarage);
 
@@ -141,12 +145,10 @@ export class GameScene extends Phaser.Scene {
         // One-shot per-run hint on the first nitro pickup
         this.nitroHintShown = false;
 
-        // Pump session: the bill so far (shown when the pump stops), whether
-        // the no-cash hint has shown, and whether the bank changed since the
-        // last save write (written once per fill, not every frame)
+        // Pump session: the bill so far (shown when the pump stops) and
+        // whether the no-cash hint has shown
         this.pumpBill = 0;
         this.noCashShown = false;
-        this.bankDirty = false;
         // Out-of-fuel hint shows once per empty tank
         this.dryWarned = false;
 
@@ -248,8 +250,7 @@ export class GameScene extends Phaser.Scene {
         // pad banks the carried money first
         if (this.mapManager.isBasePad(this.playerCar.gridX, this.playerCar.gridY) && this.state.carried > 0) {
             const amount = this.state.deposit();
-            this.save.banked = this.state.banked;
-            writeSave(this.storage, this.save);
+            this.wallet.banked = this.state.banked; // keep the garage's view in sync
             this.uiManager.showToast(t('toast.banked', { amount: money(amount) }));
             floatText(this, this.playerCar.visual.x, this.playerCar.visual.y, `+${money(amount)}`, UI_COLORS.gold);
             sparkBurst(this, this.playerCar.visual.x, this.playerCar.visual.y, { count: 12, tint: 0xffd040 });
@@ -382,22 +383,16 @@ export class GameScene extends Phaser.Scene {
 
         this.pumpBill += pump.paid;
         if (pump.fromBank > 0) {
-            this.save.banked = this.state.banked; // keep the garage's view in sync
-            this.bankDirty = true;
+            this.wallet.banked = this.state.banked; // keep the garage's view in sync
         }
     }
 
-    // The pump stopped (tank full, or the car left): show the bill and write
-    // the bank once.
+    // The pump stopped (tank full, or the car left): show the bill
     endPumpSession() {
         if (this.pumpBill > 0) {
             const { x, y } = this.playerCar.visual;
             floatText(this, x, y, `-${money(this.pumpBill)}`, UI_COLORS.red);
             this.pumpBill = 0;
-        }
-        if (this.bankDirty) {
-            this.bankDirty = false;
-            writeSave(this.storage, this.save);
         }
     }
 
