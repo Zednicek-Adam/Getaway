@@ -5,23 +5,21 @@
 //
 // A siren is an oscillator whose pitch an LFO sweeps between `low` and
 // `high` Hz, `rate` times a second. The LFO's shape is the siren's pattern: a
-// triangle glides (wail, yelp), a square jumps (hi-lo). A rotor is noise
+// triangle glides from one end to the other. A rotor is noise
 // chopped `chop` times a second, over a low thump at `thump` Hz.
 
 export const LOOPS = {
-    // Patrol car: the long rise and fall
+    // Patrol car: the long rise and fall of a wailing siren
     wail: { kind: 'siren', wave: 'square', sweep: 'triangle', low: 650, high: 1350, rate: 0.32, cutoff: 2400, vol: 0.09 },
-    // Patrol car: the European two-tone
-    hilo: { kind: 'siren', wave: 'square', sweep: 'square', low: 740, high: 988, rate: 0.85, cutoff: 2200, vol: 0.08 },
     // SWAT van: lower, rougher and much faster
     yelp: { kind: 'siren', wave: 'sawtooth', sweep: 'triangle', low: 420, high: 820, rate: 3.4, cutoff: 1500, vol: 0.1 },
     // Helicopter
     rotor: { kind: 'rotor', chop: 10, cutoff: 420, thump: 52, vol: 0.22 },
 };
 
-// Patrol cars take turns between these, so two of them on your tail don't
-// sound like one
-export const PATROL_SIRENS = ['wail', 'hilo'];
+// Each kind of unit has its own sound: patrol cars wail, SWAT vans yelp,
+// the helicopter has its rotor
+export const PATROL_SIREN = 'wail';
 export const SWAT_SIREN = 'yelp';
 
 // How far away (in px) a sound fades to nothing, and how far to one side it

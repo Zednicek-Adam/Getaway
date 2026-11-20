@@ -3,13 +3,12 @@
 // with where everything is; each loop's level and pan follow its unit, so you
 // hear a patrol closing in before it's on screen.
 import { createLoop, effectsOn } from './sound';
-import { PATROL_SIRENS, SWAT_SIREN, HEARING, spatialMix } from './loopRecipes';
+import { PATROL_SIREN, SWAT_SIREN, HEARING, spatialMix } from './loopRecipes';
 
 export class PoliceSoundscape {
     constructor() {
         this.sirens = new Map(); // unit -> loop handle
         this.rotor = null;
-        this.patrolsHeard = 0;   // picks each new patrol's siren in turn
     }
 
     // units: PoliceCar / SwatVan list; helicopter: Helicopter or null;
@@ -52,13 +51,12 @@ export class PoliceSoundscape {
         }
     }
 
-    // A random nudge to pitch and sweep speed keeps two of the same siren
-    // from locking in step
+    // Every patrol car wails and every SWAT van yelps. A slight random nudge
+    // to pitch and sweep speed (a couple of percent) keeps two of the same
+    // siren from locking in step and sounding like one loud siren.
     sirenFor(unit) {
-        const name = unit.unitType === 'swat'
-            ? SWAT_SIREN
-            : PATROL_SIRENS[this.patrolsHeard++ % PATROL_SIRENS.length];
-        return createLoop(name, { detune: 0.95 + Math.random() * 0.1, pace: 0.9 + Math.random() * 0.2 });
+        const name = unit.unitType === 'swat' ? SWAT_SIREN : PATROL_SIREN;
+        return createLoop(name, { detune: 0.98 + Math.random() * 0.04, pace: 0.95 + Math.random() * 0.1 });
     }
 
     stopAll() {

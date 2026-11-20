@@ -5,7 +5,7 @@ import {
     AUDIO_KEY, AUDIO_MODES, loadAudioMode, saveAudioMode, nextAudioMode, musicAllowed, sfxAllowed,
 } from '../src/audio/audioSettings';
 import { SFX, noteFreq } from '../src/audio/sfxRecipes';
-import { LOOPS, PATROL_SIRENS, SWAT_SIREN, HEARING, spatialMix } from '../src/audio/loopRecipes';
+import { LOOPS, PATROL_SIREN, SWAT_SIREN, HEARING, spatialMix } from '../src/audio/loopRecipes';
 
 function memoryStorage(initial = {}) {
     const data = new Map(Object.entries(initial));
@@ -91,12 +91,12 @@ describe('sound effect recipes', () => {
 
 describe('police loops', () => {
     it('every siren the soundscape picks, and the rotor, exists', () => {
-        for (const name of [...PATROL_SIRENS, SWAT_SIREN, 'rotor']) expect(LOOPS, name).toHaveProperty(name);
+        for (const name of [PATROL_SIREN, SWAT_SIREN, 'rotor']) expect(LOOPS, name).toHaveProperty(name);
     });
 
-    it('patrol cars and SWAT vans sound different', () => {
-        expect(PATROL_SIRENS).not.toContain(SWAT_SIREN);
-        expect(new Set(PATROL_SIRENS).size).toBe(PATROL_SIRENS.length);
+    it('patrol cars wail; SWAT vans sound different', () => {
+        expect(PATROL_SIREN).toBe('wail');
+        expect(SWAT_SIREN).not.toBe(PATROL_SIREN);
     });
 
     it('every loop is playable', () => {
