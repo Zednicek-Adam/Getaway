@@ -566,4 +566,81 @@ describe('GameState', () => {
             expect(state.pushMeter).toBe(0);
         });
     });
+
+    describe('run stats', () => {
+        it('adds up deposits and keeps the biggest one', () => {
+            const state = new GameState();
+            state.carried = 300;
+            state.deposit();
+            state.carried = 1200;
+            state.deposit();
+            state.carried = 500;
+            state.deposit();
+            expect(state.run.banked).toBe(2000);
+            expect(state.run.biggestDeposit).toBe(1200);
+        });
+
+        it('cash lost to a bust is not banked', () => {
+            const state = new GameState();
+            state.carried = 800;
+            state.onCaught();
+            expect(state.run.banked).toBe(0);
+        });
+
+        it('counts diamonds and destroyed police', () => {
+            const state = new GameState();
+            state.pickupDiamond();
+            state.onPoliceDestroyed();
+            state.onPoliceDestroyed();
+            expect(state.run.diamondsStolen).toBe(1);
+            expect(state.run.policeDestroyed).toBe(2);
+        });
+
+        it('times the whole run, paused frames aside', () => {
+            const state = new GameState();
+            state.tick(1000);
+            state.tick(500);
+            expect(state.run.survivedMs).toBe(1500);
+        });
+
+        it('a chase runs while wanted and the longest one is kept', () => {
+            const state = new GameState();
+            state.addStars(1);
+            state.refreshChase();
+            state.tick(3000);
+            state.tick(2000);
+            expect(state.run.longestChaseMs).toBe(5000);
+
+            // Stars gone: the next chase starts from zero
+            state.stars = 0;
+            state.tick(100);
+            state.addStars(1);
+            state.refreshChase();
+            state.tick(1000);
+            expect(state.run.chaseMs).toBe(1000);
+            expect(state.run.longestChaseMs).toBe(5000);
+        });
+
+        it('a bust ends the chase', () => {
+            const state = new GameState();
+            state.addStars(2);
+            state.tick(4000);
+            state.onCaught();
+            state.addStars(1);
+            state.tick(1000);
+            expect(state.run.chaseMs).toBe(1000);
+            expect(state.run.longestChaseMs).toBe(4000);
+        });
+
+        it('counts time at 5 stars only', () => {
+            const state = new GameState();
+            state.addStars(4);
+            state.refreshChase();
+            state.tick(2000);
+            state.addStars(1);
+            state.tick(3000);
+            state.tick(1500);
+            expect(state.run.fiveStarMs).toBe(4500);
+        });
+    });
 });

@@ -13,6 +13,7 @@ import { CONFIG } from '../config';
 import { GameState } from '../GameState';
 import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
+import { summarizeRun, recordBests } from '../bests';
 import { explosion, sparkBurst, smokePuff, floatText, rearVector, CarTrail } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
 import { bindPad } from '../gamepad';
@@ -150,6 +151,12 @@ export class GameScene extends Phaser.Scene {
         this.dryWarned = false;
 
         this.gameOver = false;
+        // Set once this run's bests are written, so a game over followed by
+        // the restart doesn't write them twice
+        this.bestsRecorded = false;
+        // A run quit from the pause menu (restart or main menu) still counts
+        // toward the bests, it just has no summary panel
+        this.events.once('shutdown', () => this.recordRunBests());
     }
 
     update(time, delta) {
@@ -430,7 +437,8 @@ export class GameScene extends Phaser.Scene {
             if (unitsOnTile.length > 0) {
                 this.explodeAt(bomb.gridX, bomb.gridY);
                 for (const unit of unitsOnTile) {
-                    this.policeManager.damageUnit(unit, 1); // 1 hp; SWAT survives the first hit
+                    // 1 hp; SWAT survives the first hit
+                    if (this.policeManager.damageUnit(unit, 1)) this.state.onPoliceDestroyed();
                 }
                 this.state.onPoliceBombed(); // Once per detonation (+1 star, chase refresh)
             } else if (!expired) {
@@ -488,7 +496,8 @@ export class GameScene extends Phaser.Scene {
                 (u.gridX === r.gridX && u.gridY === r.gridY) ||
                 (u.isMoving && u.targetX === r.gridX && u.targetY === r.gridY));
             if (unit) {
-                this.policeManager.damageUnit(unit, 1); // 1 hp; SWAT survives the first hit
+                // 1 hp; SWAT survives the first hit
+                if (this.policeManager.damageUnit(unit, 1)) this.state.onPoliceDestroyed();
                 this.explodeAt(r.gridX, r.gridY);
                 this.state.onPoliceBombed(); // +1 star, chase refresh (same as bombs)
                 r.destroy();
@@ -623,9 +632,21 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
+    // Fold this run into the saved bests and write them. Returns the run's
+    // summary and which records fell; null if this run was already recorded.
+    recordRunBests() {
+        if (this.bestsRecorded) return null;
+        this.bestsRecorded = true;
+        const summary = summarizeRun(this.state.run);
+        const { bests, newBests } = recordBests(this.save.bests, summary);
+        this.save.bests = bests;
+        writeSave(this.storage, this.save);
+        return { summary, bests, newBests };
+    }
+
     handleGameOver(reason) {
         this.gameOver = true;
-        this.uiManager.showGameOver(reason);
+        this.uiManager.showGameOver(reason, this.recordRunBests());
 
         // Simple click to restart
         this.input.once('pointerdown', () => {

@@ -13,6 +13,7 @@ Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 | ![Title screen](docs/screenshots/title.png) | ![A five-star chase](docs/screenshots/chase.png) |
 | ![The garage](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
 | ![Credits](docs/screenshots/credits.png) | ![Touch controls on a phone](docs/screenshots/touch.png) |
+| ![Game over with personal bests](docs/screenshots/gameover.png) | |
 
 ## The loop
 
@@ -47,6 +48,14 @@ the garage upgrade). Every new life starts bare again.
 Gas costs $1 a unit at the pumps, paid from carried cash first and then the
 bank. Run the tank dry and the car stalls: tap push to roll it along at a crawl
 to cash on the road or to a pump. With no money at all, the pump gives nothing.
+
+### Personal bests
+
+The game-over panel sums up the run: money banked, biggest single deposit,
+longest chase (unbroken time at one star or more), time at five stars, police
+destroyed, diamonds stolen and time survived. Each sits next to your best, and a
+record the run beats flashes NEW BEST. Bests are saved with the bank in
+`localStorage`. A run quit from the pause menu still counts toward them.
 
 ## Controls
 
@@ -212,6 +221,7 @@ src/
   i18n.js           every on-screen string in English and Spanish, language switch
   GameState.js      pure run state — money, lives, fuel, stars, armor
   garage.js         upgrade pricing and derived-stat math
+  bests.js          run summary and personal-best records
   storage.js        versioned localStorage save with sanitising loader
   pathfinding.js    BFS used by police AI
   turnQueue.js      the buffered-turn queue
@@ -227,7 +237,7 @@ tools/              the pixel-art generator (Python)
 ```
 
 The design splits Phaser-dependent rendering from plain-JS game logic. Anything
-holding rules — `GameState`, `garage`, `storage`, `i18n`, `pathfinding`, `turnQueue`, gamepad polling, the
+holding rules — `GameState`, `garage`, `bests`, `storage`, `i18n`, `pathfinding`, `turnQueue`, gamepad polling, the
 collectible weight table, map reachability, city layout — imports no Phaser and
 is unit tested directly.
 

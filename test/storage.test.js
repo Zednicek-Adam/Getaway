@@ -82,6 +82,26 @@ describe('storage', () => {
         expect('bogus' in clean.upgrades).toBe(false);
     });
 
+    it('a v1 save from before bests reads them as zero and keeps its money', () => {
+        const clean = sanitizeSave({ version: SAVE_VERSION, banked: 700, upgrades: { engine: 1 } });
+        expect(clean.banked).toBe(700);
+        expect(clean.upgrades.engine).toBe(1);
+        expect(clean.bests).toEqual(defaultSave().bests);
+    });
+
+    it('round-trips bests and sanitizes junk in them', () => {
+        const storage = makeFakeStorage();
+        const save = defaultSave();
+        save.bests.banked = 4200;
+        save.bests.timeSurvived = 95;
+        writeSave(storage, save);
+        expect(loadSave(storage).bests).toEqual(save.bests);
+
+        const junk = sanitizeSave({ version: SAVE_VERSION, bests: { banked: -1, longestChase: 12.8 } });
+        expect(junk.bests.banked).toBe(0);
+        expect(junk.bests.longestChase).toBe(12);
+    });
+
     it('writeSave with a throwing setItem does not throw', () => {
         const storage = {
             getItem: () => null,

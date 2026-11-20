@@ -1,6 +1,8 @@
-// Versioned persistent save — banked money + garage upgrade levels.
+// Versioned persistent save — banked money, garage upgrade levels and
+// personal bests.
 // Pure and Phaser-free; storage is injected so this is unit-testable.
 import { CONFIG } from './config';
+import { defaultBests, sanitizeBests } from './bests';
 
 export const SAVE_KEY = 'getaway-save';
 export const SAVE_VERSION = 1;
@@ -12,6 +14,7 @@ export function defaultSave() {
         version: SAVE_VERSION,
         banked: 0,
         upgrades: { engine: 0, fuelTank: 0, armor: 0, bombBay: 0, rocketRack: 0 },
+        bests: defaultBests(),
     };
 }
 
@@ -37,6 +40,10 @@ export function sanitizeSave(raw) {
             ? Math.max(0, Math.min(CONFIG.GARAGE.MAX_LEVEL, level))
             : 0;
     }
+
+    // Personal bests came after v1 shipped: a save without them reads as all
+    // zeroes, so old saves keep their money and upgrades with no version bump
+    clean.bests = sanitizeBests(raw.bests);
 
     return clean;
 }

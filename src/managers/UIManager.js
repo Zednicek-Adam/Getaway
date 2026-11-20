@@ -4,8 +4,16 @@ import { ICON } from '../art';
 import { label, panel, icon, money, UI_COLORS, dim, createMenu } from '../ui/ui';
 import { controlHint, touchControlsActive } from '../ui/touchControls';
 import { t } from '../i18n';
+import { BEST_STATS, formatDuration } from '../bests';
 
 const HUD_DEPTH = 100;
+
+// A run-summary value as the game-over panel prints it
+function formatStat(kind, value) {
+    if (kind === 'money') return money(value);
+    if (kind === 'time') return formatDuration(value);
+    return String(value);
+}
 
 // Fuel bar colour by fill level
 const FUEL_COLOURS = [
@@ -357,28 +365,33 @@ export class UIManager {
     }
 
     // `reason` is a GameState code (only 'busted' since an empty tank stopped
-    // costing a life)
-    showGameOver(reason) {
+    // costing a life). `record` is GameScene.recordRunBests():
+    // { summary, bests, newBests }.
+    showGameOver(reason, record) {
         const scene = this.scene;
         const { width, height } = this.space;
 
         // The dim covers the whole canvas outside the HUD layers
         this.gameOverDim = dim(scene, 0.75).setDepth(190);
 
+        // 680 tall still fits a phone held sideways (960 / 1.125 HUD px)
         const pw = 720;
-        const ph = 420;
+        const ph = 680;
+        const top = -ph / 2;
         const box = scene.add.container(width / 2, height / 2).setScrollFactor(0);
         this.gameOverLayer.add(box);
         this.gameOverBox = box;
-        box.add(panel(scene, -pw / 2, -ph / 2, pw, ph, 'red'));
+        box.add(panel(scene, -pw / 2, top, pw, ph, 'red'));
 
         // Hazard stripes along the top edge
         for (let x = -pw / 2 + 20; x < pw / 2 - 30; x += 32) {
-            box.add(scene.add.rectangle(x, -ph / 2 + 22, 16, 8, 0xffc933).setOrigin(0));
+            box.add(scene.add.rectangle(x, top + 22, 16, 8, 0xffc933).setOrigin(0));
         }
 
-        box.add(label(scene, 0, -100, t('gameOver.title'), { size: 48, color: UI_COLORS.red }).setOrigin(0.5));
-        box.add(label(scene, 0, -24, t(`gameOver.${reason}`), { size: 24, color: UI_COLORS.gold }).setOrigin(0.5));
+        box.add(label(scene, 0, top + 82, t('gameOver.title'), { size: 48, color: UI_COLORS.red }).setOrigin(0.5));
+        box.add(label(scene, 0, top + 138, t(`gameOver.${reason}`), { size: 24, color: UI_COLORS.gold }).setOrigin(0.5));
+
+        if (record) this.addRunSummary(box, top + 180, record);
 
         // Drop-in entrance
         box.y = -ph;
@@ -388,9 +401,41 @@ export class UIManager {
         // click or tap, ENTER or pad A/START, so the button itself must not restart a
         // second time.
         createMenu(scene, {
-            x: 0, y: 86, width: 320, items: [{ label: t('gameOver.restart'), action: () => {} }],
+            x: 0, y: top + ph - 150, width: 320, items: [{ label: t('gameOver.restart'), action: () => {} }],
             container: box,
         });
-        box.add(label(scene, 0, 150, t(controlHint('gameOver.hint')), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
+        box.add(label(scene, 0, top + ph - 76, t(controlHint('gameOver.hint')), { size: 16, color: UI_COLORS.dim }).setOrigin(0.5));
+    }
+
+    // The run's numbers next to the records, one row per stat. A record this
+    // run beat shows NEW BEST in its record column, flashing.
+    addRunSummary(box, y, { summary, bests, newBests }) {
+        const scene = this.scene;
+        const statX = -328;
+        const runX = 120;
+        const bestX = 328;
+        const rowH = 36;
+
+        box.add(label(scene, runX, y, t('gameOver.run'), { color: UI_COLORS.dim }).setOrigin(1, 0));
+        box.add(label(scene, bestX, y, t('gameOver.best'), { color: UI_COLORS.dim }).setOrigin(1, 0));
+
+        const fresh = [];
+        BEST_STATS.forEach(({ key, kind }, i) => {
+            const rowY = y + (i + 1) * rowH + 4;
+            const isNew = newBests.includes(key);
+            box.add(label(scene, statX, rowY, t(`stats.${key}`)));
+            box.add(label(scene, runX, rowY, formatStat(kind, summary[key]), {
+                color: isNew ? UI_COLORS.gold : UI_COLORS.white,
+            }).setOrigin(1, 0));
+            const best = isNew
+                ? label(scene, bestX, rowY, t('gameOver.newBest'), { color: UI_COLORS.gold })
+                : label(scene, bestX, rowY, formatStat(kind, bests[key]), { color: UI_COLORS.dim });
+            box.add(best.setOrigin(1, 0));
+            if (isNew) fresh.push(best);
+        });
+
+        if (fresh.length > 0) {
+            scene.tweens.add({ targets: fresh, alpha: 0.3, duration: 260, yoyo: true, repeat: -1 });
+        }
     }
 }
