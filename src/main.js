@@ -6,6 +6,7 @@ import { PauseScene } from './scenes/PauseScene';
 import { GarageScene } from './scenes/GarageScene';
 import { InstructionsScene } from './scenes/InstructionsScene';
 import { CreditsScene } from './scenes/CreditsScene';
+import { BestRunsScene } from './scenes/BestRunsScene';
 import { TILE_SIZE, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './constants';
 import { getBrowserStorage } from './storage';
 import { initLanguage, getLanguage } from './i18n';
@@ -50,7 +51,7 @@ const config = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, GameScene, PauseScene, GarageScene, InstructionsScene, CreditsScene],
+  scene: [BootScene, MenuScene, GameScene, PauseScene, GarageScene, InstructionsScene, CreditsScene, BestRunsScene],
 };
 
 // Every scene reads the language through t(), so it has to be settled first

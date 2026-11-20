@@ -4,11 +4,19 @@ import {
     priceForNextLevel,
     canPurchase,
     purchase,
+    newWallet,
 } from '../src/garage';
-import { defaultSave } from '../src/storage';
 import { CONFIG } from '../src/config';
 
 describe('garage', () => {
+    it('a new wallet is $0 and a stock car on every track', () => {
+        const wallet = newWallet();
+        expect(wallet.banked).toBe(0);
+        expect(Object.keys(wallet.upgrades).sort()).toEqual(Object.keys(CONFIG.GARAGE.TRACKS).sort());
+        expect(Object.values(wallet.upgrades).every((level) => level === 0)).toBe(true);
+        expect(newWallet()).not.toBe(wallet); // a fresh one each run
+    });
+
     it('values[0] matches the base CONFIG constant for all five tracks', () => {
         expect(CONFIG.GARAGE.TRACKS.engine.values[0]).toBe(CONFIG.PLAYER.MOVE_DURATION);
         expect(CONFIG.GARAGE.TRACKS.fuelTank.values[0]).toBe(CONFIG.FUEL.MAX);
@@ -25,7 +33,7 @@ describe('garage', () => {
     });
 
     it('purchase happy path decrements banked and increments level', () => {
-        const save = defaultSave();
+        const save = newWallet();
         save.banked = 1000;
         expect(purchase(save, 'engine')).toBe(true);
         expect(save.upgrades.engine).toBe(1);
@@ -33,7 +41,7 @@ describe('garage', () => {
     });
 
     it('denies purchase at max level with reason "maxed"', () => {
-        const save = defaultSave();
+        const save = newWallet();
         save.banked = 999999;
         save.upgrades.armor = CONFIG.GARAGE.MAX_LEVEL;
         const check = canPurchase(save, 'armor');
@@ -45,7 +53,7 @@ describe('garage', () => {
     });
 
     it('denies purchase on insufficient funds with reason "funds", leaving save untouched', () => {
-        const save = defaultSave();
+        const save = newWallet();
         save.banked = 100;
         const check = canPurchase(save, 'engine');
         expect(check.ok).toBe(false);

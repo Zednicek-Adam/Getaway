@@ -7,7 +7,6 @@ import {
     loadSave,
     writeSave,
 } from '../src/storage';
-import { CONFIG } from '../src/config';
 
 // Map-backed fake storage matching the { getItem, setItem, removeItem } shape.
 function makeFakeStorage() {
@@ -24,8 +23,8 @@ describe('storage', () => {
     it('write → load round-trips a save', () => {
         const storage = makeFakeStorage();
         const save = defaultSave();
-        save.banked = 1234;
-        save.upgrades.engine = 2;
+        save.bests.banked = 1234;
+        save.topRuns = [{ ...defaultSave().bests, banked: 1234 }];
         writeSave(storage, save);
 
         const loaded = loadSave(storage);
@@ -53,33 +52,34 @@ describe('storage', () => {
         expect(loadSave(storage)).toEqual(defaultSave());
     });
 
-    it('sanitizes negative / NaN / float banked', () => {
-        expect(sanitizeSave({ version: SAVE_VERSION, banked: -50 }).banked).toBe(0);
-        expect(sanitizeSave({ version: SAVE_VERSION, banked: NaN }).banked).toBe(0);
-        expect(sanitizeSave({ version: SAVE_VERSION, banked: 'oops' }).banked).toBe(0);
-        expect(sanitizeSave({ version: SAVE_VERSION, banked: 123.9 }).banked).toBe(123);
+    it('a v1 save from before bests drops its money and upgrades', () => {
+        // Every run starts at $0 with a stock car, so neither is kept any more
+        const clean = sanitizeSave({ version: SAVE_VERSION, banked: 700, upgrades: { engine: 1 } });
+        expect(clean).toEqual(defaultSave());
+        expect('banked' in clean).toBe(false);
+        expect('upgrades' in clean).toBe(false);
     });
 
-    it('clamps levels to 0..MAX_LEVEL and coerces non-numeric to 0', () => {
-        const clean = sanitizeSave({
-            version: SAVE_VERSION,
-            upgrades: { engine: 99, fuelTank: -3, armor: 'x', bombBay: 2.7 },
-        });
-        expect(clean.upgrades.engine).toBe(CONFIG.GARAGE.MAX_LEVEL);
-        expect(clean.upgrades.fuelTank).toBe(0);
-        expect(clean.upgrades.armor).toBe(0);
-        expect(clean.upgrades.bombBay).toBe(2);
+    it('round-trips bests and sanitizes junk in them', () => {
+        const storage = makeFakeStorage();
+        const save = defaultSave();
+        save.bests.banked = 4200;
+        save.bests.timeSurvived = 95;
+        writeSave(storage, save);
+        expect(loadSave(storage).bests).toEqual(save.bests);
+
+        const junk = sanitizeSave({ version: SAVE_VERSION, bests: { banked: -1, longestChase: 12.8 } });
+        expect(junk.bests.banked).toBe(0);
+        expect(junk.bests.longestChase).toBe(12);
     });
 
-    it('drops unknown track keys and fills missing tracks with 0', () => {
-        const clean = sanitizeSave({
-            version: SAVE_VERSION,
-            upgrades: { engine: 1, bogus: 5 },
-        });
-        expect(clean.upgrades).toEqual({
-            engine: 1, fuelTank: 0, armor: 0, bombBay: 0, rocketRack: 0,
-        });
-        expect('bogus' in clean.upgrades).toBe(false);
+    it('round-trips the top runs; an old save reads an empty list', () => {
+        const storage = makeFakeStorage();
+        const save = defaultSave();
+        save.topRuns = [{ ...defaultSave().bests, banked: 900, timeSurvived: 60 }];
+        writeSave(storage, save);
+        expect(loadSave(storage).topRuns).toEqual(save.topRuns);
+        expect(sanitizeSave({ version: SAVE_VERSION, banked: 5 }).topRuns).toEqual([]);
     });
 
     it('writeSave with a throwing setItem does not throw', () => {

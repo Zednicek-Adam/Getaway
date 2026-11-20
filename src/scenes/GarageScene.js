@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { canPurchase, purchase } from '../garage';
-import { writeSave } from '../storage';
 import { label, panel, icon, dim, money, UI_COLORS } from '../ui/ui';
 import { bindPad } from '../gamepad';
 import { controlHint } from '../ui/touchControls';
@@ -20,7 +19,9 @@ const TRACK_ICONS = {
 
 // Overlay scene over the paused GameScene — mirrors PauseScene: owns its
 // keyboard listeners, closes by resuming + stopping itself. Renders the
-// persistent upgrade shop; purchases mutate this.save and re-derive gameState.
+// upgrade shop for this run; purchases spend from this.wallet (the run's
+// money and upgrades, see newWallet) and re-derive gameState. Nothing here is
+// saved: the next run starts with a stock car.
 export class GarageScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GarageScene' });
@@ -28,12 +29,11 @@ export class GarageScene extends Phaser.Scene {
 
     init(data) {
         this.gameState = data.gameState;
-        this.save = data.save;
-        this.storage = data.storage;
+        this.wallet = data.wallet;
     }
 
     create() {
-        const { width, height } = useStage(this, () => ({ gameState: this.gameState, save: this.save, storage: this.storage }));
+        const { width, height } = useStage(this, () => ({ gameState: this.gameState, wallet: this.wallet }));
 
         dim(this, 0.72);
 
@@ -139,17 +139,16 @@ export class GarageScene extends Phaser.Scene {
 
     attemptPurchase() {
         const row = this.rows[this.selectedIndex];
-        if (!purchase(this.save, row.key)) {
+        if (!purchase(this.wallet, row.key)) {
             this.flashPriceDenied(this.selectedIndex);
             return;
         }
-        this.gameState.banked = this.save.banked;
-        this.gameState.applyUpgrades(this.save.upgrades);
-        writeSave(this.storage, this.save);
+        this.gameState.banked = this.wallet.banked;
+        this.gameState.applyUpgrades(this.wallet.upgrades);
         this.refreshRows();
 
         // Celebrate the newly lit pip
-        const level = this.save.upgrades[row.key] || 0;
+        const level = this.wallet.upgrades[row.key] || 0;
         const pip = row.pips[level - 1];
         if (pip) {
             sparkBurst(this, pip.fill.x + 12, pip.fill.y + 12, { count: 8, radius: 48, tint: 0xffd040 });
@@ -168,10 +167,10 @@ export class GarageScene extends Phaser.Scene {
 
     // Fully re-derive every row's texts/pips/colors + the bank readout.
     refreshRows() {
-        this.bankReadout.setText(t('garage.bank', { amount: money(this.save.banked) }));
+        this.bankReadout.setText(t('garage.bank', { amount: money(this.wallet.banked) }));
 
         this.rows.forEach((row) => {
-            const level = this.save.upgrades[row.key] || 0;
+            const level = this.wallet.upgrades[row.key] || 0;
             const values = row.def.values;
 
             // Pips — gold for owned levels, dark otherwise
@@ -191,7 +190,7 @@ export class GarageScene extends Phaser.Scene {
             }
 
             // Price text + color
-            const check = canPurchase(this.save, row.key);
+            const check = canPurchase(this.wallet, row.key);
             if (check.reason === 'maxed') {
                 row.price.setText(t('garage.max')).setColor(UI_COLORS.green);
             } else if (check.ok) {

@@ -1,5 +1,6 @@
 import { CONFIG } from './config';
 import { statsForUpgrades } from './garage';
+import { newRunStats } from './bests';
 
 // Pure game state — no Phaser dependencies, unit-testable.
 export class GameState {
@@ -30,6 +31,7 @@ export class GameState {
         this.invulnRemaining = 0;
         this.gameOver = false;
         this.gameOverReason = null;
+        this.run = newRunStats();               // this run's counters for the summary and bests
     }
 
     pickupMoney() {
@@ -41,6 +43,7 @@ export class GameState {
 
     pickupDiamond() {
         this.carried += CONFIG.ECONOMY.DIAMOND_VALUE;
+        this.run.diamondsStolen++;
         this.addStars(CONFIG.DIAMOND_CAR.STARS_ON_PICKUP);
         this.refreshChase();
     }
@@ -109,6 +112,11 @@ export class GameState {
         return this.nitroRemaining > 0;
     }
 
+    // A bomb or rocket finished off a police or SWAT unit
+    onPoliceDestroyed() {
+        this.run.policeDestroyed++;
+    }
+
     onPoliceBombed() {
         this.addStars(1);
         this.refreshChase();
@@ -119,6 +127,8 @@ export class GameState {
         this.banked += amount;
         this.carried = 0;
         this.chaseCountdown = 0; // Chase ends; stars decay via tick()
+        this.run.banked += amount;
+        this.run.biggestDeposit = Math.max(this.run.biggestDeposit, amount);
         return amount;
     }
 
@@ -145,6 +155,7 @@ export class GameState {
         this.heat = 0;
         this.chaseCountdown = 0;
         this.starDecayTimer = 0;
+        this.run.chaseMs = 0; // a bust ends the chase
         this.nitroRemaining = 0;
         this.pushMeter = 0;
         this.invulnRemaining = CONFIG.PLAYER.INVULN_MS;
@@ -155,6 +166,8 @@ export class GameState {
     }
 
     tick(delta, { spotted = false } = {}) {
+        this.countRunTime(delta);
+
         if (this.invulnRemaining > 0) {
             this.invulnRemaining = Math.max(0, this.invulnRemaining - delta);
         }
@@ -189,6 +202,20 @@ export class GameState {
         } else {
             this.starDecayTimer = 0;
         }
+    }
+
+    // Run clocks, by the stars held going into this frame. A chase runs from
+    // the first star until the last one decays or the player is caught.
+    countRunTime(delta) {
+        const run = this.run;
+        run.survivedMs += delta;
+        if (this.stars > 0) {
+            run.chaseMs += delta;
+            run.longestChaseMs = Math.max(run.longestChaseMs, run.chaseMs);
+        } else {
+            run.chaseMs = 0;
+        }
+        if (this.stars >= 5) run.fiveStarMs += delta;
     }
 
     drainFuel(amount) {

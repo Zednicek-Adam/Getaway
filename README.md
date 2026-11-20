@@ -13,6 +13,7 @@ Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 | ![Title screen](docs/screenshots/title.png) | ![A five-star chase](docs/screenshots/chase.png) |
 | ![The garage](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
 | ![Credits](docs/screenshots/credits.png) | ![Touch controls on a phone](docs/screenshots/touch.png) |
+| ![Game over with personal bests](docs/screenshots/gameover.png) | ![The best runs table](docs/screenshots/best-runs.png) |
 
 ## The loop
 
@@ -35,7 +36,8 @@ countdown that refuses to tick below 25% while a patrol can see you — you have
 to actually break line of sight, not just outlast it. Once the chase ends, stars
 decay one every five seconds.
 
-Banked money persists between runs in `localStorage` and is spent in the garage.
+Banked money is spent in the garage. It only lasts the run: every run starts
+at $0 with a stock car.
 
 ### Losing
 
@@ -47,6 +49,21 @@ the garage upgrade). Every new life starts bare again.
 Gas costs $1 a unit at the pumps, paid from carried cash first and then the
 bank. Run the tank dry and the car stalls: tap push to roll it along at a crawl
 to cash on the road or to a pump. With no money at all, the pump gives nothing.
+
+### Personal bests
+
+The game-over panel sums up the run: money banked, biggest single deposit,
+longest chase (unbroken time at one star or more), time at five stars, police
+destroyed, diamonds stolen and time survived. Each sits next to your best, and a
+record the run beats flashes NEW BEST.
+
+BEST RUNS on the main menu lists your five best whole runs, ranked by money
+banked. A run has to bank something to make the list, and on a tie the older
+run keeps its place. When a run makes it, the game-over panel says where it
+landed, and the main menu shows the best run's takings as the score to beat.
+Bests and the list are the only things saved in `localStorage`. A run quit
+from the pause menu ends like a bust: it counts toward both, and its money and
+upgrades are gone.
 
 ## Controls
 
@@ -131,7 +148,8 @@ costing $500 / $1,500 / $4,000 out of banked money:
 | Bomb bay | 3 → 6 bombs |
 | Rockets | 2 → 5 rockets |
 
-Upgrades apply mid-run and persist across runs.
+Upgrades apply mid-run and last until the run ends. The next run starts with a
+stock car, so the bank is there to spend before you get busted.
 
 ## Running it locally
 
@@ -212,6 +230,7 @@ src/
   i18n.js           every on-screen string in English and Spanish, language switch
   GameState.js      pure run state — money, lives, fuel, stars, armor
   garage.js         upgrade pricing and derived-stat math
+  bests.js          run summary, personal-best records and the top runs
   storage.js        versioned localStorage save with sanitising loader
   pathfinding.js    BFS used by police AI
   turnQueue.js      the buffered-turn queue
@@ -219,7 +238,8 @@ src/
   managers/         Input, Map, Police, UI
   objects/          Car, PoliceCar, SwatVan, Helicopter, DiamondCar,
                     Collectible, Bomb, Rocket, Roadblock
-  scenes/           Boot, Menu, Game, Pause, Garage, Instructions, Credits
+  scenes/           Boot, Menu, Game, Pause, Garage, Instructions, Credits,
+                    BestRuns
   ui/               shared look: pixel text, 9-slice panels, button menus
   generated/        art.json manifest written by tools/generate_art.py
 test/               vitest suites for the Phaser-free modules
@@ -227,7 +247,7 @@ tools/              the pixel-art generator (Python)
 ```
 
 The design splits Phaser-dependent rendering from plain-JS game logic. Anything
-holding rules — `GameState`, `garage`, `storage`, `i18n`, `pathfinding`, `turnQueue`, gamepad polling, the
+holding rules — `GameState`, `garage`, `bests`, `storage`, `i18n`, `pathfinding`, `turnQueue`, gamepad polling, the
 collectible weight table, map reachability, city layout — imports no Phaser and
 is unit tested directly.
 

@@ -16,6 +16,14 @@ export function statsForUpgrades(upgrades) {
     };
 }
 
+// A run's money and upgrade levels: $0 and a stock car. Every run starts
+// with a fresh one, and nothing in it outlives the run. canPurchase and
+// purchase take it as their `save` argument.
+export function newWallet() {
+    const upgrades = Object.fromEntries(Object.keys(CONFIG.GARAGE.TRACKS).map((track) => [track, 0]));
+    return { banked: 0, upgrades };
+}
+
 // Price to go from `level` to `level + 1`; null when already maxed.
 export function priceForNextLevel(level) {
     return CONFIG.GARAGE.PRICES[level] ?? null;
