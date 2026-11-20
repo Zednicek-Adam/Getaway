@@ -1,0 +1,76 @@
+// HEIST GETAWAY — pixel-art chiptune (NES-style channels)
+// 160 BPM, E minor with a harmonic-minor V (B major) for spy tension
+setcps(160/60/4)
+const beat = 60/160 // one beat in seconds, for tempo-synced delays
+
+// ---- 32-bar form (1 cycle = 1 bar) ----
+// 0-3   SNEAK    casing the vault: ticking clock, tiptoe bass
+// 4-7   ALARM    two-tone siren, pounding kick, riser; bar 7 = snare fill
+// 8-23  GETAWAY  full chase: driving beat, octave bass, lead + arps
+// 24-27 HIDEOUT  half-time breather in an alley, sirens in the distance
+// 28-31 FLOOR IT chase returns, lead doubled an octave down
+const sneak   = "<1@4 0@28>"
+const alarm   = "<0@4 1@4 0@24>"
+const fill    = "<0@7 1 0@24>"
+const chase   = "<0@8 1@16 0@4 1@4>"
+const hide    = "<0@24 1@4 0@4>"
+const awake   = "<0@4 1@28>"
+const floorIt = "<0@28 1@4>"
+
+// i - VI - iv - V  (Em C Am B)
+const arpChords = "<[e4,g4,b4,e5] [c4,e4,g4,c5] [a3,c4,e4,a4] [b3,d#4,f#4,b4]>"
+const lead = "<[b4 e5 g5 b5 a5 g5 f#5 g5] [e5 ~ g5 ~ c6 b5 g5 e5] [a5 ~ c6 a5 e5 ~ a5 b5] [d#6 ~ c6 b5 a5 g5 f#5 d#5]>"
+
+stack(
+// ---- drums: bitcrushed hits + noise channel ----
+s("bd:4*4").crush(6).gain(0.6).mask(alarm),
+s("bd:4 ~ ~ bd:4 ~ ~ bd:4 ~").crush(6).gain(0.65).mask(chase),
+s("bd:4 ~ ~ ~ ~ ~ ~ ~").crush(6).gain(0.55).mask(hide),
+s("~ sd:3 ~ sd:3").crush(5).gain(0.4).mask(chase),
+s("~ ~ sd:3 ~").crush(5).gain(0.4).mask(hide),
+s("white").struct("~ x ~ x").decay(0.12).sustain(0).hpf(2500).gain(0.2).mask(chase),
+s("white*16").decay(0.05).sustain(0).hpf(1500).gain(saw.range(0.05, 0.35)).mask(fill),
+s("<~@8 cr:2 ~@19 cr:2 ~@3>").crush(6).gain(0.45),
+
+s("white*8").decay(0.03).sustain(0).hpf(9000).gain("[.16 .08]*4").mask(awake),
+s("white*16").decay(0.08).sustain(0)
+  .hpf(saw.slow(4).range(500, 8000))
+  .gain(saw.slow(4).range(0, 0.15))
+  .mask(alarm),
+
+// ticking clock while cracking the safe
+note("b6 e6 b6 e6").s("triangle").decay(0.03).sustain(0).gain(0.18).mask(sneak),
+
+// ---- bass (triangle channel) ----
+note("e2 ~ ~ e2 g2 ~ a#2 b2").s("triangle").decay(0.15).sustain(0).gain(0.8).mask(sneak),
+note("<[e2*8] [c2*8] [a1*8] [b1*8]>").s("triangle").decay(0.12).sustain(0).gain(0.8).mask(alarm),
+note("<[e2 e3]*4 [c2 c3]*4 [a1 a2]*4 [b1 b2]*4>").s("triangle").decay(0.12).sustain(0).gain(0.85).mask(chase),
+note("<e2 c2 a1 b1>").struct("x ~ ~ x ~ ~ x ~").s("triangle").release(0.3).gain(0.8).mask(hide),
+
+// ---- two-tone sirens (pulse channel) ----
+note("b5 e5").s("square").vib(6).vibmod(0.2).lpf(3000).gain(0.1).mask(alarm),
+note("b5 e5").s("square").vib(6).vibmod(0.2).lpf(900).room(0.8).size(0.9).gain(0.05).mask(hide),
+
+// ---- arps (pulse channel 2) ----
+note(arpChords).arp("[0 1 2 3]*4")
+  .s("square").decay(0.08).sustain(0)
+  .lpf(4000).pan(0.3)
+  .gain(0.1)
+  .mask(awake),
+
+// ---- lead (pulse channel 1, with NES-style echo) ----
+note(lead).s("square").release(0.08)
+  .vib(5).vibmod(0.1)
+  .lpf(5000)
+  .gain(0.16)
+  .off(1/16, x => x.gain(0.05).pan(0.75))
+  .mask(chase),
+note(lead).transpose(-12).s("square").release(0.08).gain(0.08).pan(0.6).mask(floorIt),
+
+// hideout: sneaky triangle melody with echo
+note("<[e4 ~ ~ g4 ~ ~ f#4 ~] [e4 ~ ~ c4 ~ ~ ~ ~] [a3 ~ ~ c4 ~ ~ e4 ~] [d#4 ~ ~ f#4 ~ ~ b3 ~]>")
+  .s("triangle").release(0.3)
+  .delay(0.4).delaytime(beat * 0.75).delayfeedback(0.4)
+  .gain(0.5)
+  .mask(hide)
+)

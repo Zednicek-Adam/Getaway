@@ -101,6 +101,33 @@ lives in `src/i18n.js`. Spanish drops the accent on capital vowels (Á, É, Í, 
 Ú), because the pixel font's accented capitals look like lower case. Ñ, ¡ and ¿
 are kept.
 
+## Sound
+
+The title screens play a chiptune heist theme. A run plays a 174 BPM
+drum-and-bass loop that goes from cruising to a full chase and back. Both
+were written in [Strudel](https://strudel.cc) and baked into seamless loops
+in `public/audio/`; `tools/music/` holds the sources and the steps to
+re-export them. The music turns down under the pause menu and the garage.
+
+Sound effects are synthesised in the browser from `src/audio/sfxRecipes.js`
+in the same NES-style square, triangle and noise voices: coins, the bank
+register, a siren blip for each new star, rams, crashes, explosions, rockets,
+nitro, the pump counter and the game-over jingle.
+
+Every police unit with its light bar on runs its own siren, and each kind of
+unit has its own sound: patrol cars wail, SWAT vans have a fast, low yelp,
+and the helicopter a chopping rotor. Each
+one gets louder as it closes in and pans to the side it's on, so you can
+hear a chase coming before it's on screen. Patrols cruising at 0 stars are
+silent, just as their lights are dark. Roadblocks clank down, and a SWAT van
+that survives a hit rings like armour. All of it goes quiet under the pause
+menu and the garage.
+
+The SOUND button on the title screen and in the pause menu cycles ON ->
+SFX ONLY -> OFF. The choice is saved in `localStorage`. Browsers keep a
+page silent until its first click, tap or key press, so the theme starts
+then.
+
 ## Pickups
 
 Money is the bulk of what spawns; the rest is weighted rarer.

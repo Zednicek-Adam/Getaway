@@ -4,6 +4,7 @@ import { bindPad } from '../gamepad';
 import { controlHint } from '../ui/touchControls';
 import { useStage } from '../screen';
 import { t } from '../i18n';
+import { duckMusic, cycleAudioMode, getAudioMode } from '../audio/sound';
 
 export class PauseScene extends Phaser.Scene {
     constructor() {
@@ -15,13 +16,16 @@ export class PauseScene extends Phaser.Scene {
 
         // Dim the frozen run underneath, then a centred panel
         dim(this, 0.7);
+        // The run's music carries on underneath, turned down
+        duckMusic(true);
         const pw = 560;
-        const ph = 520;
+        const ph = 600;
         const top = (height - ph) / 2;
         panel(this, (width - pw) / 2, top, pw, ph);
         label(this, width / 2, top + 64, t('pause.title'), { size: 48 }).setOrigin(0.5);
 
         const resumeAction = () => {
+            duckMusic(false);
             this.scene.resume('GameScene');
             this.scene.stop();
         };
@@ -48,6 +52,13 @@ export class PauseScene extends Phaser.Scene {
             this.scene.stop();
         };
 
+        // Same toggle as the main menu's, relabelled in place
+        const soundLabel = () => t('menu.sound', { mode: t(`sound.${getAudioMode()}`) });
+        const soundAction = () => {
+            cycleAudioMode();
+            menu.buttons[3].text.setText(soundLabel());
+        };
+
         // Run-ending choices light up red instead of gold
         const menu = createMenu(this, {
             x: width / 2,
@@ -58,6 +69,7 @@ export class PauseScene extends Phaser.Scene {
                 { label: t('pause.resume'), action: resumeAction },
                 { label: t('pause.restart'), action: restartAction, tone: 'danger' },
                 { label: t('menu.instructions'), action: instructionsAction },
+                { label: soundLabel(), action: soundAction },
                 { label: t('pause.mainMenu'), action: mainMenuAction, tone: 'danger' },
             ],
         });

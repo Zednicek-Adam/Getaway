@@ -19,16 +19,18 @@ import { bindPad } from '../gamepad';
 import { TouchControls, controlHint, touchControlsActive } from '../ui/touchControls';
 import { onScreenResize, viewScales, HudSpace } from '../screen';
 import { t } from '../i18n';
+import { playMusic, stopMusic, sfx, setLoopsMuted } from '../audio/sound';
+import { PoliceSoundscape } from '../audio/policeSoundscape';
 
-// Pickup feedback: popup text + spark tint per collectible type. Text is a
+// Pickup feedback: popup text + spark tint + sound per collectible type. Text is a
 // function so it reads the language at pickup time, not at import.
 const PICKUP_FEEDBACK = {
-    [COLLECTIBLE_TYPES.MONEY]: { text: () => `+${money(CONFIG.ECONOMY.MONEY_VALUE)}`, color: UI_COLORS.gold, tint: 0xffd040 },
-    [COLLECTIBLE_TYPES.BOMB]: { text: () => t('pickup.bomb'), color: UI_COLORS.white, tint: 0xffffff },
-    [COLLECTIBLE_TYPES.REPAIR]: { text: () => t('pickup.repair'), color: UI_COLORS.green, tint: 0x6fe08a },
-    [COLLECTIBLE_TYPES.LIFE]: { text: () => t('pickup.life'), color: UI_COLORS.red, tint: 0xff6070 },
-    [COLLECTIBLE_TYPES.NITRO]: { text: () => t('pickup.nitro'), color: UI_COLORS.cyan, tint: 0x5fe0ff },
-    [COLLECTIBLE_TYPES.ROCKET]: { text: () => t('pickup.rocket'), color: UI_COLORS.orange, tint: 0xff9a3c },
+    [COLLECTIBLE_TYPES.MONEY]: { text: () => `+${money(CONFIG.ECONOMY.MONEY_VALUE)}`, color: UI_COLORS.gold, tint: 0xffd040, sound: 'coin' },
+    [COLLECTIBLE_TYPES.BOMB]: { text: () => t('pickup.bomb'), color: UI_COLORS.white, tint: 0xffffff, sound: 'powerUp' },
+    [COLLECTIBLE_TYPES.REPAIR]: { text: () => t('pickup.repair'), color: UI_COLORS.green, tint: 0x6fe08a, sound: 'powerUp' },
+    [COLLECTIBLE_TYPES.LIFE]: { text: () => t('pickup.life'), color: UI_COLORS.red, tint: 0xff6070, sound: 'life' },
+    [COLLECTIBLE_TYPES.NITRO]: { text: () => t('pickup.nitro'), color: UI_COLORS.cyan, tint: 0x5fe0ff, sound: 'powerUp' },
+    [COLLECTIBLE_TYPES.ROCKET]: { text: () => t('pickup.rocket'), color: UI_COLORS.orange, tint: 0xff9a3c, sound: 'powerUp' },
 };
 
 export class GameScene extends Phaser.Scene {
@@ -149,7 +151,30 @@ export class GameScene extends Phaser.Scene {
         // Out-of-fuel hint shows once per empty tank
         this.dryWarned = false;
 
+        // Wanted level last frame, to hear stars come and go
+        this.lastStars = this.state.stars;
+        // Seconds until the pump's next counter tick
+        this.pumpTick = 0;
+
         this.gameOver = false;
+
+        // Every run, restarts included, starts the loop from the top
+        playMusic('gameplay', { restart: true });
+
+        // Sirens and the rotor fall silent while a menu covers the run, and
+        // stop for good when the scene goes (restart, main menu). Scene
+        // events outlive a restart, so the handlers come off at shutdown.
+        this.policeSounds = new PoliceSoundscape();
+        const mute = () => setLoopsMuted(true);
+        const unmute = () => setLoopsMuted(false);
+        this.events.on('pause', mute);
+        this.events.on('resume', unmute);
+        this.events.once('shutdown', () => {
+            this.events.off('pause', mute);
+            this.events.off('resume', unmute);
+            this.policeSounds.stopAll();
+            setLoopsMuted(false);
+        });
     }
 
     update(time, delta) {
@@ -181,10 +206,14 @@ export class GameScene extends Phaser.Scene {
         const driving = this.playerCar.isMoving && !this.playerCar.halted;
         if (this.inputManager.consumeNitroPress() && driving && this.state.useNitro()) {
             this.uiManager.showToast(t('toast.nitro'));
+            sfx('nitro');
         }
         // Pushing only works on an empty tank
         for (let i = this.inputManager.drainPushPresses(); i > 0; i--) {
-            if (this.state.push()) this.pushPuff();
+            if (this.state.push()) {
+                this.pushPuff();
+                sfx('push');
+            }
         }
         // An empty tank only moves while it's being pushed
         this.playerCar.stalled = this.state.isOutOfFuel() && !this.state.isPushing();
@@ -214,6 +243,7 @@ export class GameScene extends Phaser.Scene {
             this.policeManager.getRoadblockAt(this.playerCar.targetX, this.playerCar.targetY)) {
             this.playerCar.performUturn(oppositeOf(this.playerCar.direction)); // bounce; clears queue
             this.cameras.main.shake(150, 0.006);
+            sfx('crash');
             if (!this.state.isInvulnerable()) {
                 const result = this.state.onRammed(CONFIG.ROADBLOCK.CRASH_DAMAGE);
                 if (result === 'caught') {
@@ -246,6 +276,7 @@ export class GameScene extends Phaser.Scene {
             this.uiManager.showToast(t('toast.banked', { amount: money(amount) }));
             floatText(this, this.playerCar.visual.x, this.playerCar.visual.y, `+${money(amount)}`, UI_COLORS.gold);
             sparkBurst(this, this.playerCar.visual.x, this.playerCar.visual.y, { count: 12, tint: 0xffd040 });
+            sfx('bank');
             // deposit() zeroed the countdown — stars decay via tick() and the
             // manager thins the fleet as they drop
             this.pulseBaseMarker();
@@ -292,13 +323,32 @@ export class GameScene extends Phaser.Scene {
         this.state.tick(delta, { spotted: this.policeManager.isPlayerSpotted() });
         if (this.state.isOutOfFuel() && !this.dryWarned) {
             this.dryWarned = true;
+            sfx('stall');
             this.uiManager.showToast(t(controlHint('toast.dry')));
         } else if (!this.state.isOutOfFuel()) {
             this.dryWarned = false;
         }
 
+        this.updateWantedSound();
+        this.policeSounds.update({
+            units: this.policeManager.units,
+            helicopter: this.policeManager.helicopter,
+            x: this.playerCar.visual.x,
+            y: this.playerCar.visual.y,
+        });
+
         // (i) HUD snapshot
         this.refreshHud();
+    }
+
+    // A blip for every star gained, a chime when the last one goes. A bust
+    // also clears the stars, but handleCaught resets lastStars so that one
+    // stays silent.
+    updateWantedSound() {
+        const stars = this.state.stars;
+        if (stars > this.lastStars) sfx('wanted');
+        else if (stars === 0 && this.lastStars > 0) sfx('escaped');
+        this.lastStars = stars;
     }
 
     // On a phone the map zooms in and the HUD and buttons grow, by how far FIT
@@ -365,12 +415,20 @@ export class GameScene extends Phaser.Scene {
         if (pump && pump.broke && !this.noCashShown) {
             this.noCashShown = true;
             this.uiManager.showToast(t('toast.noCash'));
+            sfx('denied');
         }
         if (!atPump) this.noCashShown = false;
 
         if (!pump || pump.pumped <= 0) {
             this.endPumpSession();
             return;
+        }
+
+        // The counter ticks while gas flows
+        this.pumpTick -= delta / 1000;
+        if (this.pumpTick <= 0) {
+            this.pumpTick = 0.12;
+            sfx('pump');
         }
 
         this.pumpBill += pump.paid;
@@ -414,6 +472,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.state.useBomb()) return;
 
         this.bombs.push(new Bomb(this, x, y));
+        sfx('bombDrop');
     }
 
     // Fuse ticks; any police unit on a bomb tile detonates it (every unit on
@@ -451,6 +510,7 @@ export class GameScene extends Phaser.Scene {
 
         this.rockets.push(new Rocket(
             this, this.playerCar.gridX, this.playerCar.gridY, this.playerCar.direction));
+        sfx('rocket');
     }
 
     // Rockets fly a tile at a time; hits resolve ONLY on frames where the
@@ -467,6 +527,7 @@ export class GameScene extends Phaser.Scene {
                 r.tilesTraveled > CONFIG.ROCKET.RANGE_TILES) {
                 sparkBurst(this, r.visualX, r.visualY, { count: 5, radius: TILE_SIZE * 0.6, tint: 0xffb060 });
                 smokePuff(this, r.visualX, r.visualY, { scale: 1.4, depth: 2 });
+                sfx('fizzle');
                 r.destroy();
                 this.rockets.splice(i, 1);
                 continue;
@@ -503,6 +564,7 @@ export class GameScene extends Phaser.Scene {
         const cy = gridY * TILE_SIZE + TILE_SIZE / 2;
         explosion(this, cx, cy);
         this.cameras.main.shake(180, 0.006);
+        sfx('explosion');
     }
 
     spawnDiamondCar() {
@@ -516,6 +578,7 @@ export class GameScene extends Phaser.Scene {
     collectDiamondCar() {
         this.state.pickupDiamond(); // +$1000 carried, +2 stars, chase refresh
         this.policeManager.onChaseEvent();
+        sfx('diamond');
         this.uiManager.showToast(t('toast.diamond', { amount: money(CONFIG.ECONOMY.DIAMOND_VALUE) }));
         sparkBurst(this, this.diamondCar.visual.x, this.diamondCar.visual.y, { count: 12, tint: 0x9ff6ff });
         floatText(this, this.diamondCar.visual.x, this.diamondCar.visual.y,
@@ -543,6 +606,8 @@ export class GameScene extends Phaser.Scene {
     // touch state, so onCaught fires exactly once per catch (no double life loss).
     handleCaught() {
         this.cameras.main.flash(300, 255, 0, 0);
+        // onCaught() already zeroed the stars; no "escaped" chime for a bust
+        this.lastStars = 0;
         // Wreck puff where the car was taken down
         const { x, y } = this.playerCar.visual;
         sparkBurst(this, x, y, { count: 8, tint: 0xff6040 });
@@ -554,6 +619,7 @@ export class GameScene extends Phaser.Scene {
             this.handleGameOver(this.state.gameOverReason || 'busted');
             return;
         }
+        sfx('busted');
 
         this.respawnPlayerAtBase();
         // onCaught() reset stars to 0 — clear the chasers; fresh patrols spawn
@@ -567,6 +633,7 @@ export class GameScene extends Phaser.Scene {
     onPlayerRammed(unit) {
         unit.stun(CONFIG.DAMAGE.POLICE_STUN_MS);
         this.cameras.main.shake(120, 0.004);
+        sfx('ram');
         this.blinkPlayer(CONFIG.DAMAGE.MERCY_MS);
     }
 
@@ -626,6 +693,9 @@ export class GameScene extends Phaser.Scene {
     handleGameOver(reason) {
         this.gameOver = true;
         this.uiManager.showGameOver(reason);
+        stopMusic(0.3);
+        this.policeSounds.stopAll();
+        sfx('gameOver');
 
         // Simple click to restart
         this.input.once('pointerdown', () => {
@@ -679,6 +749,7 @@ export class GameScene extends Phaser.Scene {
         const feedback = PICKUP_FEEDBACK[item.type];
         if (feedback) {
             sparkBurst(this, item.visual.x, item.visual.y, { count: 6, radius: TILE_SIZE * 0.7, tint: feedback.tint });
+            sfx(feedback.sound);
             floatText(this, item.visual.x, item.visual.y, feedback.text(), feedback.color);
         }
 

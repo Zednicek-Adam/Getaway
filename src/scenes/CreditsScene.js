@@ -44,7 +44,8 @@ export class CreditsScene extends Phaser.Scene {
         // --- The roll --------------------------------------------------------
         const blocks = this.column(centre, [
             [t('credits.design'), [NAME]],
-            [t('credits.engine'), ['PHASER 3', 'PHASER.IO']],
+            // Strudel made the music: see tools/music
+            [t('credits.engine'), ['PHASER 3 - PHASER.IO', 'STRUDEL - STRUDEL.CC']],
             [t('credits.languages'), ['ENGLISH, ESPAÑOL']],
             [t('credits.thanks'), [t('credits.thanksWho')]],
             [t('credits.source'), [REPO_LABEL]],

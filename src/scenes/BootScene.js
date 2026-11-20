@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import { loadArt, createAnims } from '../art';
 import { FONT } from '../ui/ui';
 import { t } from '../i18n';
+import { loadMusic, initSound } from '../audio/sound';
 
-// Loads every texture once (with a pixel progress bar), registers the shared
+// Loads every texture and both music tracks once (with a pixel progress bar), registers the shared
 // animations, then hands over to the title screen.
 export class BootScene extends Phaser.Scene {
     constructor() {
@@ -34,10 +35,12 @@ export class BootScene extends Phaser.Scene {
         });
 
         loadArt(this);
+        loadMusic(this.load);
     }
 
     create() {
         createAnims(this);
+        initSound(this.game);
         this.scene.start('MenuScene');
     }
 }
