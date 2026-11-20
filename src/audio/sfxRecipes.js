@@ -62,6 +62,21 @@ export const SFX = {
     // Back to 0 stars: lost them
     escaped: melody('triangle', ['D5', 'F5', 'A5', 'D6'], { step: 0.07, ring: 0.16, vol: 0.3 }),
 
+    // --- the police ------------------------------------------------------
+    // A roadblock dropping into the road ahead: barriers hitting tarmac
+    roadblock: [
+        { wave: 'square', at: 0, dur: 0.12, vol: 0.07, freq: 220, to: 160 },
+        { wave: 'noise', at: 0, dur: 0.1, vol: 0.2, filter: { type: 'bandpass', freq: 2500, q: 3 } },
+        { wave: 'square', at: 0.11, dur: 0.12, vol: 0.06, freq: 200, to: 140 },
+        { wave: 'noise', at: 0.11, dur: 0.1, vol: 0.16, filter: { type: 'bandpass', freq: 2200, q: 3 } },
+    ],
+    // A SWAT van taking a hit and staying up: armour ringing
+    clang: [
+        { wave: 'square', at: 0, dur: 0.35, vol: 0.06, freq: 1250, to: 1150 },
+        { wave: 'triangle', at: 0, dur: 0.45, vol: 0.2, freq: 1870 },
+        { wave: 'noise', at: 0, dur: 0.06, vol: 0.2, filter: { type: 'highpass', freq: 3000 } },
+    ],
+
     // --- weapons ---------------------------------------------------------
     bombDrop: [
         { wave: 'triangle', at: 0, dur: 0.09, vol: 0.4, freq: 330, to: 110 },

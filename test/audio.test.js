@@ -5,6 +5,7 @@ import {
     AUDIO_KEY, AUDIO_MODES, loadAudioMode, saveAudioMode, nextAudioMode, musicAllowed, sfxAllowed,
 } from '../src/audio/audioSettings';
 import { SFX, noteFreq } from '../src/audio/sfxRecipes';
+import { LOOPS, PATROL_SIRENS, SWAT_SIREN, HEARING, spatialMix } from '../src/audio/loopRecipes';
 
 function memoryStorage(initial = {}) {
     const data = new Map(Object.entries(initial));
@@ -85,5 +86,49 @@ describe('sound effect recipes', () => {
         }
         expect(fired.size).toBeGreaterThan(10);
         for (const name of fired) expect(SFX, name).toHaveProperty(name);
+    });
+});
+
+describe('police loops', () => {
+    it('every siren the soundscape picks, and the rotor, exists', () => {
+        for (const name of [...PATROL_SIRENS, SWAT_SIREN, 'rotor']) expect(LOOPS, name).toHaveProperty(name);
+    });
+
+    it('patrol cars and SWAT vans sound different', () => {
+        expect(PATROL_SIRENS).not.toContain(SWAT_SIREN);
+        expect(new Set(PATROL_SIRENS).size).toBe(PATROL_SIRENS.length);
+    });
+
+    it('every loop is playable', () => {
+        for (const [name, loop] of Object.entries(LOOPS)) {
+            expect(['siren', 'rotor'], name).toContain(loop.kind);
+            expect(loop.vol, name).toBeGreaterThan(0);
+            expect(loop.vol, name).toBeLessThanOrEqual(0.3);
+            expect(loop.cutoff, name).toBeGreaterThan(0);
+            if (loop.kind === 'siren') {
+                expect(loop.low, name).toBeGreaterThan(0);
+                expect(loop.high, name).toBeGreaterThan(loop.low);
+                expect(loop.rate, name).toBeGreaterThan(0);
+            }
+        }
+    });
+
+    it('is loudest on top of the player and silent out of range', () => {
+        const ear = HEARING.siren;
+        expect(spatialMix(0, 0, ear)).toEqual({ level: 1, pan: 0 });
+        expect(spatialMix(ear.range, 0, ear).level).toBe(0);
+        expect(spatialMix(0, ear.range * 2, ear).level).toBe(0);
+        const near = spatialMix(100, 0, ear).level;
+        const far = spatialMix(400, 0, ear).level;
+        expect(near).toBeGreaterThan(far);
+        expect(far).toBeGreaterThan(0);
+    });
+
+    it('pans toward the side the unit is on, never fully', () => {
+        const ear = HEARING.siren;
+        expect(spatialMix(-200, 0, ear).pan).toBeLessThan(0);
+        expect(spatialMix(200, 0, ear).pan).toBeGreaterThan(0);
+        expect(spatialMix(0, 300, ear).pan).toBe(0);
+        expect(spatialMix(ear.panWidth * 3, 0, ear).pan).toBe(0.75);
     });
 });

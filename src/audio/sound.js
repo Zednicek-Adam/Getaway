@@ -5,8 +5,10 @@
 // The two tracks are loops rendered from the Strudel sources in tools/music
 // (see the README there). Effects are synthesised from sfxRecipes.js on the
 // fly, routed through Phaser's master output so they pause with the game
-// when the tab loses focus.
+// when the tab loses focus. Sirens and the helicopter rotor are endless
+// loops built from loopRecipes.js (see createLoop).
 import { SFX } from './sfxRecipes';
+import { LOOPS } from './loopRecipes';
 import { loadAudioMode, saveAudioMode, nextAudioMode, musicAllowed, sfxAllowed } from './audioSettings';
 import { getBrowserStorage } from '../storage';
 
@@ -28,6 +30,7 @@ let wanted = null;   // the track the current screen asked for, even while music
 let current = null;  // { name, sound } actually playing
 let ducked = false;
 let sfxBus = null;
+let loopBus = null;  // sirens and rotor, on their own gain so a pause can mute them
 let noiseBuffer = null;
 const lastPlayed = {};
 
@@ -103,6 +106,126 @@ export function sfx(name) {
 
     const bus = getBus(ctx);
     for (const voice of voices) playVoice(ctx, bus, voice, now + 0.005);
+}
+
+export function effectsOn() {
+    return sfxAllowed(mode);
+}
+
+// Start a looping sound from LOOPS (sirens, the rotor). Returns a handle:
+// set(level, pan) moves it, stop() fades it out and frees it. null when
+// effects are off or there's no Web Audio. `detune` scales the pitch and
+// `pace` the sweep speed, so each unit sounds a little different.
+export function createLoop(name, { detune = 1, pace = 1 } = {}) {
+    const recipe = LOOPS[name];
+    const ctx = webAudio();
+    if (!recipe || !ctx || !sfxAllowed(mode)) return null;
+
+    const level = ctx.createGain();
+    level.gain.value = 0;
+    const panner = ctx.createStereoPanner();
+    level.connect(panner);
+    panner.connect(getLoopBus(ctx));
+
+    const sources = recipe.kind === 'rotor'
+        ? buildRotor(ctx, recipe, level, pace)
+        : buildSiren(ctx, recipe, level, detune, pace);
+    const now = ctx.currentTime;
+    for (const source of sources) source.start(now);
+
+    let stopped = false;
+    return {
+        set(amount, pan) {
+            if (stopped) return;
+            const t = ctx.currentTime;
+            level.gain.setTargetAtTime(recipe.vol * amount, t, 0.05);
+            panner.pan.setTargetAtTime(pan, t, 0.05);
+        },
+        stop() {
+            if (stopped) return;
+            stopped = true;
+            const t = ctx.currentTime;
+            level.gain.cancelScheduledValues(t);
+            level.gain.setTargetAtTime(0, t, 0.06);
+            for (const source of sources) source.stop(t + 0.4);
+            sources[0].onended = () => panner.disconnect();
+        },
+    };
+}
+
+// Silence every loop at once (the game paused under a menu), or bring them back
+export function setLoopsMuted(on) {
+    const ctx = webAudio();
+    if (!ctx) return;
+    const bus = getLoopBus(ctx);
+    bus.gain.setTargetAtTime(on ? 0 : 1, ctx.currentTime, 0.04);
+}
+
+// Oscillator -> lowpass -> level, its pitch swept by an LFO
+function buildSiren(ctx, recipe, out, detune, pace) {
+    const low = recipe.low * detune;
+    const high = recipe.high * detune;
+    const tone = ctx.createOscillator();
+    tone.type = recipe.wave;
+    tone.frequency.value = (low + high) / 2;
+
+    const lfo = ctx.createOscillator();
+    lfo.type = recipe.sweep;
+    lfo.frequency.value = recipe.rate * pace;
+    const depth = ctx.createGain();
+    depth.gain.value = (high - low) / 2;
+    lfo.connect(depth);
+    depth.connect(tone.frequency);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = recipe.cutoff;
+    tone.connect(filter);
+    filter.connect(out);
+    return [tone, lfo];
+}
+
+// Lowpassed noise and a low sine, both chopped by a sawtooth LFO: one blade
+// pass per LFO cycle
+function buildRotor(ctx, recipe, out, pace) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoise(ctx);
+    noise.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = recipe.cutoff;
+    noise.connect(filter);
+
+    const thump = ctx.createOscillator();
+    thump.type = 'sine';
+    thump.frequency.value = recipe.thump;
+    const thumpLevel = ctx.createGain();
+    thumpLevel.gain.value = 0.6;
+    thump.connect(thumpLevel);
+
+    // The chop gain swings 0..1: a 0.5 base plus an LFO of depth 0.5
+    const chop = ctx.createGain();
+    chop.gain.value = 0.5;
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sawtooth';
+    lfo.frequency.value = recipe.chop * pace;
+    const depth = ctx.createGain();
+    depth.gain.value = 0.5;
+    lfo.connect(depth);
+    depth.connect(chop.gain);
+
+    filter.connect(chop);
+    thumpLevel.connect(chop);
+    chop.connect(out);
+    return [noise, thump, lfo];
+}
+
+function getLoopBus(ctx) {
+    if (!loopBus || loopBus.context !== ctx) {
+        loopBus = ctx.createGain();
+        loopBus.connect(getBus(ctx));
+    }
+    return loopBus;
 }
 
 // --- music internals ---------------------------------------------------

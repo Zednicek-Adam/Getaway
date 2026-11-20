@@ -19,7 +19,8 @@ import { bindPad } from '../gamepad';
 import { TouchControls, controlHint, touchControlsActive } from '../ui/touchControls';
 import { onScreenResize, viewScales, HudSpace } from '../screen';
 import { t } from '../i18n';
-import { playMusic, stopMusic, sfx } from '../audio/sound';
+import { playMusic, stopMusic, sfx, setLoopsMuted } from '../audio/sound';
+import { PoliceSoundscape } from '../audio/policeSoundscape';
 
 // Pickup feedback: popup text + spark tint + sound per collectible type. Text is a
 // function so it reads the language at pickup time, not at import.
@@ -159,6 +160,21 @@ export class GameScene extends Phaser.Scene {
 
         // Every run, restarts included, starts the loop from the top
         playMusic('gameplay', { restart: true });
+
+        // Sirens and the rotor fall silent while a menu covers the run, and
+        // stop for good when the scene goes (restart, main menu). Scene
+        // events outlive a restart, so the handlers come off at shutdown.
+        this.policeSounds = new PoliceSoundscape();
+        const mute = () => setLoopsMuted(true);
+        const unmute = () => setLoopsMuted(false);
+        this.events.on('pause', mute);
+        this.events.on('resume', unmute);
+        this.events.once('shutdown', () => {
+            this.events.off('pause', mute);
+            this.events.off('resume', unmute);
+            this.policeSounds.stopAll();
+            setLoopsMuted(false);
+        });
     }
 
     update(time, delta) {
@@ -314,6 +330,12 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.updateWantedSound();
+        this.policeSounds.update({
+            units: this.policeManager.units,
+            helicopter: this.policeManager.helicopter,
+            x: this.playerCar.visual.x,
+            y: this.playerCar.visual.y,
+        });
 
         // (i) HUD snapshot
         this.refreshHud();
@@ -672,6 +694,7 @@ export class GameScene extends Phaser.Scene {
         this.gameOver = true;
         this.uiManager.showGameOver(reason);
         stopMusic(0.3);
+        this.policeSounds.stopAll();
         sfx('gameOver');
 
         // Simple click to restart

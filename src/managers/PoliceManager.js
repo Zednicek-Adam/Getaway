@@ -4,6 +4,7 @@ import { SwatVan } from '../objects/SwatVan';
 import { Roadblock } from '../objects/Roadblock';
 import { Helicopter } from '../objects/Helicopter';
 import { DIRECTIONS } from '../constants';
+import { sfx } from '../audio/sound';
 
 const UNIT_TYPES = ['police', 'swat'];
 
@@ -156,6 +157,7 @@ export class PoliceManager {
             return true; // destroyed
         }
         unit.stun(CONFIG.DAMAGE.POLICE_STUN_MS); // survivor reels
+        sfx('clang');
         return false;
     }
 
@@ -242,6 +244,7 @@ export class PoliceManager {
 
         this.mapManager.setBlocked(x, y, true);
         this.roadblocks.push(new Roadblock(this.scene, x, y));
+        sfx('roadblock');
     }
 
     getRoadblockAt(x, y) {

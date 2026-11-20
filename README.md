@@ -114,6 +114,15 @@ in the same NES-style square, triangle and noise voices: coins, the bank
 register, a siren blip for each new star, rams, crashes, explosions, rockets,
 nitro, the pump counter and the game-over jingle.
 
+Every police unit with its light bar on runs its own siren. Patrol cars take
+turns between a wail and a hi-lo two-tone, each pitched a little differently;
+SWAT vans have a fast, low yelp, and the helicopter a chopping rotor. Each
+one gets louder as it closes in and pans to the side it's on, so you can
+hear a chase coming before it's on screen. Patrols cruising at 0 stars are
+silent, just as their lights are dark. Roadblocks clank down, and a SWAT van
+that survives a hit rings like armour. All of it goes quiet under the pause
+menu and the garage.
+
 The SOUND button on the title screen and in the pause menu cycles ON ->
 SFX ONLY -> OFF. The choice is saved in `localStorage`. Browsers keep a
 page silent until its first click, tap or key press, so the theme starts
