@@ -87,55 +87,64 @@ describe('GameState', () => {
         });
     });
 
-    describe('onRammed', () => {
-        it('accrues damage and returns "damaged" until the bar fills', () => {
+    describe('armor', () => {
+        it('starts every run with no armor, capped by the upgrade', () => {
             const state = new GameState();
-
-            expect(state.onRammed()).toBe('damaged');
-            expect(state.damage).toBe(1);
-
-            expect(state.onRammed()).toBe('damaged');
-            expect(state.damage).toBe(2);
-
-            expect(state.onRammed()).toBe('caught');
+            expect(state.armor).toBe(CONFIG.DAMAGE.START_ARMOR);
+            expect(state.armor).toBe(0);
+            expect(state.maxArmor).toBe(CONFIG.DAMAGE.MAX_ARMOR);
         });
+    });
 
-        it('resets damage and takes exactly one life on a catch', () => {
+    describe('onRammed', () => {
+        it('busts the player straight away with no armor', () => {
             const state = new GameState();
             state.pickupMoney();
 
-            state.onRammed();
-            state.onRammed();
-            const result = state.onRammed(); // third — caught
-
-            expect(result).toBe('caught');
-            expect(state.damage).toBe(0);
+            expect(state.onRammed()).toBe('caught');
             expect(state.lives).toBe(CONFIG.PLAYER.LIVES - 1);
             expect(state.carried).toBe(0);
+            expect(state.invulnRemaining).toBe(CONFIG.PLAYER.INVULN_MS);
         });
 
-        it('grants the mercy window on a survivable ram', () => {
+        it('each armor point soaks one ram, then the next ram busts', () => {
             const state = new GameState();
+            state.repair();
+            state.repair();
+            expect(state.armor).toBe(2);
+
+            expect(state.onRammed()).toBe('damaged');
+            expect(state.armor).toBe(1);
+            expect(state.onRammed()).toBe('damaged');
+            expect(state.armor).toBe(0);
+            expect(state.dents).toBe(2);
+
+            expect(state.onRammed()).toBe('caught');
+            expect(state.lives).toBe(CONFIG.PLAYER.LIVES - 1);
+        });
+
+        it('grants the mercy window on a soaked ram', () => {
+            const state = new GameState();
+            state.repair();
             state.onRammed();
             expect(state.isInvulnerable()).toBe(true);
             expect(state.invulnRemaining).toBe(CONFIG.DAMAGE.MERCY_MS);
         });
 
-        it('grants the longer catch invuln (wins over mercy) on a catch', () => {
+        it('a ram bigger than the armor left busts (1 armor vs 2)', () => {
             const state = new GameState();
-            state.onRammed();
-            state.onRammed();
-            state.onRammed(); // caught
+            state.repair();
+            expect(state.onRammed(2)).toBe('caught');
             expect(state.invulnRemaining).toBe(CONFIG.PLAYER.INVULN_MS);
         });
 
-        it('overkill from partial damage is safe (2 damage + 2 → caught)', () => {
+        it('a catch sends the next car out bare and clean', () => {
             const state = new GameState();
-            state.onRammed(); // damage 1
-            state.onRammed(); // damage 2
-            expect(state.onRammed(2)).toBe('caught');
-            expect(state.damage).toBe(0);
-            expect(state.invulnRemaining).toBe(CONFIG.PLAYER.INVULN_MS);
+            state.repair();
+            state.onRammed(); // soaked: armor 0, one dent
+            state.onRammed(); // caught
+            expect(state.armor).toBe(0);
+            expect(state.dents).toBe(0);
         });
     });
 
@@ -244,18 +253,28 @@ describe('GameState', () => {
     });
 
     describe('repair', () => {
-        it('returns false and changes nothing at 0 damage', () => {
+        it('adds one armor point and returns true below the cap', () => {
             const state = new GameState();
-            expect(state.damage).toBe(0);
-            expect(state.repair()).toBe(false);
-            expect(state.damage).toBe(0);
+            expect(state.repair()).toBe(true);
+            expect(state.armor).toBe(1);
         });
 
-        it('decrements damage and returns true when damaged', () => {
+        it('returns false and changes nothing at full armor', () => {
             const state = new GameState();
-            state.onRammed(); // damage 1
-            expect(state.repair()).toBe(true);
-            expect(state.damage).toBe(0);
+            for (let i = 0; i < state.maxArmor; i++) state.repair();
+            expect(state.armor).toBe(state.maxArmor);
+            expect(state.repair()).toBe(false);
+            expect(state.armor).toBe(state.maxArmor);
+        });
+
+        it('knocks out a dent, never below zero', () => {
+            const state = new GameState();
+            state.repair();
+            state.onRammed(); // one dent, armor 0
+            state.repair();
+            expect(state.dents).toBe(0);
+            state.repair();
+            expect(state.dents).toBe(0);
         });
     });
 
@@ -379,17 +398,18 @@ describe('GameState', () => {
             expect(state.banked).toBe(5000);
             expect(state.maxFuel).toBe(200);
             expect(state.fuel).toBe(200);
-            expect(state.maxDamage).toBe(4);
+            expect(state.maxArmor).toBe(4);
+            expect(state.armor).toBe(0); // the cap grows; the armor is still found on the road
             expect(state.moveDuration).toBe(300); // engine still level 0
         });
 
         it('applyUpgrades raises maxes mid-run without touching current counts', () => {
             const state = new GameState();
 
-            state.damage = 2;
+            state.armor = 2;
             state.applyUpgrades({ armor: 3 });
-            expect(state.maxDamage).toBe(6);
-            expect(state.damage).toBe(2); // unchanged
+            expect(state.maxArmor).toBe(6);
+            expect(state.armor).toBe(2); // unchanged
 
             state.fuel = 10;
             state.applyUpgrades({ armor: 3, fuelTank: 3 });

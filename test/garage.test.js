@@ -12,7 +12,7 @@ describe('garage', () => {
     it('values[0] matches the base CONFIG constant for all five tracks', () => {
         expect(CONFIG.GARAGE.TRACKS.engine.values[0]).toBe(CONFIG.PLAYER.MOVE_DURATION);
         expect(CONFIG.GARAGE.TRACKS.fuelTank.values[0]).toBe(CONFIG.FUEL.MAX);
-        expect(CONFIG.GARAGE.TRACKS.armor.values[0]).toBe(CONFIG.DAMAGE.MAX_HITS);
+        expect(CONFIG.GARAGE.TRACKS.armor.values[0]).toBe(CONFIG.DAMAGE.MAX_ARMOR);
         expect(CONFIG.GARAGE.TRACKS.bombBay.values[0]).toBe(CONFIG.PLAYER.MAX_BOMBS);
         expect(CONFIG.GARAGE.TRACKS.rocketRack.values[0]).toBe(CONFIG.ROCKET.MAX_CARRY);
     });
@@ -63,7 +63,7 @@ describe('garage', () => {
         expect(stats).toEqual({
             moveDuration: 225,
             maxFuel: 200,
-            maxDamage: 6,
+            maxArmor: 6,
             maxBombs: 6,
             maxRockets: 5,
         });
@@ -73,7 +73,7 @@ describe('garage', () => {
         expect(statsForUpgrades(undefined)).toEqual({
             moveDuration: CONFIG.PLAYER.MOVE_DURATION,
             maxFuel: CONFIG.FUEL.MAX,
-            maxDamage: CONFIG.DAMAGE.MAX_HITS,
+            maxArmor: CONFIG.DAMAGE.MAX_ARMOR,
             maxBombs: CONFIG.PLAYER.MAX_BOMBS,
             maxRockets: CONFIG.ROCKET.MAX_CARRY,
         });

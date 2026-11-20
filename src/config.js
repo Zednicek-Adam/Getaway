@@ -12,7 +12,8 @@ export const CONFIG = {
     },
 
     DAMAGE: {
-        MAX_HITS: 3,          // rams to a full catch
+        MAX_ARMOR: 3,         // armor cap with no garage upgrade; one point soaks one ram
+        START_ARMOR: 0,       // a run (and each life) starts bare; armor pickups build it up
         MERCY_MS: 1500,       // player invuln window after a survivable ram
         POLICE_STUN_MS: 1000, // ramming unit freezes this long
     },
@@ -40,7 +41,7 @@ export const CONFIG = {
 
     COLLECTIBLES: {
         INITIAL_COUNT: 50,
-        WEIGHTS: { money: 0.70, bomb: 0.12, repair: 0.08, nitro: 0.06, rocket: 0.03, life: 0.01 },
+        WEIGHTS: { money: 0.66, bomb: 0.12, repair: 0.12, nitro: 0.06, rocket: 0.03, life: 0.01 },
     },
 
     NITRO: {
@@ -69,8 +70,10 @@ export const CONFIG = {
         UTURN_PENALTY: 6,        // chase AI reverses only if driving round is this many tiles longer
         RESPAWN_AFTER_BOMB_MS: 8000, // delay before a bombed unit is replaced
         BY_STARS: {
-            0: { units: { police: 0 }, duration: 380, ai: 'roam' },
-            1: { units: { police: 1 }, duration: 380, ai: 'near' },
+            // Patrols cruise the city even when nobody's after you; they only
+            // start hunting (and ramming) once you have a star
+            0: { units: { police: 2 }, duration: 380, ai: 'roam' },
+            1: { units: { police: 2 }, duration: 380, ai: 'near' },
             2: { units: { police: 2 }, duration: 360, ai: 'near' },
             3: { units: { police: 3 }, duration: 340, ai: 'direct' },
             4: { units: { police: 3, swat: 1 }, duration: 320, ai: 'intercept', roadblocks: true },
@@ -122,7 +125,7 @@ export const CONFIG = {
         TRACKS: {
             engine:     { values: [300, 270, 245, 225] }, // ms/tile, index = level
             fuelTank:   { values: [100, 130, 160, 200] },
-            armor:      { values: [3, 4, 5, 6] },
+            armor:      { values: [3, 4, 5, 6] }, // armor cap
             bombBay:    { values: [3, 4, 5, 6] },
             rocketRack: { values: [2, 3, 4, 5] },
         },

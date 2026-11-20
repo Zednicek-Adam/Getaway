@@ -10,7 +10,7 @@ export function statsForUpgrades(upgrades) {
     return {
         moveDuration: at('engine'),
         maxFuel: at('fuelTank'),
-        maxDamage: at('armor'),
+        maxArmor: at('armor'),
         maxBombs: at('bombBay'),
         maxRockets: at('rocketRack'),
     };

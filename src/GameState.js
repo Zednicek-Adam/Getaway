@@ -15,8 +15,9 @@ export class GameState {
         this.maxBombs = stats.maxBombs;         // derived from bombBay upgrade
         this.rockets = 0;
         this.maxRockets = stats.maxRockets;     // derived from rocketRack upgrade
-        this.damage = 0;
-        this.maxDamage = stats.maxDamage;       // derived from armor upgrade
+        this.maxArmor = stats.maxArmor;         // derived from armor upgrade
+        this.armor = this.startingArmor();      // rams left to soak before the next one busts you
+        this.dents = 0;                         // rams soaked since the last fix; drives the smoke
         this.maxLives = CONFIG.PLAYER.MAX_LIVES;
         this.nitros = 0;          // stored charges
         this.nitroRemaining = 0;  // ms left on the running boost
@@ -68,10 +69,15 @@ export class GameState {
         return true;
     }
 
-    // Repair one point of damage; false (leave the pickup) when undamaged.
+    startingArmor() {
+        return Math.min(CONFIG.DAMAGE.START_ARMOR, this.maxArmor);
+    }
+
+    // Armor pickup: +1 point; false (leave the pickup) when already full.
     repair() {
-        if (this.damage <= 0) return false;
-        this.damage--;
+        if (this.armor >= this.maxArmor) return false;
+        this.armor++;
+        this.dents = Math.max(0, this.dents - 1);
         return true;
     }
 
@@ -116,22 +122,24 @@ export class GameState {
         return amount;
     }
 
-    // A police ram: accrue damage; a full bar delegates to onCaught (which
-    // resets damage and grants the longer catch invuln — set AFTER this call,
-    // so it wins). A survivable ram grants the shorter mercy window instead.
+    // A police ram: armor soaks it point for point. With too little armor
+    // left the ram busts the player via onCaught (which grants the longer
+    // catch invuln). A soaked ram grants the shorter mercy window instead.
     onRammed(amount = 1) {
-        this.damage += amount;
-        if (this.damage >= this.maxDamage) {
+        if (amount > this.armor) {
             this.onCaught();
             return 'caught';
         }
+        this.armor -= amount;
+        this.dents += amount;
         this.invulnRemaining = CONFIG.DAMAGE.MERCY_MS;
         return 'damaged';
     }
 
     onCaught() {
         this.carried = 0;
-        this.damage = 0;
+        this.armor = this.startingArmor(); // the fresh car comes out bare
+        this.dents = 0;
         this.lives--;
         this.stars = 0;
         this.heat = 0;
@@ -258,14 +266,14 @@ export class GameState {
     }
 
     // Recompute the five derived stats after a garage purchase mid-run.
-    // Deliberately does NOT touch current fuel/damage/bombs/rockets counts:
-    // maxes only grow, so existing counts stay valid (buying armor while
-    // damaged just increases remaining hits).
+    // Deliberately does NOT touch current fuel/armor/bombs/rockets counts:
+    // maxes only grow, so existing counts stay valid (buying armor raises the
+    // cap; the points still have to be picked up).
     applyUpgrades(upgrades) {
         const stats = statsForUpgrades(upgrades);
         this.moveDuration = stats.moveDuration;
         this.maxFuel = stats.maxFuel;
-        this.maxDamage = stats.maxDamage;
+        this.maxArmor = stats.maxArmor;
         this.maxBombs = stats.maxBombs;
         this.maxRockets = stats.maxRockets;
     }

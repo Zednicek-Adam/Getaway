@@ -104,7 +104,7 @@ export class CarTrail {
         this.lastDirection = car.direction;
     }
 
-    update(delta, { nitro, damage, maxDamage }) {
+    update(delta, { nitro, armor, dents }) {
         const car = this.car;
         const v = car.visual;
         const rear = rearVector(car.direction);
@@ -123,12 +123,14 @@ export class CarTrail {
             this.flameGlow.setPosition(fx, fy).setScale(0.9 + Math.random() * 0.2);
         }
 
-        // Damage smoke: thicker and darker the closer the car is to wrecked
+        // Damage smoke once the car has soaked a ram; thick and dark when the
+        // armor is gone and the next ram busts it. A car that simply hasn't
+        // found any armor yet runs clean.
         this.smokeTimer += delta;
-        const interval = damage >= maxDamage - 1 ? 110 : 260;
-        if (damage > 0 && this.smokeTimer >= interval) {
+        const heavy = armor <= 0;
+        const interval = heavy ? 110 : 260;
+        if (dents > 0 && this.smokeTimer >= interval) {
             this.smokeTimer = 0;
-            const heavy = damage >= maxDamage - 1;
             smokePuff(this.scene, v.x - rear.x * 10 + Phaser.Math.Between(-4, 4),
                 v.y - rear.y * 10 + Phaser.Math.Between(-4, 4),
                 { drift: 22, scale: heavy ? 1.3 : 1, depth: 1.2, tint: heavy ? 0x55555f : 0xb0b4bc });
