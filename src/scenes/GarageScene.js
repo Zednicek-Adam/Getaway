@@ -8,6 +8,7 @@ import { controlHint } from '../ui/touchControls';
 import { sparkBurst } from '../fx';
 import { t } from '../i18n';
 import { useStage } from '../screen';
+import { sfx, duckMusic } from '../audio/sound';
 
 // Icon per upgrade track (icons.png)
 const TRACK_ICONS = {
@@ -82,7 +83,7 @@ export class GarageScene extends Phaser.Scene {
 
             // Interactive hit-area spanning the row for hover-select + click-buy
             const hit = this.add.zone(rowLeft + rowW / 2, y, rowW, rowH).setInteractive({ useHandCursor: true });
-            hit.on('pointerover', () => this.select(i));
+            hit.on('pointerover', () => this.move(i));
             hit.on('pointerdown', () => { this.select(i); this.attemptPurchase(); });
 
             return { key, def, y, idle, lit, name, pips, value, price, priceX: price.x };
@@ -95,15 +96,18 @@ export class GarageScene extends Phaser.Scene {
         this.refreshRows();
 
         // Keyboard
-        const up = () => this.select((this.selectedIndex - 1 + this.rows.length) % this.rows.length);
-        const down = () => this.select((this.selectedIndex + 1) % this.rows.length);
+        const up = () => this.move((this.selectedIndex - 1 + this.rows.length) % this.rows.length);
+        const down = () => this.move((this.selectedIndex + 1) % this.rows.length);
         const buy = () => this.attemptPurchase();
         this.input.keyboard.on('keydown-UP', up);
         this.input.keyboard.on('keydown-DOWN', down);
         this.input.keyboard.on('keydown-ENTER', buy);
         this.input.keyboard.on('keydown-SPACE', buy);
 
+        // The run's music carries on underneath, turned down
+        duckMusic(true);
         const close = () => {
+            duckMusic(false);
             this.scene.resume('GameScene');
             this.scene.stop();
         };
@@ -127,6 +131,13 @@ export class GarageScene extends Phaser.Scene {
         hit.on('pointerdown', close);
     }
 
+    // The player moving the cursor: a blip when the row changes
+    move(index) {
+        if (index === this.selectedIndex) return;
+        this.select(index);
+        sfx('menuMove');
+    }
+
     select(index) {
         this.selectedIndex = index;
         this.rows.forEach((row, i) => {
@@ -140,9 +151,11 @@ export class GarageScene extends Phaser.Scene {
     attemptPurchase() {
         const row = this.rows[this.selectedIndex];
         if (!purchase(this.save, row.key)) {
+            sfx('denied');
             this.flashPriceDenied(this.selectedIndex);
             return;
         }
+        sfx('buy');
         this.gameState.banked = this.save.banked;
         this.gameState.applyUpgrades(this.save.upgrades);
         writeSave(this.storage, this.save);

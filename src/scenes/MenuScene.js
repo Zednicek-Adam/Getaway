@@ -4,6 +4,7 @@ import { label, panel, icon, money, UI_COLORS, createMenu, cityBackdrop } from '
 import { bindPad } from '../gamepad';
 import { t, setLanguage, nextLanguage } from '../i18n';
 import { useStage } from '../screen';
+import { playMusic, cycleAudioMode, getAudioMode } from '../audio/sound';
 
 // Parallax speeds in texture pixels per millisecond
 const SCROLL = { far: 0.012, near: 0.035, street: 0.3 };
@@ -24,6 +25,8 @@ export class MenuScene extends Phaser.Scene {
         // A size change mid-slide is left alone: the scene is on its way out
         const { width } = useStage(this, () => (this.isTransitioning ? null : { selected: this.menu.selected }),
             { anchor: 'bottom' });
+
+        playMusic('theme');
 
         // Container for all menu elements (so we can slide them as one unit)
         this.menuContainer = this.add.container(0, 0);
@@ -83,6 +86,14 @@ export class MenuScene extends Phaser.Scene {
             this.scene.start('InstructionsScene', { returnTo: 'MenuScene' });
         };
 
+        // Cycles ON -> SFX ONLY -> OFF and relabels the button in place
+        const soundLabel = () => t('menu.sound', { mode: t(`sound.${getAudioMode()}`) });
+        const switchSound = () => {
+            if (this.isTransitioning) return;
+            cycleAudioMode();
+            this.menu.buttons[3].text.setText(soundLabel());
+        };
+
         const showCredits = () => {
             if (this.isTransitioning) return;
             this.scene.start('CreditsScene');
@@ -96,13 +107,15 @@ export class MenuScene extends Phaser.Scene {
 
         this.menu = createMenu(this, {
             x: width / 2,
-            y: 380,
+            y: 360,
             width: 440,
-            spacing: 68,
+            height: 52,
+            spacing: 60,
             items: [
                 { label: t('menu.start'), action: startGame },
                 { label: t('menu.instructions'), action: showInstructions },
                 { label: t('menu.language', { name: t('lang.name') }), action: switchLanguage },
+                { label: soundLabel(), action: switchSound },
                 { label: t('menu.credits'), action: showCredits },
             ],
             container: this.menuContainer,

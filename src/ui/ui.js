@@ -1,5 +1,6 @@
 import { ICON } from '../art';
 import { bindPad } from '../gamepad';
+import { sfx } from '../audio/sound';
 import { stageOffset, STAGE_WIDTH, STAGE_HEIGHT } from '../screen';
 
 // Shared look for every screen: pixel text, 9-slice panels, icons and the
@@ -97,16 +98,25 @@ export function createMenu(scene, { x, y, items, width = 400, height = 56, spaci
             [chevronL, chevronR].forEach((c) => c.setY(buttons[selected].y).setColor(tone));
         },
         activate() {
+            sfx('menuSelect');
             buttons[selected].item.action();
         },
     };
 
+    // The player moving the cursor blips; select() itself stays quiet so a
+    // scene can place the cursor on open without a sound
+    const move = (i) => {
+        const next = (i + buttons.length) % buttons.length;
+        if (next === selected) return;
+        menu.select(next);
+        sfx('menuMove');
+    };
     buttons.forEach((b, i) => {
-        b.hit.on('pointerover', () => menu.select(i));
-        b.hit.on('pointerdown', () => { menu.select(i); b.item.action(); });
+        b.hit.on('pointerover', () => move(i));
+        b.hit.on('pointerdown', () => { menu.select(i); menu.activate(); });
     });
-    const up = () => menu.select(selected - 1);
-    const down = () => menu.select(selected + 1);
+    const up = () => move(selected - 1);
+    const down = () => move(selected + 1);
     scene.input.keyboard.on('keydown-UP', up);
     scene.input.keyboard.on('keydown-W', up);
     scene.input.keyboard.on('keydown-DOWN', down);
