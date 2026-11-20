@@ -112,10 +112,29 @@ export const SFX = {
         { wave: 'noise', at: 0, dur: 0.3, vol: 0.35, filter: { type: 'lowpass', freq: 2000, to: 150 } },
         { wave: 'square', at: 0.05, dur: 0.6, vol: 0.09, freq: noteFreq('E5'), to: noteFreq('E3') },
     ],
-    // Out of lives: the descending "wah-wah", the last note wobbling
+    // Out of lives, about 3.5 s, in the gameplay track's D minor. A siren
+    // right on top of you and screeching tyres; the cell door slams as the
+    // GAME OVER panel lands (it bounces in over ~0.5 s); then a falling riff
+    // over a walking bass, ending on a long D minor chord whose top note sags.
     gameOver: [
-        ...melody('triangle', ['E5', 'D#5', 'D5'], { step: 0.3, ring: 0.28, vol: 0.35 }),
-        { wave: 'triangle', at: 0.9, dur: 0.9, vol: 0.35, freq: noteFreq('C#5'), to: noteFreq('A4') },
+        // The cops pull up
+        ...melody('square', ['D6', 'A5', 'D6'], { step: 0.2, ring: 0.18, vol: 0.07 }),
+        { wave: 'noise', at: 0, dur: 0.45, vol: 0.08, filter: { type: 'bandpass', freq: 3200, to: 1400, q: 8 } },
+        // The door slams
+        { wave: 'noise', at: 0.62, dur: 0.32, vol: 0.45, filter: { type: 'lowpass', freq: 900, to: 90 } },
+        { wave: 'sine', at: 0.62, dur: 0.3, vol: 0.5, freq: 95, to: 40 },
+        // The riff, and the slow sag at its end
+        ...melody('square', ['A5', 'G5', 'F5', 'E5'], { step: 0.14, ring: 0.13, vol: 0.09, at: 0.95 }),
+        { wave: 'square', at: 1.51, dur: 0.3, vol: 0.09, freq: noteFreq('D5') },
+        { wave: 'square', at: 1.85, dur: 0.3, vol: 0.09, freq: noteFreq('C#5') },
+        { wave: 'square', at: 2.2, dur: 1.3, vol: 0.09, freq: noteFreq('A5'), to: noteFreq('F5') },
+        // Bass: D, Bb, A, then down to the low D
+        { wave: 'triangle', at: 0.95, dur: 0.5, vol: 0.4, freq: noteFreq('D3') },
+        { wave: 'triangle', at: 1.51, dur: 0.32, vol: 0.4, freq: noteFreq('Bb2') },
+        { wave: 'triangle', at: 1.85, dur: 0.32, vol: 0.4, freq: noteFreq('A2') },
+        { wave: 'triangle', at: 2.2, dur: 1.3, vol: 0.45, freq: noteFreq('D2') },
+        // The final chord under the sagging note
+        ...['D4', 'F4', 'A4'].map((note) => ({ wave: 'square', at: 2.2, dur: 1.3, vol: 0.035, freq: noteFreq(note) })),
     ],
     push: [{ wave: 'noise', at: 0, dur: 0.07, vol: 0.18, filter: { type: 'lowpass', freq: 500 } }],
     // The engine coughing out as the tank runs dry
