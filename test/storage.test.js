@@ -102,6 +102,15 @@ describe('storage', () => {
         expect(junk.bests.longestChase).toBe(12);
     });
 
+    it('round-trips the top runs; an old save reads an empty list', () => {
+        const storage = makeFakeStorage();
+        const save = defaultSave();
+        save.topRuns = [{ ...defaultSave().bests, banked: 900, timeSurvived: 60 }];
+        writeSave(storage, save);
+        expect(loadSave(storage).topRuns).toEqual(save.topRuns);
+        expect(sanitizeSave({ version: SAVE_VERSION, banked: 5 }).topRuns).toEqual([]);
+    });
+
     it('writeSave with a throwing setItem does not throw', () => {
         const storage = {
             getItem: () => null,

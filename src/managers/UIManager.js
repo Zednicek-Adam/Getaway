@@ -366,7 +366,7 @@ export class UIManager {
 
     // `reason` is a GameState code (only 'busted' since an empty tank stopped
     // costing a life). `record` is GameScene.recordRunBests():
-    // { summary, bests, newBests }.
+    // { summary, bests, newBests, rank }.
     showGameOver(reason, record) {
         const scene = this.scene;
         const { width, height } = this.space;
@@ -409,13 +409,15 @@ export class UIManager {
 
     // The run's numbers next to the records, one row per stat. A record this
     // run beat shows NEW BEST in its record column, flashing.
-    addRunSummary(box, y, { summary, bests, newBests }) {
+    addRunSummary(box, y, { summary, bests, newBests, rank }) {
         const scene = this.scene;
         const statX = -328;
         const runX = 120;
         const bestX = 328;
         const rowH = 36;
 
+        // A run that made the BEST RUNS list says where it landed
+        if (rank) box.add(label(scene, statX, y, t('gameOver.topRun', { rank }), { color: UI_COLORS.gold }));
         box.add(label(scene, runX, y, t('gameOver.run'), { color: UI_COLORS.dim }).setOrigin(1, 0));
         box.add(label(scene, bestX, y, t('gameOver.best'), { color: UI_COLORS.dim }).setOrigin(1, 0));
 

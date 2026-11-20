@@ -2,7 +2,8 @@
 //
 // GameState counts a run as it goes (newRunStats). When the run ends,
 // summarizeRun turns those counters into the whole numbers the game-over
-// panel shows, and recordBests folds them into the save's `bests`.
+// panel shows, recordBests folds them into the save's `bests`, and
+// recordTopRun files the whole run in the save's `topRuns` list.
 
 // The order here is the order of the rows on the game-over panel. `kind`
 // picks the formatting: dollars, a m:ss time, or a plain count.
@@ -77,6 +78,35 @@ export function recordBests(bests, summary) {
         }
     }
     return { bests: updated, newBests };
+}
+
+// How many whole runs the BEST RUNS page keeps, ranked by money banked
+export const TOP_RUNS = 5;
+
+// Coerce a raw `topRuns` value into a clean list: each entry a clean run
+// summary (same shape as bests), runs that banked nothing dropped, best
+// first, at most TOP_RUNS. Missing or malformed → empty.
+export function sanitizeTopRuns(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw
+        .map(sanitizeBests)
+        .filter((run) => run.banked > 0)
+        .sort((a, b) => b.banked - a.banked) // stable: on a tie the older run stays ahead
+        .slice(0, TOP_RUNS);
+}
+
+// File one run's summary in the top runs. Returns the updated list (a new
+// array) and the run's place in it, 1-based, or null when it didn't make the
+// list. A run that banked nothing never does, and a tie goes to the run that
+// set it first.
+export function recordTopRun(topRuns, summary) {
+    const list = sanitizeTopRuns(topRuns);
+    if (!(summary.banked > 0)) return { topRuns: list, rank: null };
+    let index = list.findIndex((run) => run.banked < summary.banked);
+    if (index === -1) index = list.length;
+    if (index >= TOP_RUNS) return { topRuns: list, rank: null };
+    list.splice(index, 0, sanitizeBests(summary));
+    return { topRuns: list.slice(0, TOP_RUNS), rank: index + 1 };
 }
 
 // Seconds as m:ss: 65 → "1:05". Minutes keep counting past an hour.

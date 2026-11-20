@@ -45,9 +45,9 @@ export class MenuScene extends Phaser.Scene {
         const bankLabel = label(this, 0, 0, t('menu.bank', { amount: money(banked) }), { color: UI_COLORS.gold }).setOrigin(0, 0.5);
         const bankW = Math.ceil((bankLabel.width + 72) / 2) * 2;
         const bankX = width / 2 - bankW / 2;
-        const bankPanel = panel(this, bankX, 640, bankW, 52);
-        const coin = icon(this, bankX + 28, 666, 'coin');
-        bankLabel.setPosition(bankX + 50, 666);
+        const bankPanel = panel(this, bankX, 700, bankW, 52);
+        const coin = icon(this, bankX + 28, 726, 'coin');
+        bankLabel.setPosition(bankX + 50, 726);
         this.menuContainer.add([bankPanel, coin, bankLabel]);
 
         // Track whether transition is already in progress
@@ -83,6 +83,11 @@ export class MenuScene extends Phaser.Scene {
             this.scene.start('InstructionsScene', { returnTo: 'MenuScene' });
         };
 
+        const showBestRuns = () => {
+            if (this.isTransitioning) return;
+            this.scene.start('BestRunsScene', { selected: this.menu.selected });
+        };
+
         const showCredits = () => {
             if (this.isTransitioning) return;
             this.scene.start('CreditsScene');
@@ -102,6 +107,7 @@ export class MenuScene extends Phaser.Scene {
             items: [
                 { label: t('menu.start'), action: startGame },
                 { label: t('menu.instructions'), action: showInstructions },
+                { label: t('menu.bestRuns'), action: showBestRuns },
                 { label: t('menu.language', { name: t('lang.name') }), action: switchLanguage },
                 { label: t('menu.credits'), action: showCredits },
             ],

@@ -13,7 +13,7 @@ Built with [Phaser 3](https://phaser.io/) and [Vite](https://vite.dev/).
 | ![Title screen](docs/screenshots/title.png) | ![A five-star chase](docs/screenshots/chase.png) |
 | ![The garage](docs/screenshots/garage.png) | ![How to play](docs/screenshots/instructions.png) |
 | ![Credits](docs/screenshots/credits.png) | ![Touch controls on a phone](docs/screenshots/touch.png) |
-| ![Game over with personal bests](docs/screenshots/gameover.png) | |
+| ![Game over with personal bests](docs/screenshots/gameover.png) | ![The best runs table](docs/screenshots/best-runs.png) |
 
 ## The loop
 
@@ -54,8 +54,13 @@ to cash on the road or to a pump. With no money at all, the pump gives nothing.
 The game-over panel sums up the run: money banked, biggest single deposit,
 longest chase (unbroken time at one star or more), time at five stars, police
 destroyed, diamonds stolen and time survived. Each sits next to your best, and a
-record the run beats flashes NEW BEST. Bests are saved with the bank in
-`localStorage`. A run quit from the pause menu still counts toward them.
+record the run beats flashes NEW BEST.
+
+BEST RUNS on the main menu lists your five best whole runs, ranked by money
+banked. A run has to bank something to make the list, and on a tie the older
+run keeps its place. When a run makes it, the game-over panel says where it
+landed. Bests and the list are saved with the bank in `localStorage`, and a run
+quit from the pause menu still counts toward both.
 
 ## Controls
 
@@ -221,7 +226,7 @@ src/
   i18n.js           every on-screen string in English and Spanish, language switch
   GameState.js      pure run state — money, lives, fuel, stars, armor
   garage.js         upgrade pricing and derived-stat math
-  bests.js          run summary and personal-best records
+  bests.js          run summary, personal-best records and the top runs
   storage.js        versioned localStorage save with sanitising loader
   pathfinding.js    BFS used by police AI
   turnQueue.js      the buffered-turn queue
@@ -229,7 +234,8 @@ src/
   managers/         Input, Map, Police, UI
   objects/          Car, PoliceCar, SwatVan, Helicopter, DiamondCar,
                     Collectible, Bomb, Rocket, Roadblock
-  scenes/           Boot, Menu, Game, Pause, Garage, Instructions, Credits
+  scenes/           Boot, Menu, Game, Pause, Garage, Instructions, Credits,
+                    BestRuns
   ui/               shared look: pixel text, 9-slice panels, button menus
   generated/        art.json manifest written by tools/generate_art.py
 test/               vitest suites for the Phaser-free modules

@@ -13,7 +13,7 @@ import { CONFIG } from '../config';
 import { GameState } from '../GameState';
 import { loadSave, writeSave, getBrowserStorage } from '../storage';
 import { oppositeOf } from '../turnQueue';
-import { summarizeRun, recordBests } from '../bests';
+import { summarizeRun, recordBests, recordTopRun } from '../bests';
 import { explosion, sparkBurst, smokePuff, floatText, rearVector, CarTrail } from '../fx';
 import { money, UI_COLORS } from '../ui/ui';
 import { bindPad } from '../gamepad';
@@ -632,16 +632,19 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
-    // Fold this run into the saved bests and write them. Returns the run's
-    // summary and which records fell; null if this run was already recorded.
+    // Fold this run into the saved bests and top runs and write them. Returns
+    // the run's summary, which records fell and its place in the top runs
+    // (null if it missed the list); null if this run was already recorded.
     recordRunBests() {
         if (this.bestsRecorded) return null;
         this.bestsRecorded = true;
         const summary = summarizeRun(this.state.run);
         const { bests, newBests } = recordBests(this.save.bests, summary);
+        const { topRuns, rank } = recordTopRun(this.save.topRuns, summary);
         this.save.bests = bests;
+        this.save.topRuns = topRuns;
         writeSave(this.storage, this.save);
-        return { summary, bests, newBests };
+        return { summary, bests, newBests, rank };
     }
 
     handleGameOver(reason) {

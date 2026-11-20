@@ -26,6 +26,7 @@ export const STRINGS = {
         'menu.start': 'START',
         'menu.instructions': 'INSTRUCTIONS',
         'menu.credits': 'CREDITS',
+        'menu.bestRuns': 'BEST RUNS',
         'menu.language': 'LANG: {name}',
         'menu.bank': 'BANK {amount}',
 
@@ -79,6 +80,18 @@ export const STRINGS = {
         'gameOver.run': 'RUN',
         'gameOver.best': 'BEST',
         'gameOver.newBest': 'NEW BEST',
+        'gameOver.topRun': 'BEST RUN #{rank}',
+
+        'runs.title': 'BEST RUNS',
+        'runs.ranking': 'YOUR TOP 5, RANKED BY MONEY BANKED',
+        'runs.banked': 'BANKED',
+        'runs.chase': 'CHASE',
+        'runs.fiveStars': '5 STARS',
+        'runs.police': 'POLICE',
+        'runs.diamonds': 'DIAMONDS',
+        'runs.time': 'TIME',
+        'runs.empty': 'NO RUNS YET',
+        'runs.emptyHint': 'BANK MONEY IN A RUN TO MAKE THE LIST',
 
         'stats.banked': 'BANKED',
         'stats.biggestDeposit': 'BIGGEST DEPOSIT',
@@ -158,6 +171,7 @@ export const STRINGS = {
         'menu.start': 'JUGAR',
         'menu.instructions': 'INSTRUCCIONES',
         'menu.credits': 'CREDITOS',
+        'menu.bestRuns': 'MEJORES PARTIDAS',
         'menu.language': 'IDIOMA: {name}',
         'menu.bank': 'BANCO {amount}',
 
@@ -211,6 +225,18 @@ export const STRINGS = {
         'gameOver.run': 'PARTIDA',
         'gameOver.best': 'RECORD',
         'gameOver.newBest': '¡RECORD!',
+        'gameOver.topRun': 'MEJOR PARTIDA #{rank}',
+
+        'runs.title': 'MEJORES PARTIDAS',
+        'runs.ranking': 'TUS 5 MEJORES, POR DINERO DEPOSITADO',
+        'runs.banked': 'DEPOSITADO',
+        'runs.chase': 'PERSECUCION',
+        'runs.fiveStars': '5 ESTRELLAS',
+        'runs.police': 'POLICIAS',
+        'runs.diamonds': 'DIAMANTES',
+        'runs.time': 'TIEMPO',
+        'runs.empty': 'AUN NO HAY PARTIDAS',
+        'runs.emptyHint': 'DEPOSITA DINERO PARA ENTRAR EN LA LISTA',
 
         'stats.banked': 'DEPOSITADO',
         'stats.biggestDeposit': 'MAYOR DEPOSITO',
